@@ -12,7 +12,7 @@ class DocumentNumberGenerator
     public function next(Branch $branch, string $documentType, string $format = '{type}/{branch}/{period}/{number:5}'): string
     {
         return DB::transaction(function () use ($branch, $documentType, $format) {
-            $period = now()->format('Ym');
+            $period = now()->timezone(config('app.business_timezone', 'Asia/Jakarta'))->format('Ym');
 
             $sequence = DocumentNumberSequence::where('branch_id', $branch->id)
                 ->where('document_type', $documentType)

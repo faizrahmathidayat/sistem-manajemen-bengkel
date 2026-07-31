@@ -20,7 +20,7 @@ class DocumentNumberGeneratorTest extends TestCase
         $first = $generator->next($branch, 'PKB');
         $second = $generator->next($branch, 'PKB');
 
-        $period = now()->format('Ym');
+        $period = now()->timezone(config('app.business_timezone', 'Asia/Jakarta'))->format('Ym');
         $this->assertSame("PKB/JKT/{$period}/00001", $first);
         $this->assertSame("PKB/JKT/{$period}/00002", $second);
     }
@@ -34,7 +34,7 @@ class DocumentNumberGeneratorTest extends TestCase
         $generator->next($jakarta, 'PKB');
         $bandungFirst = $generator->next($bandung, 'PKB');
 
-        $period = now()->format('Ym');
+        $period = now()->timezone(config('app.business_timezone', 'Asia/Jakarta'))->format('Ym');
         $this->assertSame("PKB/BDG/{$period}/00001", $bandungFirst);
     }
 
@@ -46,7 +46,7 @@ class DocumentNumberGeneratorTest extends TestCase
         $generator->next($branch, 'PKB');
         $invoiceFirst = $generator->next($branch, 'INV');
 
-        $period = now()->format('Ym');
+        $period = now()->timezone(config('app.business_timezone', 'Asia/Jakarta'))->format('Ym');
         $this->assertSame("INV/JKT/{$period}/00001", $invoiceFirst);
     }
 

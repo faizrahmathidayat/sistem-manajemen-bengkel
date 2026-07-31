@@ -28,6 +28,10 @@ trait AuthorizesByPermission
 
     public function hasPermissionTo(string $code): bool
     {
+        if (! $this->is_active) {
+            return false;
+        }
+
         return in_array($code, $this->permissionCodes(), true);
     }
 }

@@ -25,8 +25,15 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        Gate::before(function ($user, $ability) {
+        Gate::before(function ($user, $ability, $arguments = []) {
             if (! method_exists($user, 'hasPermissionTo')) {
+                return null;
+            }
+
+            // Record-level/branch-scoped authorization (e.g. $user->can('pkb.view', $pkb))
+            // belongs in Policies, not this blanket permission-code gate. Deferring here
+            // lets a Policy actually run instead of being short-circuited by the code check.
+            if (! empty($arguments)) {
                 return null;
             }
 

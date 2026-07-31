@@ -10,6 +10,13 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_root_redirects_to_login(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertRedirect('/login');
+    }
+
     public function test_user_can_login_with_correct_username_and_password(): void
     {
         $user = User::factory()->create([

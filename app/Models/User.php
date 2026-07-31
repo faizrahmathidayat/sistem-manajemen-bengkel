@@ -45,4 +45,29 @@ class User extends Authenticatable
         'is_active' => 'boolean',
         'last_login_at' => 'datetime',
     ];
+
+    public function userBranches()
+    {
+        return $this->hasMany(UserBranch::class);
+    }
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'user_branches')
+            ->withPivot(['is_default', 'is_active'])
+            ->wherePivot('is_active', true);
+    }
+
+    public function hasAccessToBranch(int $branchId): bool
+    {
+        return $this->userBranches()
+            ->where('branch_id', $branchId)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function defaultBranch(): ?Branch
+    {
+        return $this->branches()->wherePivot('is_default', true)->first();
+    }
 }

@@ -21,4 +21,9 @@ class Branch extends Model
     protected $attributes = [
         'is_active' => true,
     ];
+
+    public function userBranches()
+    {
+        return $this->hasMany(UserBranch::class);
+    }
 }

@@ -29,6 +29,9 @@ class DocumentNumberGenerator
                         'last_number' => 0,
                     ]);
                 } catch (QueryException $e) {
+                    if (($e->errorInfo[1] ?? null) !== 1062) {
+                        throw $e;
+                    }
                     // Another concurrent transaction created the row first — fall through and lock it below.
                 }
 

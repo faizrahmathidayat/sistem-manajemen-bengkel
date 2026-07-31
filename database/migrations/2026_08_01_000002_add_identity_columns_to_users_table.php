@@ -22,10 +22,6 @@ class AddIdentityColumnsToUsersTable extends Migration
     public function down()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('email', 255)->nullable(false)->change();
-        });
-
-        Schema::table('users', function (Blueprint $table) {
             $table->dropColumn(['username', 'is_active', 'last_login_at']);
         });
     }

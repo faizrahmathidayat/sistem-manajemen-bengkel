@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasAudit;
+use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Branch extends Model
 {
-    use HasFactory, HasAudit;
+    use HasFactory, HasAudit, HasAttachments;
 
     protected $fillable = [
         'code', 'name', 'address', 'phone', 'email', 'is_active',

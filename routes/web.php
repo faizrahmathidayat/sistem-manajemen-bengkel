@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\BranchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -22,6 +23,11 @@ Route::middleware(['auth'])->group(function () {
     // Administrasi CRUD UI plan) so the sidebar's route() calls resolve.
     // Route::get() only needs the controller class to exist once the route
     // is actually dispatched, not at registration/URL-generation time.
-    Route::get('/branches', [App\Http\Controllers\BranchController::class, 'index'])->name('branches.index');
+    Route::get('/branches', [BranchController::class, 'index'])->name('branches.index');
+    Route::get('/branches/create', [BranchController::class, 'create'])->name('branches.create');
+    Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
+    Route::get('/branches/{branch}/edit', [BranchController::class, 'edit'])->name('branches.edit');
+    Route::put('/branches/{branch}', [BranchController::class, 'update'])->name('branches.update');
+
     Route::get('/users', [App\Http\Controllers\UserController::class, 'index'])->name('users.index');
 });

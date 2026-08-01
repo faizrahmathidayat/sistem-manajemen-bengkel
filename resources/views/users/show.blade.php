@@ -21,6 +21,13 @@
             </button>
         </li>
         @endcan
+        @can('user_permission.manage')
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#permission-pane" type="button" role="tab">
+                <i class="bi bi-shield-check me-1"></i> Permission
+            </button>
+        </li>
+        @endcan
     </ul>
 
     <div class="tab-content">
@@ -30,6 +37,11 @@
         @can('user_branch.manage')
         <div class="tab-pane fade" id="cabang-pane" role="tabpanel">
             @include('users._tab_cabang')
+        </div>
+        @endcan
+        @can('user_permission.manage')
+        <div class="tab-pane fade" id="permission-pane" role="tabpanel">
+            @include('users._tab_permission')
         </div>
         @endcan
     </div>

@@ -47,13 +47,31 @@ class UserController extends Controller
 
         $user->load('userBranches');
         $allBranches = Branch::orderBy('name')->get();
-        $menus = Menu::with(['permissions' => fn ($query) => $query->where('is_active', true)])
+        $assignedBranches = $user->branches;
+
+        $branchScopedMenus = Menu::with(['permissions' => fn ($query) => $query->where('is_active', true)])
+            ->where('is_branch_scoped', true)
             ->orderBy('sort_order')
             ->get()
             ->filter(fn ($menu) => $menu->permissions->isNotEmpty());
+
+        $globalMenus = Menu::with(['permissions' => fn ($query) => $query->where('is_active', true)])
+            ->where('is_branch_scoped', false)
+            ->orderBy('sort_order')
+            ->get()
+            ->filter(fn ($menu) => $menu->permissions->isNotEmpty());
+
         $grantedPermissionIds = $user->userPermissions()->pluck('permission_id')->all();
 
-        return view('users.show', compact('user', 'allBranches', 'menus', 'grantedPermissionIds'));
+        $grantedBranchPermissionIds = $user->userBranchPermissions()
+            ->get()
+            ->groupBy('branch_id')
+            ->map(fn ($rows) => $rows->pluck('permission_id')->all());
+
+        return view('users.show', compact(
+            'user', 'allBranches', 'assignedBranches', 'branchScopedMenus', 'globalMenus',
+            'grantedPermissionIds', 'grantedBranchPermissionIds'
+        ));
     }
 
     public function update(UpdateUserRequest $request, User $user)

@@ -19,8 +19,8 @@ class AppShellTest extends TestCase
         $response = $this->actingAs($user)->get('/dashboard');
 
         $response->assertOk();
-        $response->assertDontSee('Cabang');
-        $response->assertDontSee('Users');
+        $response->assertDontSee(route('branches.index'), false);
+        $response->assertDontSee(route('users.index'), false);
     }
 
     public function test_sidebar_shows_cabang_link_when_user_has_branch_view_permission(): void
@@ -37,8 +37,8 @@ class AppShellTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('Cabang');
-        $response->assertDontSee('Users');
+        $response->assertSee(route('branches.index'), false);
+        $response->assertDontSee(route('users.index'), false);
     }
 
     public function test_sidebar_shows_users_link_when_user_has_user_view_permission(): void
@@ -55,7 +55,7 @@ class AppShellTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('Users');
-        $response->assertDontSee('Cabang');
+        $response->assertSee(route('users.index'), false);
+        $response->assertDontSee(route('branches.index'), false);
     }
 }

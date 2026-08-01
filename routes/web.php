@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPermissionAssignmentController;
@@ -18,9 +19,7 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Route names registered ahead of their controllers (Task 2/3 of the
     // Administrasi CRUD UI plan) so the sidebar's route() calls resolve.

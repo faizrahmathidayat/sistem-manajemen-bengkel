@@ -6,8 +6,11 @@
             <div class="col-12 col-sm-8 col-md-6 col-lg-4">
                 <div class="card shadow-sm">
                     <div class="card-body p-4">
-                        <h1 class="h4 mb-3 text-center">Sistem Manajemen Bengkel</h1>
-                        <p class="text-muted text-center mb-4">Masuk untuk melanjutkan</p>
+                        <div class="text-center mb-3">
+                            <i class="bi bi-tools" style="font-size: 1.75rem; color: var(--color-accent);"></i>
+                        </div>
+                        <h1 class="h4 mb-1 text-center">Sistem Manajemen Bengkel</h1>
+                        <p class="text-center mb-4" style="color: var(--color-ink-muted);">Masuk untuk melanjutkan</p>
 
                         @if ($errors->any())
                             <div class="alert alert-danger">

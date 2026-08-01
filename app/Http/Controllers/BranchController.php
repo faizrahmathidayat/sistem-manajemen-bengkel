@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreBranchRequest;
+use App\Http\Requests\UpdateBranchRequest;
 use App\Models\Branch;
-use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
@@ -25,11 +26,9 @@ class BranchController extends Controller
         return view('branches.create', compact('branch'));
     }
 
-    public function store(Request $request)
+    public function store(StoreBranchRequest $request)
     {
-        $this->authorize('branch.create');
-
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $data['is_active'] = $request->boolean('is_active');
 
         Branch::create($data);
@@ -44,26 +43,13 @@ class BranchController extends Controller
         return view('branches.edit', compact('branch'));
     }
 
-    public function update(Request $request, Branch $branch)
+    public function update(UpdateBranchRequest $request, Branch $branch)
     {
-        $this->authorize('branch.edit');
-
-        $data = $this->validateData($request, $branch);
+        $data = $request->validated();
         $data['is_active'] = $request->boolean('is_active');
 
         $branch->update($data);
 
         return redirect()->route('branches.index')->with('status', 'Cabang berhasil diperbarui.');
-    }
-
-    protected function validateData(Request $request, ?Branch $branch = null): array
-    {
-        return $request->validate([
-            'code' => ['required', 'string', 'max:30', 'unique:branches,code,' . optional($branch)->id],
-            'name' => ['required', 'string', 'max:150'],
-            'address' => ['nullable', 'string'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
-        ]);
     }
 }

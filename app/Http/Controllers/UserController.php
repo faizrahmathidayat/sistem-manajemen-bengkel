@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -27,15 +27,9 @@ class UserController extends Controller
         return view('users.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $this->authorize('user.create');
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
-            'username' => ['required', 'string', 'max:100', 'unique:users,username'],
-            'password' => ['required', 'string', 'min:6'],
-        ]);
+        $data = $request->validated();
 
         User::create([
             'name' => $data['name'],
@@ -62,15 +56,9 @@ class UserController extends Controller
         return view('users.show', compact('user', 'allBranches', 'menus', 'grantedPermissionIds'));
     }
 
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        $this->authorize('user.edit');
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
-            'username' => ['required', 'string', 'max:100', Rule::unique('users', 'username')->ignore($user->id)],
-            'password' => ['nullable', 'string', 'min:6'],
-        ]);
+        $data = $request->validated();
 
         $user->name = $data['name'];
         $user->username = $data['username'];

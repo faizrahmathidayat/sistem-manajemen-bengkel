@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserBranchAssignmentController;
+use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,11 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{branch}', [UserBranchAssignmentController::class, 'store'])->name('store');
             Route::delete('/{branch}', [UserBranchAssignmentController::class, 'destroy'])->name('destroy');
             Route::put('/{branch}/default', [UserBranchAssignmentController::class, 'setDefault'])->name('setDefault');
+        });
+
+        Route::prefix('{user}/branches/{branch}/permissions')->name('branchPermissions.')->group(function () {
+            Route::post('/{permission}', [UserBranchPermissionAssignmentController::class, 'store'])->name('store');
+            Route::delete('/{permission}', [UserBranchPermissionAssignmentController::class, 'destroy'])->name('destroy');
         });
 
         Route::prefix('{user}/permissions')->name('permissions.')->group(function () {

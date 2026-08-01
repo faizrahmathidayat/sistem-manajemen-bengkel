@@ -30,23 +30,25 @@
         </div>
     </nav>
 
-    <div class="offcanvas-lg offcanvas-start bg-dark text-white" tabindex="-1" id="sidebar">
-        <div class="offcanvas-header d-lg-none">
-            <h5 class="offcanvas-title">Menu</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebar"></button>
+    <div class="app-body d-flex">
+        <div class="offcanvas-lg offcanvas-start bg-dark text-white" tabindex="-1" id="sidebar">
+            <div class="offcanvas-header d-lg-none">
+                <h5 class="offcanvas-title">Menu</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebar"></button>
+            </div>
+            <div class="offcanvas-body d-flex flex-column p-3">
+                @include('partials.sidebar')
+            </div>
         </div>
-        <div class="offcanvas-body d-flex flex-column p-3">
-            @include('partials.sidebar')
-        </div>
+
+        <main class="app-main flex-grow-1 py-4 px-3 px-lg-4">
+            @if (session('status'))
+                <div class="alert alert-success">{{ session('status') }}</div>
+            @endif
+
+            @yield('content')
+        </main>
     </div>
-
-    <main class="app-main py-4 px-3 px-lg-4">
-        @if (session('status'))
-            <div class="alert alert-success">{{ session('status') }}</div>
-        @endif
-
-        @yield('content')
-    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')

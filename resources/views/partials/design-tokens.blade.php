@@ -48,7 +48,7 @@
     }
 
     /* Sidebar */
-    #sidebar { width: 260px; background-color: var(--color-sidebar) !important; }
+    #sidebar { width: 260px; flex-shrink: 0; background-color: var(--color-sidebar) !important; }
     #sidebar .sidebar-heading {
         color: rgba(247, 247, 245, .4);
         font-size: .7rem;
@@ -69,9 +69,7 @@
         font-weight: 500;
     }
 
-    @media (min-width: 992px) {
-        .app-main { margin-left: 260px; }
-    }
+    .app-body { align-items: stretch; }
 
     /* Buttons */
     .btn-primary {

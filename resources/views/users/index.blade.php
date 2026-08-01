@@ -26,13 +26,13 @@
                     @forelse ($users as $user)
                         <tr>
                             <td>{{ $user->name }}</td>
-                            <td>{{ $user->username }}</td>
+                            <td><code>{{ $user->username }}</code></td>
                             <td>{{ optional($user->defaultBranch())->name ?? '-' }}</td>
                             <td>
                                 @if ($user->is_active)
-                                    <span class="badge bg-success">Aktif</span>
+                                    <span class="status-dot status-active">Aktif</span>
                                 @else
-                                    <span class="badge bg-secondary">Nonaktif</span>
+                                    <span class="status-dot status-inactive">Nonaktif</span>
                                 @endif
                             </td>
                             <td class="text-end">

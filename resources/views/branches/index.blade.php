@@ -25,14 +25,14 @@
                 <tbody>
                     @forelse ($branches as $branch)
                         <tr>
-                            <td>{{ $branch->code }}</td>
+                            <td><code>{{ $branch->code }}</code></td>
                             <td>{{ $branch->name }}</td>
                             <td>{{ $branch->phone ?? '-' }}</td>
                             <td>
                                 @if ($branch->is_active)
-                                    <span class="badge bg-success">Aktif</span>
+                                    <span class="status-dot status-active">Aktif</span>
                                 @else
-                                    <span class="badge bg-secondary">Nonaktif</span>
+                                    <span class="status-dot status-inactive">Nonaktif</span>
                                 @endif
                             </td>
                             <td class="text-end">

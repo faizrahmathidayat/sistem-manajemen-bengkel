@@ -29,4 +29,15 @@ class MenuPermissionSeederTest extends TestCase
 
         $this->assertSame(1, Permission::where('code', 'pkb.create')->count());
     }
+
+    public function test_seeder_marks_operational_menus_as_branch_scoped_and_others_as_global(): void
+    {
+        $this->seed(MenuPermissionSeeder::class);
+
+        $this->assertDatabaseHas('menus', ['code' => 'operasional.pkb', 'is_branch_scoped' => true]);
+        $this->assertDatabaseHas('menus', ['code' => 'persediaan.sparepart', 'is_branch_scoped' => true]);
+        $this->assertDatabaseHas('menus', ['code' => 'reporting.pkb', 'is_branch_scoped' => true]);
+        $this->assertDatabaseHas('menus', ['code' => 'master.branch', 'is_branch_scoped' => false]);
+        $this->assertDatabaseHas('menus', ['code' => 'administrasi.users', 'is_branch_scoped' => false]);
+    }
 }

@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Menu extends Model
 {
-    protected $fillable = ['parent_id', 'code', 'name', 'route', 'icon', 'sort_order', 'is_active'];
+    protected $fillable = ['parent_id', 'code', 'name', 'route', 'icon', 'sort_order', 'is_active', 'is_branch_scoped'];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $casts = ['is_active' => 'boolean', 'is_branch_scoped' => 'boolean'];
 
     public function parent()
     {

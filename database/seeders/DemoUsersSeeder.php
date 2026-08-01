@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Branch;
 use App\Models\Permission;
 use App\Models\User;
+use App\Models\UserBranchPermission;
 use App\Models\UserPermission;
 use App\Services\UserBranchService;
 use Illuminate\Database\Seeder;
@@ -27,25 +28,30 @@ class DemoUsersSeeder extends Seeder
 
         $branchService = new UserBranchService();
 
-        // Faiz: all access, all branches, all permissions.
+        $globalCodes = Permission::whereHas('menu', fn ($query) => $query->where('is_branch_scoped', false))->pluck('code')->all();
+        $branchScopedCodes = Permission::whereHas('menu', fn ($query) => $query->where('is_branch_scoped', true))->pluck('code')->all();
+
+        // Faiz: all access, all branches, all permissions — global codes granted once,
+        // every branch-scoped code granted in every branch he's assigned to.
         foreach ($branches as $index => $branch) {
             $branchService->assign($users['faiz'], $branch, $index === 0);
+            $this->grantBranchPermissions($users['faiz'], $branch, $branchScopedCodes);
         }
-        $this->grantPermissions($users['faiz'], Permission::pluck('code')->all());
+        $this->grantPermissions($users['faiz'], $globalCodes);
 
-        // Romi: Bengkel 1 only, PKB view/create + view all laporan.
+        // Romi: Bengkel 1 only, PKB view/create + view all laporan, scoped to Bengkel 1.
         $branchService->assign($users['romi'], $branches->first(), true);
-        $this->grantPermissions($users['romi'], $this->laporanCodes([
+        $this->grantBranchPermissions($users['romi'], $branches->first(), array_merge([
             'pkb.view',
             'pkb.create',
-        ]));
+        ], $this->laporanCodes()));
 
-        // Syilawati: Bengkel 1 only, invoice view/create + view all laporan.
+        // Syilawati: Bengkel 1 only, invoice view/create + view all laporan, scoped to Bengkel 1.
         $branchService->assign($users['syilawati'], $branches->first(), true);
-        $this->grantPermissions($users['syilawati'], $this->laporanCodes([
+        $this->grantBranchPermissions($users['syilawati'], $branches->first(), array_merge([
             'invoice.view',
             'invoice.create',
-        ]));
+        ], $this->laporanCodes()));
 
         $this->command->info('Demo users seeded (local/testing only): faiz_rahmat, romi_ramdani, syilawati_rn — password sama dengan username.');
     }
@@ -90,15 +96,15 @@ class DemoUsersSeeder extends Seeder
         return $users;
     }
 
-    protected function laporanCodes(array $extra): array
+    protected function laporanCodes(): array
     {
-        return array_merge($extra, [
+        return [
             'report.pkb.view',
             'report.invoice.view',
             'report.receivable.view',
             'report.invoice_pkb_gap.view',
             'report.sparepart.view',
-        ]);
+        ];
     }
 
     protected function grantPermissions(User $user, array $codes)
@@ -114,6 +120,25 @@ class DemoUsersSeeder extends Seeder
 
             UserPermission::firstOrCreate([
                 'user_id' => $user->id,
+                'permission_id' => $permissionIds[$code],
+            ]);
+        }
+    }
+
+    protected function grantBranchPermissions(User $user, Branch $branch, array $codes)
+    {
+        $permissionIds = Permission::whereIn('code', $codes)->pluck('id', 'code');
+
+        foreach ($codes as $code) {
+            if (! isset($permissionIds[$code])) {
+                $this->command->warn("Permission code not found, skipped: {$code}");
+
+                continue;
+            }
+
+            UserBranchPermission::firstOrCreate([
+                'user_id' => $user->id,
+                'branch_id' => $branch->id,
                 'permission_id' => $permissionIds[$code],
             ]);
         }

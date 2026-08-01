@@ -17,6 +17,7 @@ class MenuPermissionSeeder extends Seeder
                     'name' => $menuDefinition['name'],
                     'sort_order' => $sortOrder,
                     'is_active' => true,
+                    'is_branch_scoped' => $menuDefinition['is_branch_scoped'],
                 ]
             );
 
@@ -41,6 +42,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'operasional.pkb',
                 'name' => 'Perintah Kerja Bengkel',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'pkb.view', 'resource' => 'pkb', 'action' => 'view', 'description' => 'Melihat PKB'],
                     ['code' => 'pkb.create', 'resource' => 'pkb', 'action' => 'create', 'description' => 'Membuat PKB'],
@@ -54,6 +56,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'operasional.invoice',
                 'name' => 'Invoice',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'invoice.view', 'resource' => 'invoice', 'action' => 'view', 'description' => 'Melihat invoice'],
                     ['code' => 'invoice.create', 'resource' => 'invoice', 'action' => 'create', 'description' => 'Membuat invoice'],
@@ -67,6 +70,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'operasional.payment',
                 'name' => 'Penerimaan Pembayaran',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'payment.view', 'resource' => 'payment', 'action' => 'view', 'description' => 'Melihat pembayaran'],
                     ['code' => 'payment.create', 'resource' => 'payment', 'action' => 'create', 'description' => 'Mencatat pembayaran'],
@@ -77,6 +81,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'persediaan.sparepart',
                 'name' => 'Master Sparepart',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'sparepart.view', 'resource' => 'sparepart', 'action' => 'view', 'description' => 'Melihat sparepart'],
                     ['code' => 'sparepart.create', 'resource' => 'sparepart', 'action' => 'create', 'description' => 'Membuat sparepart'],
@@ -87,6 +92,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'persediaan.receipt',
                 'name' => 'Penerimaan Barang',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'receipt.view', 'resource' => 'receipt', 'action' => 'view', 'description' => 'Melihat penerimaan barang'],
                     ['code' => 'receipt.create', 'resource' => 'receipt', 'action' => 'create', 'description' => 'Membuat penerimaan barang'],
@@ -97,6 +103,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'persediaan.stock_adjustment',
                 'name' => 'Stock Adjustment',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'stock_adjustment.view', 'resource' => 'stock_adjustment', 'action' => 'view', 'description' => 'Melihat stock adjustment'],
                     ['code' => 'stock_adjustment.create', 'resource' => 'stock_adjustment', 'action' => 'create', 'description' => 'Membuat stock adjustment'],
@@ -108,6 +115,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'persediaan.stock_transfer',
                 'name' => 'Transfer Stock',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'stock_transfer.view', 'resource' => 'stock_transfer', 'action' => 'view', 'description' => 'Melihat transfer stock'],
                     ['code' => 'stock_transfer.create', 'resource' => 'stock_transfer', 'action' => 'create', 'description' => 'Membuat transfer stock'],
@@ -120,6 +128,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'master.branch',
                 'name' => 'Cabang',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'branch.view', 'resource' => 'branch', 'action' => 'view', 'description' => 'Melihat cabang'],
                     ['code' => 'branch.create', 'resource' => 'branch', 'action' => 'create', 'description' => 'Membuat cabang'],
@@ -129,6 +138,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'master.customer',
                 'name' => 'Customer',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'customer.view', 'resource' => 'customer', 'action' => 'view', 'description' => 'Melihat customer'],
                     ['code' => 'customer.create', 'resource' => 'customer', 'action' => 'create', 'description' => 'Membuat customer'],
@@ -138,6 +148,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'master.vehicle',
                 'name' => 'Kendaraan',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'vehicle.view', 'resource' => 'vehicle', 'action' => 'view', 'description' => 'Melihat kendaraan'],
                     ['code' => 'vehicle.create', 'resource' => 'vehicle', 'action' => 'create', 'description' => 'Membuat kendaraan'],
@@ -147,6 +158,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'master.mechanic',
                 'name' => 'Mekanik',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'mechanic.view', 'resource' => 'mechanic', 'action' => 'view', 'description' => 'Melihat mekanik'],
                     ['code' => 'mechanic.create', 'resource' => 'mechanic', 'action' => 'create', 'description' => 'Membuat mekanik'],
@@ -156,6 +168,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'master.service',
                 'name' => 'Jasa Service',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'service.view', 'resource' => 'service', 'action' => 'view', 'description' => 'Melihat jasa service'],
                     ['code' => 'service.create', 'resource' => 'service', 'action' => 'create', 'description' => 'Membuat jasa service'],
@@ -165,6 +178,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'administrasi.users',
                 'name' => 'Users',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'user.view', 'resource' => 'user', 'action' => 'view', 'description' => 'Melihat user'],
                     ['code' => 'user.create', 'resource' => 'user', 'action' => 'create', 'description' => 'Membuat user'],
@@ -174,6 +188,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'administrasi.user_branches',
                 'name' => 'User Branches',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'user_branch.manage', 'resource' => 'user_branch', 'action' => 'manage', 'description' => 'Mengelola cabang milik user'],
                 ],
@@ -181,6 +196,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'administrasi.user_permissions',
                 'name' => 'User Permissions',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'user_permission.manage', 'resource' => 'user_permission', 'action' => 'manage', 'description' => 'Mengelola permission milik user'],
                 ],
@@ -188,6 +204,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'administrasi.audit_log',
                 'name' => 'Audit Log',
+                'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'audit_log.view', 'resource' => 'audit_log', 'action' => 'view', 'description' => 'Melihat audit log'],
                 ],
@@ -195,6 +212,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'reporting.pkb',
                 'name' => 'Laporan PKB',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'report.pkb.view', 'resource' => 'report', 'action' => 'pkb.view', 'description' => 'Melihat laporan PKB'],
                 ],
@@ -202,6 +220,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'reporting.invoice',
                 'name' => 'Laporan Invoice',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'report.invoice.view', 'resource' => 'report', 'action' => 'invoice.view', 'description' => 'Melihat laporan invoice'],
                 ],
@@ -209,6 +228,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'reporting.receivable',
                 'name' => 'Laporan Piutang',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'report.receivable.view', 'resource' => 'report', 'action' => 'receivable.view', 'description' => 'Melihat laporan piutang'],
                 ],
@@ -216,6 +236,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'reporting.pkb_invoice_gap',
                 'name' => 'PKB vs Invoice',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'report.invoice_pkb_gap.view', 'resource' => 'report', 'action' => 'invoice_pkb_gap.view', 'description' => 'Melihat laporan selisih PKB vs invoice'],
                 ],
@@ -223,6 +244,7 @@ class MenuPermissionSeeder extends Seeder
             [
                 'code' => 'reporting.sparepart',
                 'name' => 'Laporan Sparepart',
+                'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'report.sparepart.view', 'resource' => 'report', 'action' => 'sparepart.view', 'description' => 'Melihat laporan sparepart'],
                     ['code' => 'report.export', 'resource' => 'report', 'action' => 'export', 'description' => 'Mengekspor laporan'],

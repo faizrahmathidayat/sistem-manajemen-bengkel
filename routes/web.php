@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,4 +36,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
     Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+
+    Route::post('/users/{user}/branches/{branch}', [UserBranchAssignmentController::class, 'store'])->name('users.branches.store');
+    Route::delete('/users/{user}/branches/{branch}', [UserBranchAssignmentController::class, 'destroy'])->name('users.branches.destroy');
+    Route::put('/users/{user}/branches/{branch}/default', [UserBranchAssignmentController::class, 'setDefault'])->name('users.branches.setDefault');
 });

@@ -25,6 +25,17 @@
         color: var(--color-ink);
     }
 
+    /* App shell (authenticated layout only) — keeps the sidebar's dark
+       background reaching the bottom of the viewport even when page
+       content is shorter than the screen, while still growing taller
+       than the viewport for long pages (see .app-body below). */
+    body.app-shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    .app-body { flex: 1 1 auto; }
+
     code, .font-mono { font-family: var(--font-mono); }
 
     h1, h2, h3, h4, h5, .navbar-brand {

@@ -177,6 +177,15 @@ class DashboardController extends Controller
         ];
     }
 
+    protected function dummyAuditLogRows(): array
+    {
+        return [
+            ['timestamp' => '2026-08-02 10:12', 'user' => 'faiz_rahmat', 'permission' => 'sparepart.create', 'description' => 'Menambahkan sparepart BAN-01 ke Cabang Jakarta', 'impact' => 'LOW'],
+            ['timestamp' => '2026-08-02 09:48', 'user' => 'romi_ramdani', 'permission' => 'pkb.create', 'description' => 'Membuat PKB baru untuk B 1234 ABC', 'impact' => 'MEDIUM'],
+            ['timestamp' => '2026-08-01 16:30', 'user' => 'faiz_rahmat', 'permission' => 'user_permission.manage', 'description' => 'Mengubah permission user romi_ramdani', 'impact' => 'HIGH'],
+        ];
+    }
+
     protected function buildPayload(User $user, array $selectedBranchIds, ?int $sparepartId = null): array
     {
         $scopedBranchIds = $this->scopedBranchIds($user, $selectedBranchIds);
@@ -190,6 +199,7 @@ class DashboardController extends Controller
             'chartTrend' => $this->dummyChartTrend(),
             'chartReceivables' => $this->dummyChartReceivables(),
             'pkbInvoiceRows' => $this->dummyPkbInvoiceRows(),
+            'auditLogRows' => $this->dummyAuditLogRows(),
             'kartuStok' => $this->computeKartuStok($scopedBranchIds, $sparepartId),
         ];
     }

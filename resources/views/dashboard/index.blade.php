@@ -92,6 +92,9 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-kartu-stok" type="button" role="tab">Kartu Stok</button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-audit-log" type="button" role="tab">Audit Log</button>
+                </li>
             </ul>
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="tab-pkb-invoice" role="tabpanel">
@@ -99,6 +102,9 @@
                 </div>
                 <div class="tab-pane fade" id="tab-kartu-stok" role="tabpanel">
                     @include('dashboard._tab_kartu_stok')
+                </div>
+                <div class="tab-pane fade" id="tab-audit-log" role="tabpanel">
+                    @include('dashboard._tab_audit_log')
                 </div>
             </div>
         </div>

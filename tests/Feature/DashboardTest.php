@@ -226,4 +226,16 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertJson(['kartuStok' => ['selected' => ['id' => $sparepart->id, 'onHand' => 7.0, 'reserved' => 2.0, 'available' => 5.0]]]);
     }
+
+    public function test_dashboard_shows_audit_log_tab_rows(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch, true);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('sparepart.create', false);
+    }
 }

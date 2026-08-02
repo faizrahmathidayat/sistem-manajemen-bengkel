@@ -9,6 +9,8 @@ use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPermissionAssignmentController;
+use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\VehicleReferenceLookupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -43,6 +45,16 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{branch}', [CustomerBranchAssignmentController::class, 'store'])->name('store');
             Route::delete('/{branch}', [CustomerBranchAssignmentController::class, 'destroy'])->name('destroy');
         });
+    });
+
+    Route::prefix('vehicles')->name('vehicles.')->group(function () {
+        Route::get('/', [VehicleController::class, 'index'])->name('index');
+        Route::get('/create', [VehicleController::class, 'create'])->name('create');
+        Route::post('/', [VehicleController::class, 'store'])->name('store');
+        Route::get('/lookup/brands/{category}', [VehicleReferenceLookupController::class, 'brandsByCategory'])->name('lookup.brands');
+        Route::get('/lookup/types/{brand}', [VehicleReferenceLookupController::class, 'typesByBrand'])->name('lookup.types');
+        Route::get('/{vehicle}/edit', [VehicleController::class, 'edit'])->name('edit');
+        Route::put('/{vehicle}', [VehicleController::class, 'update'])->name('update');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

@@ -5,6 +5,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CustomerBranchAssignmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
@@ -75,6 +76,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [MechanicController::class, 'store'])->name('store');
         Route::get('/{mechanic}', [MechanicController::class, 'show'])->name('show');
         Route::put('/{mechanic}', [MechanicController::class, 'update'])->name('update');
+
+        Route::prefix('{mechanic}/branches')->name('branches.')->group(function () {
+            Route::post('/{branch}', [MechanicBranchAssignmentController::class, 'store'])->name('store');
+            Route::delete('/{branch}', [MechanicBranchAssignmentController::class, 'destroy'])->name('destroy');
+        });
     });
 
     Route::prefix('users')->name('users.')->group(function () {

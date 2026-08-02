@@ -5,6 +5,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CustomerBranchAssignmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
@@ -66,6 +67,14 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/brands/{brand}', [VehicleReferenceController::class, 'updateBrand'])->name('brands.update');
         Route::post('/types', [VehicleReferenceController::class, 'storeType'])->name('types.store');
         Route::put('/types/{type}', [VehicleReferenceController::class, 'updateType'])->name('types.update');
+    });
+
+    Route::prefix('mechanics')->name('mechanics.')->group(function () {
+        Route::get('/', [MechanicController::class, 'index'])->name('index');
+        Route::get('/create', [MechanicController::class, 'create'])->name('create');
+        Route::post('/', [MechanicController::class, 'store'])->name('store');
+        Route::get('/{mechanic}', [MechanicController::class, 'show'])->name('show');
+        Route::put('/{mechanic}', [MechanicController::class, 'update'])->name('update');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

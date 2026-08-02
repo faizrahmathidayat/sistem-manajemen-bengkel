@@ -10,6 +10,7 @@ use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
@@ -81,6 +82,14 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{branch}', [MechanicBranchAssignmentController::class, 'store'])->name('store');
             Route::delete('/{branch}', [MechanicBranchAssignmentController::class, 'destroy'])->name('destroy');
         });
+    });
+
+    Route::prefix('service-catalogs')->name('service-catalogs.')->group(function () {
+        Route::get('/', [ServiceCatalogController::class, 'index'])->name('index');
+        Route::get('/create', [ServiceCatalogController::class, 'create'])->name('create');
+        Route::post('/', [ServiceCatalogController::class, 'store'])->name('store');
+        Route::get('/{serviceCatalog}/edit', [ServiceCatalogController::class, 'edit'])->name('edit');
+        Route::put('/{serviceCatalog}', [ServiceCatalogController::class, 'update'])->name('update');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

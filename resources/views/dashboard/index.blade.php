@@ -185,6 +185,13 @@ const receivablesChart = new Chart(document.getElementById('receivablesChart'), 
         errorEl.textContent = message;
     }
 
+    function clearFilterError() {
+        const errorEl = document.getElementById('branchFilterError');
+        if (errorEl) {
+            errorEl.remove();
+        }
+    }
+
     function fetchDashboard(params) {
         showOverlays();
         const url = '{{ route('dashboard') }}?' + params.toString();
@@ -208,6 +215,7 @@ const receivablesChart = new Chart(document.getElementById('receivablesChart'), 
     }
 
     function applyPayload(data) {
+        clearFilterError();
         document.getElementById('kpiStockAvailable').textContent = Math.round(data.stockOverview.available).toLocaleString('id-ID');
         document.getElementById('kpiStockOnHand').textContent = Math.round(data.stockOverview.onHand).toLocaleString('id-ID');
         document.getElementById('kpiStockReserved').textContent = Math.round(data.stockOverview.reserved).toLocaleString('id-ID');

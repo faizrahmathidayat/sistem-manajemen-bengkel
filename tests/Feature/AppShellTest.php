@@ -283,7 +283,11 @@ class AppShellTest extends TestCase
         $response->assertDontSee('Penerimaan Barang', false);
         $response->assertDontSee('Stock Adjustment', false);
         $response->assertDontSee('Transfer Stock', false);
-        $response->assertDontSee('Audit Log', false);
+        // Not a bare assertDontSee('Audit Log'): Task 7's Dashboard tab button
+        // (#tab-audit-log, rendered unconditionally for every user) shares the
+        // exact text "Audit Log" with this sidebar placeholder. Assert against
+        // the placeholder's unique icon class instead.
+        $response->assertDontSee('bi-journal-text', false);
         $response->assertDontSee('Laporan PKB', false);
     }
 }

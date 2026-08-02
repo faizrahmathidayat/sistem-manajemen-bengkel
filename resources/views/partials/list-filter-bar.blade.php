@@ -1,4 +1,4 @@
-<div class="card" style="background: rgba(255, 255, 255, .72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
+<div class="card">
     <div class="card-body">
         <form method="GET" action="{{ url()->current() }}" id="listFilterBarForm" class="row g-2 align-items-center">
             <div class="col-md-5">
@@ -14,6 +14,10 @@
             @endif
             <div class="col-md-4 text-md-end">
                 <button type="submit" class="btn btn-outline-primary btn-sm">Terapkan</button>
+                {{-- actionsHtml is always caller-authored (a static string + route()), never
+                     request/user-controlled data — if a future caller ever interpolates
+                     user input into this string, it MUST be escaped before being passed in,
+                     since this echoes raw. --}}
                 {!! $actionsHtml !!}
             </div>
         </form>

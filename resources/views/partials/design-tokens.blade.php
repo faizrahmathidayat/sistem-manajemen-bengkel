@@ -192,7 +192,7 @@
         box-shadow: 0 4px 20px -2px rgba(0, 0, 0, .05);
         transition: transform .15s ease, box-shadow .15s ease;
     }
-    .card:hover {
+    .card:hover:not(:focus-within) {
         transform: translateY(-2px);
         box-shadow: 0 8px 30px -4px rgba(0, 0, 0, .08);
     }
@@ -205,9 +205,11 @@
         color: var(--color-ink-muted);
         font-weight: 600;
         border-bottom: none;
+        background: #F8FAFC;
     }
     .table td { vertical-align: middle; }
     .table-hover { --bs-table-hover-bg: #F8FAFC; }
+    .table tbody tr { border-bottom: 1px solid var(--color-border); }
 
     /* Status indicator */
     .status-dot {

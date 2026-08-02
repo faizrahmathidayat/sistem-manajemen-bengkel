@@ -4,7 +4,11 @@
     <div class="dropdown" id="branchMultiselectFilter">
         <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="branchFilterToggle" data-bs-toggle="dropdown" aria-expanded="false">
             <span id="branchFilterLabel">
-                @if (count($selectedBranchIds) === $allowedBranches->count())
+                {{-- 0 selected and all-selected intentionally render the same label, because both
+                     currently mean "no branch restriction applied" from a consumer's perspective
+                     (e.g. CustomerController passes [] on an unfiltered load). This may not hold
+                     for a future filter with different semantics — check before reusing. --}}
+                @if (count($selectedBranchIds) === 0 || count($selectedBranchIds) === $allowedBranches->count())
                     Semua Cabang Saya
                 @elseif (count($selectedBranchIds) === 1)
                     {{ $allowedBranches->firstWhere('id', $selectedBranchIds[0])->name ?? '1 Cabang Terpilih' }}

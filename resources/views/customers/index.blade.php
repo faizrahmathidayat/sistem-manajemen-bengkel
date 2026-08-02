@@ -49,6 +49,10 @@
                     @empty
                         <tr>
                             <td colspan="5" class="p-0">
+                                {{-- bi-person-badge also renders in the page header above, so
+                                     assertSee('bi-person-badge') alone can't prove this empty
+                                     state specifically rendered — pair it with an assertion on
+                                     the empty-state text/CTA instead. --}}
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-person-badge',
                                     'title' => 'Belum ada customer',

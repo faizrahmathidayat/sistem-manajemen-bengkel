@@ -17,7 +17,7 @@ class DashboardController extends Controller
         $allowedBranches = $user->branches;
 
         $selectedBranchIds = $this->resolveSelectedBranchIds($request, $user, $allowedBranches);
-        $sparepartId = $request->filled('sparepart_id') ? (int) $request->input('sparepart_id') : null;
+        $sparepartId = filter_var($request->input('sparepart_id'), FILTER_VALIDATE_INT) ?: null;
 
         $payload = $this->buildPayload($user, $selectedBranchIds, $sparepartId);
 

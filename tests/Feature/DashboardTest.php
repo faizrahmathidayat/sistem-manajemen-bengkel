@@ -210,4 +210,20 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertJson(['kartuStok' => ['selected' => ['id' => $sparepart->id, 'onHand' => 7.0, 'reserved' => 2.0, 'available' => 5.0]]]);
     }
+
+    public function test_kartu_stok_widget_falls_back_to_first_sparepart_when_sparepart_id_is_non_numeric(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+        $sparepart = Sparepart::create(['code' => 'BAN-01', 'name' => 'Ban Depan']);
+        $config = SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 100000]);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $config->id)->update(['on_hand_qty' => 7, 'reserved_qty' => 2]);
+
+        $response = $this->actingAs(User::find($user->id))
+            ->getJson('/dashboard?branch_ids[]=' . $branch->id . '&sparepart_id=abc');
+
+        $response->assertOk();
+        $response->assertJson(['kartuStok' => ['selected' => ['id' => $sparepart->id, 'onHand' => 7.0, 'reserved' => 2.0, 'available' => 5.0]]]);
+    }
 }

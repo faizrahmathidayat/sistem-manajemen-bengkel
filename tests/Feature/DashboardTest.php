@@ -162,4 +162,16 @@ class DashboardTest extends TestCase
             'chartReceivables' => ['labels', 'values'],
         ]);
     }
+
+    public function test_dashboard_shows_pkb_invoice_tab_rows(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch, true);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('PKB-2026080001', false);
+    }
 }

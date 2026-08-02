@@ -82,6 +82,21 @@
             </div>
         </div>
     </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-pkb-invoice" type="button" role="tab">Status PKB & Invoice</button>
+                </li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tab-pkb-invoice" role="tabpanel">
+                    @include('dashboard._tab_pkb_invoice')
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')

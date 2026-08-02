@@ -123,6 +123,16 @@ class DashboardController extends Controller
         ];
     }
 
+    protected function dummyPkbInvoiceRows(): array
+    {
+        return [
+            ['number' => 'PKB-2026080001', 'customer' => 'Budi Santoso', 'plate' => 'B 1234 ABC', 'branch' => 'Cabang Jakarta', 'status' => 'OPEN'],
+            ['number' => 'PKB-2026080002', 'customer' => 'Siti Aminah', 'plate' => 'B 5678 XYZ', 'branch' => 'Cabang Jakarta', 'status' => 'SHORTAGE'],
+            ['number' => 'INV-2026080001', 'customer' => 'Andi Wijaya', 'plate' => 'D 4321 DEF', 'branch' => 'Cabang Bandung', 'status' => 'POSTED'],
+            ['number' => 'PKB-2026080003', 'customer' => 'Dewi Lestari', 'plate' => 'B 9999 GHI', 'branch' => 'Cabang Jakarta', 'status' => 'COMPLETED'],
+        ];
+    }
+
     protected function buildPayload(User $user, array $selectedBranchIds): array
     {
         $scopedBranchIds = $this->scopedBranchIds($user, $selectedBranchIds);
@@ -135,6 +145,7 @@ class DashboardController extends Controller
             'receivables' => $this->dummyReceivables(),
             'chartTrend' => $this->dummyChartTrend(),
             'chartReceivables' => $this->dummyChartReceivables(),
+            'pkbInvoiceRows' => $this->dummyPkbInvoiceRows(),
         ];
     }
 }

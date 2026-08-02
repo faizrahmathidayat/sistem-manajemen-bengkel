@@ -67,6 +67,26 @@ class VehicleManagementTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_create_page_renders_without_customer_id_query_param(): void
+    {
+        $user = $this->userWithPermissions(['vehicle.create']);
+
+        $response = $this->actingAs($user)->get('/vehicles/create');
+
+        $response->assertOk();
+    }
+
+    public function test_create_page_preselects_customer_from_query_param(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        $user = $this->userWithPermissions(['vehicle.create']);
+
+        $response = $this->actingAs($user)->get("/vehicles/create?customer_id={$customer->id}");
+
+        $response->assertOk();
+        $response->assertSee('selected', false);
+    }
+
     public function test_store_creates_vehicle(): void
     {
         $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);

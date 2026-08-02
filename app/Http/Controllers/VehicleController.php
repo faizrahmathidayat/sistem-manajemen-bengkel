@@ -43,7 +43,7 @@ class VehicleController extends Controller
         $categories = VehicleCategory::where('is_active', true)->orderBy('name')->get();
         $brands = collect();
         $types = collect();
-        $selectedCustomerId = request()->integer('customer_id') ?: null;
+        $selectedCustomerId = request()->query('customer_id') ? (int) request()->query('customer_id') : null;
 
         return view('vehicles.create', compact('vehicle', 'customers', 'categories', 'brands', 'types', 'selectedCustomerId'));
     }

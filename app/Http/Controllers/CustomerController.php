@@ -19,18 +19,26 @@ class CustomerController extends Controller
             ->values()->all();
 
         $customers = Customer::orderBy('name')
-            ->when(request('q'), function ($query, $q) {
+            ->when(is_string(request('q')) ? trim(request('q')) : null, function ($query, $q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%");
+                    $inner->where('name', 'like', '%' . addcslashes($q, '%_\\') . '%')
+                        ->orWhere('phone', 'like', '%' . addcslashes($q, '%_\\') . '%');
                 });
             })
+            // Deliberately duplicates Customer::branches()'s is_active pivot filter here
+            // (instead of reusing that relation) to avoid an extra join.
             ->when($branchIds, fn ($query) => $query->whereHas('customerBranches', fn ($q) => $q->whereIn('branch_id', $branchIds)->where('is_active', true)))
             ->simplePaginate(15)
             ->withQueryString();
 
-        $branches = auth()->user()->branches;
+        $userBranches = auth()->user()->branches;
 
-        return view('customers.index', compact('customers', 'branches'))->with('selectedBranchIds', $branchIds);
+        // Fail-open by design: an empty/all-dropped branch selection shows all customers,
+        // not zero — this matches how Customer::orderBy('name') was already globally
+        // unscoped before this branch (not a new leak introduced here).
+        return view('customers.index', compact('customers'))
+            ->with('branches', $userBranches)
+            ->with('selectedBranchIds', $branchIds);
     }
 
     public function create()

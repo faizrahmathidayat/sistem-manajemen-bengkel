@@ -205,6 +205,17 @@ class CustomerManagementTest extends TestCase
         $response->assertDontSee('Siti Aminah');
     }
 
+    public function test_index_renders_filter_bar(): void
+    {
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get('/customers');
+
+        $response->assertOk();
+        $response->assertSee('Terapkan');
+        $response->assertSee('Cari nama atau telepon...');
+    }
+
     public function test_index_branch_filter_scopes_to_selected_branch(): void
     {
         $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
@@ -228,7 +239,9 @@ class CustomerManagementTest extends TestCase
     {
         $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $customerA = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
         $customerB = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Siti Aminah', 'stnk_name' => 'Siti Aminah']);
+        CustomerBranch::create(['customer_id' => $customerA->id, 'branch_id' => $branchA->id]);
         CustomerBranch::create(['customer_id' => $customerB->id, 'branch_id' => $branchB->id]);
         $user = $this->userWithPermissions(['customer.view']);
         (new UserBranchService())->assign($user, $branchA);
@@ -236,6 +249,13 @@ class CustomerManagementTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get("/customers?branch_ids[]={$branchB->id}");
 
         $response->assertOk();
+        // The invalid branch id (not assigned to the user) is dropped, falling back to
+        // unfiltered — proven here by seeing both a customer in the user's own branch
+        // (branchA) and the customer in the disallowed branch (branchB). Combined with
+        // test_index_branch_filter_scopes_to_selected_branch (which proves a *valid*
+        // branch_id genuinely filters), these two tests together triangulate correct
+        // behavior.
+        $response->assertSee('Budi Santoso');
         $response->assertSee('Siti Aminah');
     }
 }

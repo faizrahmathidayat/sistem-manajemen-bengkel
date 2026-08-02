@@ -69,36 +69,44 @@ Component-rule updates in the same file:
 
 Render the full target menu structure under five headings, in this order: **Operasional, Persediaan, Master Data, Administrasi, Reporting** (reordered from today's Master Data-first layout to match the business-priority ordering implied by the user's spec).
 
-Each heading lists its items in this shape:
+**Revised per user feedback**: placeholder items are NOT shown unconditionally — every item, real or placeholder, is gated by its corresponding permission code, exactly like real items already are. This uses the permission catalog that already exists in the `menus`/`permissions` tables (seeded by `MenuPermissionSeeder`, see the full listing below) — the menu structure itself stays hardcoded in Blade (not rendered from a DB query), only the visibility check changes from "always show" to "check the matching code."
+
+Each heading lists its items in this shape (permission code → gating call, `[branch-scoped]` uses `$user->branchesWithPermission($code)->isNotEmpty()`, `[global]` uses `@can($code)`):
 
 **Operasional** (all placeholder — migration 006/009/010 not built):
-- Perintah Kerja Bengkel, Invoice, Penerimaan Pembayaran
+- Perintah Kerja Bengkel → `pkb.view` [branch-scoped]
+- Invoice → `invoice.view` [branch-scoped]
+- Penerimaan Pembayaran → `payment.view` [branch-scoped]
 
 **Persediaan** (Master Sparepart real, rest placeholder — migration 008 not built):
-- Master Sparepart → `route('sparepart-branches.index')`, real
-- Penerimaan Barang, Stock Adjustment, Transfer Stock, Kartu Stok → placeholder
+- Master Sparepart → `route('sparepart-branches.index')`, real, gated by existing `branchesWithPermission('sparepart.view')` (unchanged)
+- Penerimaan Barang → `receipt.view` [branch-scoped]
+- Stock Adjustment → `stock_adjustment.view` [branch-scoped]
+- Transfer Stock → `stock_transfer.view` [branch-scoped]
+- Kartu Stok → `sparepart.view` [branch-scoped] (no dedicated permission code exists for stock-ledger viewing yet — it's conceptually part of the sparepart-viewing permission family until migration 008 introduces its own, if ever)
 
-**Master Data** (all real, unchanged links, just re-skinned):
-- Cabang, Customer, Kendaraan, Referensi Kendaraan, Mekanik, Jasa Service
+**Master Data** (all real, unchanged links and gating, just re-skinned):
+- Cabang → `branch.view` [global], Customer → `customer.view` [global], Kendaraan → `vehicle.view` [global], Referensi Kendaraan → `vehicle_reference.view` [global], Mekanik → `mechanic.view` [global], Jasa Service → `service.view` [global]
 
 **Administrasi** (Users real; Audit Log placeholder — migration 011 not built):
-- Users → `route('users.index')`, real
-- Audit Log → placeholder
+- Users → `route('users.index')`, real, gated by existing `@can('user.view')` (unchanged)
+- Audit Log → `audit_log.view` [global] (this permission code already exists in the catalog even though the feature doesn't — `audit_logs` table itself is deferred, see project roadmap memory)
 
 **Reporting** (all placeholder — migration 011 not built):
-- Laporan PKB, Laporan Invoice, Laporan Piutang, PKB vs Invoice, Laporan Sparepart
+- Laporan PKB → `report.pkb.view` [branch-scoped], Laporan Invoice → `report.invoice.view` [branch-scoped], Laporan Piutang → `report.receivable.view` [branch-scoped], PKB vs Invoice → `report.invoice_pkb_gap.view` [branch-scoped], Laporan Sparepart → `report.sparepart.view` [branch-scoped]
 
-**Placeholder item markup**: a `<span>` (never an `<a href>`, so there is no dead link and no `route()` call that could throw `RouteNotFoundException`), muted color, `cursor: not-allowed`, and a small "Segera Hadir" badge. Placeholder items are shown to **every authenticated user**, with no permission check — they expose no data and no functionality, only a label, so gating them the way real links are gated (`@can(...)` / `branchesWithPermission(...)`) would add complexity for no security benefit.
+**Placeholder item markup**: a `<span>` (never an `<a href>`, so there is no dead link and no `route()` call that could throw `RouteNotFoundException`), muted color, `cursor: not-allowed`, and a small "Segera Hadir" badge — wrapped in the same `@can(...)` / `branchesWithPermission(...)` conditional a real link for that code would use.
 
-Real items keep their exact current gating (`@can('branch.view')`, `@can('customer.view')`, etc., and Sparepart's existing `branchesWithPermission('sparepart.view')` check) — only their visual position within the new heading structure and their colors change.
+A consequence worth stating explicitly: a user who holds zero permissions for a given heading now sees the heading itself disappear entirely (same as today's behavior for `Master Data`/`Administrasi`, extended to the three new headings) — nobody sees an empty "Operasional" heading with nothing under it.
 
 "User Branches" and "User Permissions" (menu codes `administrasi.user_branches` / `administrasi.user_permissions`) are **not** separate sidebar entries — they are tabs inside the Users detail page (`users/show`), not standalone routes, and have never had their own top-level page.
 
 ## Testing
 
 - Existing `AppShellTest` assertions that check specific link visibility (`assertSee`/`assertDontSee` on real routes like `branches.index`, `sparepart-branches.index`, etc.) must keep passing unchanged — the gating logic for real links is not touched, only their heading grouping and CSS classes.
-- New test: a placeholder item (e.g. "Perintah Kerja Bengkel") renders as inert text for an authenticated user with no special permission, and the page does not error (proves no `route()` call is made for it — the strongest regression guard against someone later "fixing" a placeholder into an `<a href="{{ route(...) }}">` for a route that doesn't exist).
-- New test: a placeholder item is visible even for a user holding zero permissions at all (proves the "no permission check" design decision holds, not just for admin-like users).
+- New test: a placeholder item (e.g. "Perintah Kerja Bengkel") renders as inert text (not a link) for a user holding the matching branch-scoped permission (`pkb.view` in at least one branch), and the page does not error — proves no `route()` call is made for it even when visible (the strongest regression guard against someone later "fixing" a placeholder into an `<a href="{{ route(...) }}">` for a route that doesn't exist).
+- New test: that same placeholder item is absent for a user who does NOT hold `pkb.view` in any branch — proves placeholders are genuinely gated, not shown unconditionally.
+- New test: a user holding zero permissions anywhere sees none of the three new headings (Operasional, Persediaan beyond what they already have, Reporting) at all.
 - Manual verification (no visual/screenshot test infra in this project): load `/dashboard` as `faiz_rahmat`, confirm new colors/font render, confirm placeholder items show "Segera Hadir" styling and are not clickable, confirm real links (Cabang, Sparepart, Users, etc.) still navigate correctly.
 
 ## Execution

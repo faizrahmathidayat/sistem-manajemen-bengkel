@@ -1,13 +1,36 @@
 @php($user = auth()->user())
 
-@if ($user && $user->can('branch.view'))
+@if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view')))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Master Data</div>
     <ul class="nav flex-column mb-3">
+        @can('branch.view')
         <li class="nav-item">
             <a href="{{ route('branches.index') }}" class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}">
                 <i class="bi bi-shop me-2"></i> Cabang
             </a>
         </li>
+        @endcan
+        @can('customer.view')
+        <li class="nav-item">
+            <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                <i class="bi bi-person-badge me-2"></i> Customer
+            </a>
+        </li>
+        @endcan
+        @can('vehicle.view')
+        <li class="nav-item">
+            <a href="{{ route('vehicles.index') }}" class="nav-link {{ request()->routeIs('vehicles.*') ? 'active' : '' }}">
+                <i class="bi bi-car-front me-2"></i> Kendaraan
+            </a>
+        </li>
+        @endcan
+        @can('vehicle_reference.view')
+        <li class="nav-item">
+            <a href="{{ route('vehicle-references.index') }}" class="nav-link {{ request()->routeIs('vehicle-references.*') ? 'active' : '' }}">
+                <i class="bi bi-diagram-3 me-2"></i> Referensi Kendaraan
+            </a>
+        </li>
+        @endcan
     </ul>
 @endif
 

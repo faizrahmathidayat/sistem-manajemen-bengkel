@@ -58,4 +58,39 @@ class AppShellTest extends TestCase
         $response->assertSee(route('users.index'), false);
         $response->assertDontSee(route('branches.index'), false);
     }
+
+    public function test_sidebar_shows_customer_link_without_requiring_branch_view_permission(): void
+    {
+        $permission = Permission::create([
+            'code' => 'customer.view',
+            'resource' => 'customer',
+            'action' => 'view',
+            'description' => 'Melihat customer',
+        ]);
+        $user = User::factory()->create();
+        UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('customers.index'), false);
+        $response->assertDontSee(route('branches.index'), false);
+    }
+
+    public function test_sidebar_shows_vehicle_and_vehicle_reference_links_when_authorized(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (['vehicle.view', 'vehicle_reference.view'] as $code) {
+            [$resource, $action] = explode('.', $code, 2);
+            $permission = Permission::create(['code' => $code, 'resource' => $resource, 'action' => $action, 'description' => $code]);
+            UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
+        }
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('vehicles.index'), false);
+        $response->assertSee(route('vehicle-references.index'), false);
+    }
 }

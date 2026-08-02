@@ -14,6 +14,14 @@ class UserBranchPermissionAssignmentController extends Controller
     {
         $this->authorize('user_permission.manage');
 
+        if (! optional($permission->menu)->is_branch_scoped) {
+            return response()->json(['message' => 'Permission ini bersifat global, tidak bisa diberikan per cabang.'], 422);
+        }
+
+        if (! $user->hasAccessToBranch($branch->id)) {
+            return response()->json(['message' => 'User tidak terdaftar di cabang ini.'], 422);
+        }
+
         UserBranchPermission::firstOrCreate(
             ['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id],
             ['granted_by' => $request->user()->id]

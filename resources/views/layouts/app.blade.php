@@ -10,16 +10,41 @@
     @include('partials.design-tokens')
 </head>
 <body class="app-shell">
-    <nav class="navbar topbar px-3 d-flex align-items-center">
-        <button class="btn btn-outline-light d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar">
+    <nav class="navbar topbar px-3 d-flex align-items-center gap-2">
+        <button class="btn btn-outline-light d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar">
             <i class="bi bi-list"></i>
         </button>
-        <a class="navbar-brand" href="{{ route('dashboard') }}">
+        <a class="navbar-brand mb-0" href="{{ route('dashboard') }}">
             <i class="bi bi-tools me-1"></i> Sistem Manajemen Bengkel
         </a>
-        <div class="ms-auto d-flex align-items-center">
+
+        @auth
+            <div class="topbar-search d-none d-md-flex align-items-center flex-grow-1 mx-2">
+                <i class="bi bi-search topbar-search-icon"></i>
+                <input type="text" class="form-control form-control-sm topbar-search-input" placeholder="Cari No. PKB, No. Polisi, Kode Sparepart, No. Invoice..." disabled>
+            </div>
+        @endauth
+
+        <div class="ms-auto d-flex align-items-center gap-3">
             @auth
-                <span class="small me-3 d-none d-sm-inline" style="color: var(--color-ink-muted);">{{ auth()->user()->name }}</span>
+                @php($permissionCodes = auth()->user()->permissionCodes())
+                @if (count($permissionCodes) > 0)
+                    <div class="d-none d-lg-flex align-items-center gap-1">
+                        @foreach (array_slice($permissionCodes, 0, 3) as $code)
+                            <code class="topbar-permission-badge">{{ $code }}</code>
+                        @endforeach
+                        @if (count($permissionCodes) > 3)
+                            <span class="topbar-permission-badge topbar-permission-badge-more">+{{ count($permissionCodes) - 3 }} lainnya</span>
+                        @endif
+                    </div>
+                @endif
+
+                <button type="button" class="btn btn-outline-light btn-sm position-relative" aria-label="Notifikasi">
+                    <i class="bi bi-bell"></i>
+                    <span class="topbar-notification-badge">3</span>
+                </button>
+
+                <span class="small d-none d-sm-inline" style="color: var(--color-ink-muted);">{{ auth()->user()->name }}</span>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="btn btn-outline-light btn-sm">

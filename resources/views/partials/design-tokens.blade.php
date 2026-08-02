@@ -59,6 +59,53 @@
         --bs-btn-hover-border-color: var(--color-ink);
     }
 
+    .topbar-search {
+        position: relative;
+        max-width: 420px;
+    }
+    .topbar-search-icon {
+        position: absolute;
+        left: .75rem;
+        color: var(--color-ink-muted);
+        font-size: .85rem;
+        pointer-events: none;
+    }
+    .topbar-search-input {
+        padding-left: 2.1rem;
+        background-color: var(--color-bg);
+        border-color: var(--color-border);
+    }
+    .topbar-search-input:disabled { color: var(--color-ink-muted); }
+
+    .topbar-permission-badge {
+        font-family: var(--font-mono);
+        font-size: .68rem;
+        color: var(--color-accent);
+        background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+        border-radius: .3rem;
+        padding: .15rem .45rem;
+    }
+    .topbar-permission-badge-more {
+        color: var(--color-ink-muted);
+        background: var(--color-bg);
+    }
+
+    .topbar-notification-badge {
+        position: absolute;
+        top: -.25rem;
+        right: -.25rem;
+        min-width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 50%;
+        background: var(--color-danger);
+        color: #FFFFFF;
+        font-size: .62rem;
+        font-weight: 600;
+        line-height: 1.1rem;
+        text-align: center;
+        padding: 0 .2rem;
+    }
+
     /* Sidebar */
     #sidebar { width: 260px; flex-shrink: 0; background-color: var(--color-sidebar) !important; }
     #sidebar .sidebar-heading {

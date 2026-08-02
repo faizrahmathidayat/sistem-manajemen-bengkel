@@ -133,6 +133,10 @@
         cursor: not-allowed;
         color: rgba(241, 245, 249, .35);
     }
+    #sidebar .nav-link.nav-link-disabled:hover {
+        background-color: transparent;
+        color: rgba(241, 245, 249, .35);
+    }
     .badge-soon {
         font-family: var(--font-mono);
         font-size: .6rem;

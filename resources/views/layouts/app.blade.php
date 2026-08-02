@@ -30,6 +30,10 @@
                 @php($permissionCodes = auth()->user()->permissionCodes())
                 @if (count($permissionCodes) > 0)
                     <div class="d-none d-lg-flex align-items-center gap-1">
+                        {{-- Renders up to 3 of the user's global permission codes as visible page text.
+                             Careful with assertDontSee('some.permission.code') in future tests — if the
+                             acting user holds that code globally, this navbar block will make the
+                             assertion fail regardless of what the test is actually checking. --}}
                         @foreach (array_slice($permissionCodes, 0, 3) as $code)
                             <code class="topbar-permission-badge">{{ $code }}</code>
                         @endforeach

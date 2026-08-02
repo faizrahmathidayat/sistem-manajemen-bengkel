@@ -1,22 +1,23 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
-        --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+        --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-        --color-bg: #F7F7F5;
+        --color-bg: #F4F6F9;
         --color-surface: #FFFFFF;
-        --color-ink: #1C1B19;
-        --color-ink-muted: #6B6862;
-        --color-border: #E5E2DC;
-        --color-sidebar: #161513;
-        --color-sidebar-ink: rgba(247, 247, 245, .68);
+        --color-ink: #0F172A;
+        --color-ink-muted: #64748B;
+        --color-border: #E2E8F0;
+        --color-sidebar: #0F172A;
+        --color-sidebar-ink: rgba(241, 245, 249, .68);
         --color-sidebar-ink-active: #FFFFFF;
-        --color-accent: #E8622C;
-        --color-accent-dark: #C6501E;
-        --color-success: #3F7D58;
-        --color-danger: #B3432E;
+        --color-accent: #2563EB;
+        --color-accent-dark: #1D4ED8;
+        --color-success: #10B981;
+        --color-danger: #DC2626;
+        --color-warning: #F59E0B;
     }
 
     body {
@@ -61,12 +62,14 @@
     /* Sidebar */
     #sidebar { width: 260px; flex-shrink: 0; background-color: var(--color-sidebar) !important; }
     #sidebar .sidebar-heading {
-        color: rgba(247, 247, 245, .4);
+        color: rgba(241, 245, 249, .4);
         font-size: .7rem;
         letter-spacing: .08em;
         font-weight: 600;
     }
     #sidebar .nav-link {
+        display: flex;
+        align-items: center;
         color: var(--color-sidebar-ink);
         border-left: 3px solid transparent;
         border-radius: 0;
@@ -75,7 +78,7 @@
     #sidebar .nav-link:hover { color: var(--color-sidebar-ink-active); background-color: rgba(255, 255, 255, .04); }
     #sidebar .nav-link.active {
         color: var(--color-sidebar-ink-active);
-        background-color: rgba(232, 98, 44, .14);
+        background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
         border-left-color: var(--color-accent);
         font-weight: 500;
     }
@@ -97,13 +100,13 @@
         --bs-btn-hover-bg: var(--color-accent);
         --bs-btn-hover-border-color: var(--color-accent);
     }
-    .btn { border-radius: .4rem; font-weight: 500; }
+    .btn { border-radius: .5rem; font-weight: 500; }
 
     /* Cards */
     .card {
         border: 1px solid var(--color-border);
-        box-shadow: none;
-        border-radius: .5rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 4px 12px rgba(15, 23, 42, .04);
+        border-radius: .75rem;
     }
 
     /* Tables */
@@ -159,6 +162,6 @@
     .nav-tabs .nav-link.active { color: var(--color-ink); border-bottom-color: var(--color-accent); background: transparent; }
 
     /* Accordion (permission tab) */
-    .accordion-button:not(.collapsed) { background-color: rgba(232, 98, 44, .06); color: var(--color-ink); box-shadow: none; }
+    .accordion-button:not(.collapsed) { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); color: var(--color-ink); box-shadow: none; }
     .accordion-button:focus { box-shadow: none; border-color: var(--color-border); }
 </style>

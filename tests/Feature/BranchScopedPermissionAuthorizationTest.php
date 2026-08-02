@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\UserBranchPermission;
+use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,6 +20,7 @@ class BranchScopedPermissionAuthorizationTest extends TestCase
         $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
         $permission = Permission::create(['code' => 'invoice.create', 'resource' => 'invoice', 'action' => 'create', 'description' => 'Membuat invoice']);
+        (new UserBranchService())->assign($user, $branchA);
 
         UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branchA->id, 'permission_id' => $permission->id]);
 
@@ -60,5 +62,26 @@ class BranchScopedPermissionAuthorizationTest extends TestCase
         UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
 
         $this->assertFalse($user->hasPermissionToInBranch('invoice.create', $branch->id));
+    }
+
+    public function test_removing_the_branch_assignment_revokes_the_branch_permission_even_though_the_grant_row_still_exists(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'invoice.create', 'resource' => 'invoice', 'action' => 'create', 'description' => 'Membuat invoice']);
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $this->assertTrue($user->hasPermissionToInBranch('invoice.create', $branch->id));
+
+        $user->userBranches()->where('branch_id', $branch->id)->update(['is_active' => false]);
+        $reloaded = User::find($user->id);
+
+        $this->assertFalse($reloaded->hasPermissionToInBranch('invoice.create', $branch->id));
+        $this->assertDatabaseHas('user_branch_permissions', [
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'permission_id' => $permission->id,
+        ]);
     }
 }

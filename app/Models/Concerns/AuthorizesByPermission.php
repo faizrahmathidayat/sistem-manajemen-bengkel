@@ -59,7 +59,7 @@ trait AuthorizesByPermission
 
     public function hasPermissionToInBranch(string $code, int $branchId): bool
     {
-        if (! $this->is_active) {
+        if (! $this->is_active || ! $this->hasAccessToBranch($branchId)) {
             return false;
         }
 

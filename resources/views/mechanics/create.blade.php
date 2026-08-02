@@ -4,7 +4,7 @@
     <div class="mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-person-gear me-2"></i>Tambah Mekanik</h1>
     </div>
-    <div class="card shadow-sm">
+    <div class="card">
         <div class="card-body">
             <form method="POST" action="{{ route('mechanics.store') }}">
                 @csrf

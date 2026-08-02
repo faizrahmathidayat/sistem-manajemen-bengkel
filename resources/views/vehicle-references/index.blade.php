@@ -7,7 +7,7 @@
 
     <div class="row">
         <div class="col-md-4 mb-3">
-            <div class="card shadow-sm h-100">
+            <div class="card h-100">
                 <div class="card-header bg-white fw-semibold">Kategori</div>
                 <ul class="list-group list-group-flush" id="category-list"></ul>
                 @can('vehicle_reference.manage')
@@ -24,7 +24,7 @@
             </div>
         </div>
         <div class="col-md-4 mb-3">
-            <div class="card shadow-sm h-100">
+            <div class="card h-100">
                 <div class="card-header bg-white fw-semibold">Merk</div>
                 <ul class="list-group list-group-flush" id="brand-list"></ul>
                 @can('vehicle_reference.manage')
@@ -41,7 +41,7 @@
             </div>
         </div>
         <div class="col-md-4 mb-3">
-            <div class="card shadow-sm h-100">
+            <div class="card h-100">
                 <div class="card-header bg-white fw-semibold">Tipe</div>
                 <ul class="list-group list-group-flush" id="type-list"></ul>
                 @can('vehicle_reference.manage')

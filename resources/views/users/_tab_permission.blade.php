@@ -1,4 +1,4 @@
-<div class="card shadow-sm mb-4">
+<div class="card mb-4">
     <div class="card-body">
         <h2 class="h6 mb-3"><i class="bi bi-shop me-1"></i> Permission Operasional per Cabang</h2>
 
@@ -62,7 +62,7 @@
     </div>
 </div>
 
-<div class="card shadow-sm">
+<div class="card">
     <div class="card-body">
         <h2 class="h6 mb-3"><i class="bi bi-shield-check me-1"></i> Permission Administrasi &amp; Master Data</h2>
         <p class="text-muted small">Permission ini berlaku global, tidak tergantung cabang.</p>

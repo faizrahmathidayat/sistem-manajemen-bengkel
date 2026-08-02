@@ -1,4 +1,4 @@
-<div class="card shadow-sm">
+<div class="card">
     <div class="card-body">
         <p class="text-muted small">Centang cabang yang dapat melayani customer ini.</p>
 

@@ -71,7 +71,7 @@
         <div class="dashboard-loading-overlay d-none"><div class="spinner-border text-primary" role="status"></div></div>
         <div class="row g-3 mb-4">
             <div class="col-lg-7">
-                <div class="card shadow-sm">
+                <div class="card">
                     <div class="card-body">
                         <h2 class="h6 mb-3">Tren PKB vs Invoice Posted Mingguan</h2>
                         <canvas id="trendChart" height="220"></canvas>
@@ -79,7 +79,7 @@
                 </div>
             </div>
             <div class="col-lg-5">
-                <div class="card shadow-sm">
+                <div class="card">
                     <div class="card-body">
                         <h2 class="h6 mb-3">Komposisi Status Piutang</h2>
                         <canvas id="receivablesChart" height="220"></canvas>
@@ -91,7 +91,7 @@
 
     <div class="dashboard-loading-parent" id="tabsSection">
         <div class="dashboard-loading-overlay d-none"><div class="spinner-border text-primary" role="status"></div></div>
-        <div class="card shadow-sm">
+        <div class="card">
             <div class="card-body">
                 <ul class="nav nav-tabs mb-3" role="tablist">
                     <li class="nav-item" role="presentation">

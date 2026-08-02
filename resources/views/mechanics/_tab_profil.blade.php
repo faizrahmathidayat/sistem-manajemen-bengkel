@@ -1,4 +1,4 @@
-<div class="card shadow-sm">
+<div class="card">
     <div class="card-body">
         <form method="POST" action="{{ route('mechanics.update', $mechanic) }}">
             @csrf

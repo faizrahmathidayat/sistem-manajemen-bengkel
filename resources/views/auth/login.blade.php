@@ -4,7 +4,7 @@
     <div class="container">
         <div class="row justify-content-center align-items-center" style="min-height: 100vh;">
             <div class="col-12 col-sm-8 col-md-6 col-lg-4">
-                <div class="card shadow-sm">
+                <div class="card">
                     <div class="card-body p-4">
                         <div class="text-center mb-3">
                             <i class="bi bi-tools" style="font-size: 1.75rem; color: var(--color-accent);"></i>

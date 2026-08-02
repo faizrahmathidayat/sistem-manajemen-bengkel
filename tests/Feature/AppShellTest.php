@@ -142,4 +142,21 @@ class AppShellTest extends TestCase
         $response->assertOk();
         $response->assertDontSee(route('sparepart-branches.index'), false);
     }
+
+    public function test_sidebar_hides_master_sparepart_link_for_global_permission_without_branch_scope(): void
+    {
+        $permission = Permission::create([
+            'code' => 'sparepart.view',
+            'resource' => 'sparepart',
+            'action' => 'view',
+            'description' => 'Melihat sparepart',
+        ]);
+        $user = User::factory()->create();
+        UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertDontSee(route('sparepart-branches.index'), false);
+    }
 }

@@ -8,6 +8,7 @@
         <div class="card-body">
             <form method="POST" action="{{ route('sparepart-branches.storeExisting') }}">
                 @csrf
+                <input type="hidden" name="branch_id" value="{{ $branch->id }}">
                 <div class="mb-3">
                     <label for="sparepart_id" class="form-label">Sparepart</label>
                     <select name="sparepart_id" id="sparepart_id" class="form-select @error('sparepart_id') is-invalid @enderror" required>

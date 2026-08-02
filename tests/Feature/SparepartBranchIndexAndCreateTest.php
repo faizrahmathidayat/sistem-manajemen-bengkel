@@ -56,6 +56,26 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $response->assertDontSee('Ban Depan Bandung');
     }
 
+    public function test_index_does_not_leak_data_or_switch_session_for_branch_without_permission(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        // Note: user is NOT granted sparepart.view in branch B.
+        $sparepartA = Sparepart::create(['code' => 'BAN-01', 'name' => 'Ban Depan Jakarta']);
+        SparepartBranch::create(['sparepart_id' => $sparepartA->id, 'branch_id' => $branchA->id, 'selling_price' => 100000]);
+        $sparepartB = Sparepart::create(['code' => 'BAN-02', 'name' => 'Ban Depan Bandung']);
+        SparepartBranch::create(['sparepart_id' => $sparepartB->id, 'branch_id' => $branchB->id, 'selling_price' => 90000]);
+
+        $response = $this->actingAs($user)->get('/sparepart-branches?branch_id=' . $branchB->id);
+
+        $response->assertOk();
+        $response->assertSee('Ban Depan Jakarta');
+        $response->assertDontSee('Ban Depan Bandung');
+        $this->assertSame($branchA->id, session('current_sparepart_branch_id'), 'Session must not switch to a branch the user lacks permission for.');
+    }
+
     public function test_index_search_filters_by_code_or_name(): void
     {
         $user = User::factory()->create();
@@ -82,6 +102,7 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->actingAs(User::find($user->id))->get('/sparepart-branches'); // establishes session branch context
 
         $response = $this->post('/sparepart-branches', [
+            'branch_id' => $branch->id,
             'code' => 'BAN-01',
             'name' => 'Ban Depan',
             'rack_number' => 'A1',
@@ -105,7 +126,7 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->actingAs(User::find($user->id))->get('/sparepart-branches');
 
         $response = $this->post('/sparepart-branches', [
-            'code' => 'BAN-01', 'name' => 'Ban Depan', 'selling_price' => 150000,
+            'branch_id' => $branch->id, 'code' => 'BAN-01', 'name' => 'Ban Depan', 'selling_price' => 150000,
         ]);
 
         $response->assertForbidden();
@@ -121,7 +142,7 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->actingAs(User::find($user->id))->get('/sparepart-branches');
 
         $response = $this->post('/sparepart-branches', [
-            'code' => 'BAN-01', 'name' => 'Ban Depan Baru', 'selling_price' => 150000,
+            'branch_id' => $branch->id, 'code' => 'BAN-01', 'name' => 'Ban Depan Baru', 'selling_price' => 150000,
         ]);
 
         $response->assertSessionHasErrors(['code']);
@@ -133,12 +154,13 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
         // User has sparepart.create in branch A but NOT sparepart.view in branch A.
-        // User has sparepart.view in branch B (so resolveCurrentBranch() would fall back to B).
+        // User has sparepart.view in branch B (so resolveCurrentBranch() / session would point at B).
         $this->grantBranchPermission($user, $branchA, 'sparepart.create');
         $this->grantBranchPermission($user, $branchB, 'sparepart.view');
-        session(['current_sparepart_branch_id' => $branchA->id]);
+        session(['current_sparepart_branch_id' => $branchB->id]);
 
         $response = $this->actingAs($user)->post('/sparepart-branches', [
+            'branch_id' => $branchA->id,
             'code' => 'BAN-01',
             'name' => 'Ban Depan',
             'rack_number' => 'A1',
@@ -149,7 +171,7 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $response->assertRedirect('/sparepart-branches');
         $sparepartBranch = SparepartBranch::whereHas('sparepart', fn ($q) => $q->where('code', 'BAN-01'))->first();
         $this->assertNotNull($sparepartBranch);
-        $this->assertSame($branchA->id, $sparepartBranch->branch_id, 'Sparepart must be written to the authorized branch (A), not the view-permission fallback branch (B).');
+        $this->assertSame($branchA->id, $sparepartBranch->branch_id, 'Sparepart must be written to the branch_id submitted with the form (A), not the session/view-permission fallback branch (B).');
     }
 
     public function test_store_existing_writes_to_authorized_branch_even_when_view_permission_fallback_differs(): void
@@ -160,9 +182,10 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->grantBranchPermission($user, $branchA, 'sparepart.create');
         $this->grantBranchPermission($user, $branchB, 'sparepart.view');
         $sparepart = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
-        session(['current_sparepart_branch_id' => $branchA->id]);
+        session(['current_sparepart_branch_id' => $branchB->id]);
 
         $response = $this->actingAs($user)->post('/sparepart-branches/existing', [
+            'branch_id' => $branchA->id,
             'sparepart_id' => $sparepart->id,
             'rack_number' => 'B2',
             'selling_price' => 60000,
@@ -172,7 +195,7 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $response->assertRedirect('/sparepart-branches');
         $sparepartBranch = SparepartBranch::where('sparepart_id', $sparepart->id)->first();
         $this->assertNotNull($sparepartBranch);
-        $this->assertSame($branchA->id, $sparepartBranch->branch_id, 'Sparepart must be attached to the authorized branch (A), not the view-permission fallback branch (B).');
+        $this->assertSame($branchA->id, $sparepartBranch->branch_id, 'Sparepart must be attached to the branch_id submitted with the form (A), not the session/view-permission fallback branch (B).');
     }
 
     public function test_create_existing_lists_only_spareparts_not_yet_configured_for_current_branch(): void
@@ -203,6 +226,7 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->actingAs(User::find($user->id))->get('/sparepart-branches');
 
         $response = $this->post('/sparepart-branches/existing', [
+            'branch_id' => $branch->id,
             'sparepart_id' => $sparepart->id,
             'rack_number' => 'B2',
             'selling_price' => 60000,
@@ -226,7 +250,7 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->actingAs(User::find($user->id))->get('/sparepart-branches');
 
         $response = $this->post('/sparepart-branches/existing', [
-            'sparepart_id' => $sparepart->id, 'selling_price' => 100000,
+            'branch_id' => $branch->id, 'sparepart_id' => $sparepart->id, 'selling_price' => 100000,
         ]);
 
         $response->assertSessionHasErrors(['sparepart_id']);

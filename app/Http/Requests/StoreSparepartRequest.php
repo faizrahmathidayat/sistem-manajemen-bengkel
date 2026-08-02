@@ -8,14 +8,15 @@ class StoreSparepartRequest extends FormRequest
 {
     public function authorize()
     {
-        $branchId = session('current_sparepart_branch_id');
+        $branchId = (int) $this->input('branch_id');
 
-        return $branchId && $this->user()->hasPermissionToInBranch('sparepart.create', (int) $branchId);
+        return $branchId && $this->user()->hasPermissionToInBranch('sparepart.create', $branchId);
     }
 
     public function rules()
     {
         return [
+            'branch_id' => ['required', 'integer'],
             'code' => ['required', 'string', 'max:30', 'unique:spareparts,code'],
             'name' => ['required', 'string', 'max:150'],
             'rack_number' => ['nullable', 'string', 'max:30'],

@@ -67,6 +67,11 @@ class User extends Authenticatable
             ->exists();
     }
 
+    public function branchesWithPermission(string $code)
+    {
+        return $this->branches->filter(fn (Branch $branch) => $this->hasPermissionToInBranch($code, $branch->id))->values();
+    }
+
     public function defaultBranch(): ?Branch
     {
         return $this->branches()->wherePivot('is_default', true)->first();

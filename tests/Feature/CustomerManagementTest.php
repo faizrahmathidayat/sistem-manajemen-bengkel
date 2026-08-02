@@ -1,0 +1,147 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Customer;
+use App\Models\Permission;
+use App\Models\User;
+use App\Models\UserPermission;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class CustomerManagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function userWithPermissions(array $codes): User
+    {
+        $user = User::factory()->create();
+
+        foreach ($codes as $code) {
+            [$resource, $action] = explode('.', $code, 2);
+            $permission = Permission::firstOrCreate(
+                ['code' => $code],
+                ['resource' => $resource, 'action' => $action, 'description' => $code]
+            );
+            UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
+        }
+
+        return User::find($user->id);
+    }
+
+    public function test_index_lists_customers_for_authorized_user(): void
+    {
+        Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get('/customers');
+
+        $response->assertOk();
+        $response->assertSee('Budi Santoso');
+    }
+
+    public function test_index_is_forbidden_without_permission(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/customers');
+
+        $response->assertForbidden();
+    }
+
+    public function test_store_creates_customer(): void
+    {
+        $user = $this->userWithPermissions(['customer.create']);
+
+        $response = $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+            'phone' => '081234567890',
+            'is_active' => '1',
+        ]);
+
+        $response->assertRedirect('/customers');
+        $this->assertDatabaseHas('customers', ['name' => 'Budi Santoso']);
+    }
+
+    public function test_store_validates_required_fields(): void
+    {
+        $user = $this->userWithPermissions(['customer.create']);
+
+        $response = $this->actingAs($user)->post('/customers', []);
+
+        $response->assertSessionHasErrors(['customer_type', 'name', 'stnk_name']);
+    }
+
+    public function test_store_rejects_invalid_customer_type(): void
+    {
+        $user = $this->userWithPermissions(['customer.create']);
+
+        $response = $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'GOVERNMENT',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+        ]);
+
+        $response->assertSessionHasErrors(['customer_type']);
+    }
+
+    public function test_store_is_forbidden_without_permission(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+        ]);
+
+        $response->assertForbidden();
+    }
+
+    public function test_show_renders_profil_tab_for_authorized_user(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get("/customers/{$customer->id}");
+
+        $response->assertOk();
+        $response->assertSee('Budi Santoso');
+    }
+
+    public function test_update_edits_customer_and_can_deactivate(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $user = $this->userWithPermissions(['customer.edit']);
+
+        $response = $this->actingAs($user)->put("/customers/{$customer->id}", [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso Edited',
+            'stnk_name' => 'Budi Santoso',
+            'is_active' => '0',
+        ]);
+
+        $response->assertRedirect("/customers/{$customer->id}");
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'name' => 'Budi Santoso Edited',
+            'is_active' => false,
+        ]);
+    }
+
+    public function test_update_is_forbidden_without_permission(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->put("/customers/{$customer->id}", [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso Edited',
+            'stnk_name' => 'Budi Santoso',
+        ]);
+
+        $response->assertForbidden();
+    }
+}

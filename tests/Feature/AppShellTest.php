@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
 use App\Models\Permission;
 use App\Models\User;
+use App\Models\UserBranchPermission;
 use App\Models\UserPermission;
+use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -109,5 +112,34 @@ class AppShellTest extends TestCase
         $response->assertOk();
         $response->assertSee(route('mechanics.index'), false);
         $response->assertSee(route('service-catalogs.index'), false);
+    }
+
+    public function test_sidebar_shows_master_sparepart_link_only_for_branch_scoped_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create([
+            'code' => 'sparepart.view',
+            'resource' => 'sparepart',
+            'action' => 'view',
+            'description' => 'Melihat sparepart',
+        ]);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('sparepart-branches.index'), false);
+    }
+
+    public function test_sidebar_hides_master_sparepart_link_without_any_branch_grant(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertDontSee(route('sparepart-branches.index'), false);
     }
 }

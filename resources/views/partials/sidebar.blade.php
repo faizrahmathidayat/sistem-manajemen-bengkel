@@ -48,6 +48,17 @@
     </ul>
 @endif
 
+@if ($user && $user->branchesWithPermission('sparepart.view')->isNotEmpty())
+    <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Persediaan</div>
+    <ul class="nav flex-column mb-3">
+        <li class="nav-item">
+            <a href="{{ route('sparepart-branches.index') }}" class="nav-link {{ request()->routeIs('sparepart-branches.*') ? 'active' : '' }}">
+                <i class="bi bi-box-seam me-2"></i> Master Sparepart
+            </a>
+        </li>
+    </ul>
+@endif
+
 @if ($user && $user->can('user.view'))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Administrasi</div>
     <ul class="nav flex-column mb-3">

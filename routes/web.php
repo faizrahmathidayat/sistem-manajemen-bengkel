@@ -10,6 +10,7 @@ use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\VehicleReferenceController;
 use App\Http\Controllers\VehicleReferenceLookupController;
 use Illuminate\Support\Facades\Route;
 
@@ -55,6 +56,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/lookup/types/{brand}', [VehicleReferenceLookupController::class, 'typesByBrand'])->name('lookup.types');
         Route::get('/{vehicle}/edit', [VehicleController::class, 'edit'])->name('edit');
         Route::put('/{vehicle}', [VehicleController::class, 'update'])->name('update');
+    });
+
+    Route::prefix('vehicle-references')->name('vehicle-references.')->group(function () {
+        Route::get('/', [VehicleReferenceController::class, 'index'])->name('index');
+        Route::post('/categories', [VehicleReferenceController::class, 'storeCategory'])->name('categories.store');
+        Route::put('/categories/{category}', [VehicleReferenceController::class, 'updateCategory'])->name('categories.update');
+        Route::post('/brands', [VehicleReferenceController::class, 'storeBrand'])->name('brands.store');
+        Route::put('/brands/{brand}', [VehicleReferenceController::class, 'updateBrand'])->name('brands.update');
+        Route::post('/types', [VehicleReferenceController::class, 'storeType'])->name('types.store');
+        Route::put('/types/{type}', [VehicleReferenceController::class, 'updateType'])->name('types.update');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

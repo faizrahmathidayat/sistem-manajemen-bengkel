@@ -174,4 +174,40 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertSee('PKB-2026080001', false);
     }
+
+    public function test_kartu_stok_tab_lists_only_spareparts_in_selected_branches(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        $inA = Sparepart::create(['code' => 'BAN-01', 'name' => 'Ban Depan']);
+        SparepartBranch::create(['sparepart_id' => $inA->id, 'branch_id' => $branchA->id, 'selling_price' => 100000]);
+        $inB = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
+        SparepartBranch::create(['sparepart_id' => $inB->id, 'branch_id' => $branchB->id, 'selling_price' => 50000]);
+
+        $response = $this->actingAs(User::find($user->id))->getJson('/dashboard?branch_ids[]=' . $branchA->id);
+
+        $response->assertOk();
+        $data = $response->json();
+        $codes = array_column($data['kartuStok']['spareparts'], 'code');
+        $this->assertContains('BAN-01', $codes);
+        $this->assertNotContains('OLI-01', $codes);
+    }
+
+    public function test_kartu_stok_widget_shows_selected_sparepart_totals(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+        $sparepart = Sparepart::create(['code' => 'BAN-01', 'name' => 'Ban Depan']);
+        $config = SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 100000]);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $config->id)->update(['on_hand_qty' => 7, 'reserved_qty' => 2]);
+
+        $response = $this->actingAs(User::find($user->id))
+            ->getJson('/dashboard?branch_ids[]=' . $branch->id . '&sparepart_id=' . $sparepart->id);
+
+        $response->assertOk();
+        $response->assertJson(['kartuStok' => ['selected' => ['id' => $sparepart->id, 'onHand' => 7.0, 'reserved' => 2.0, 'available' => 5.0]]]);
+    }
 }

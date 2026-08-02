@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -16,8 +17,9 @@ class DashboardController extends Controller
         $allowedBranches = $user->branches;
 
         $selectedBranchIds = $this->resolveSelectedBranchIds($request, $user, $allowedBranches);
+        $sparepartId = $request->filled('sparepart_id') ? (int) $request->input('sparepart_id') : null;
 
-        $payload = $this->buildPayload($user, $selectedBranchIds);
+        $payload = $this->buildPayload($user, $selectedBranchIds, $sparepartId);
 
         if ($request->wantsJson()) {
             return response()->json($payload);
@@ -96,6 +98,48 @@ class DashboardController extends Controller
             ->count();
     }
 
+    protected function computeKartuStok(array $scopedBranchIds, ?int $sparepartId): array
+    {
+        $spareparts = Sparepart::where('is_active', true)
+            ->whereHas('sparepartBranches', function ($query) use ($scopedBranchIds) {
+                $query->whereIn('branch_id', $scopedBranchIds)->where('is_active', true);
+            })
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        $resolvedId = $sparepartId ?? optional($spareparts->first())->id;
+
+        $selected = ['id' => $resolvedId, 'onHand' => 0.0, 'reserved' => 0.0, 'available' => 0.0];
+
+        if ($resolvedId && ! empty($scopedBranchIds)) {
+            $totals = SparepartBranch::where('sparepart_id', $resolvedId)
+                ->whereIn('branch_id', $scopedBranchIds)
+                ->where('is_active', true)
+                ->join('sparepart_branch_stocks', 'sparepart_branch_stocks.sparepart_branch_id', '=', 'sparepart_branches.id')
+                ->selectRaw('SUM(sparepart_branch_stocks.on_hand_qty) as on_hand, SUM(sparepart_branch_stocks.reserved_qty) as reserved')
+                ->first();
+
+            $onHand = (float) ($totals->on_hand ?? 0);
+            $reserved = (float) ($totals->reserved ?? 0);
+            $selected = ['id' => $resolvedId, 'onHand' => $onHand, 'reserved' => $reserved, 'available' => $onHand - $reserved];
+        }
+
+        return [
+            'spareparts' => $spareparts->map(fn ($s) => ['id' => $s->id, 'code' => $s->code, 'name' => $s->name])->all(),
+            'selected' => $selected,
+            'mutations' => $this->dummyMutationRows(),
+        ];
+    }
+
+    protected function dummyMutationRows(): array
+    {
+        return [
+            ['date' => '2026-08-01 09:15', 'type' => 'RECEIPT', 'reference' => 'RCV-2026080001', 'in' => 20, 'out' => 0, 'reserved' => 0, 'balance' => 20],
+            ['date' => '2026-08-01 14:30', 'type' => 'PKB_RESERVATION', 'reference' => 'PKB-2026080001', 'in' => 0, 'out' => 0, 'reserved' => 2, 'balance' => 20],
+            ['date' => '2026-08-02 10:00', 'type' => 'INVOICE', 'reference' => 'INV-2026080001', 'in' => 0, 'out' => 2, 'reserved' => -2, 'balance' => 18],
+        ];
+    }
+
     protected function dummyPkbStatus(): array
     {
         return ['open' => 8, 'shortage' => 2, 'completed' => 15];
@@ -133,7 +177,7 @@ class DashboardController extends Controller
         ];
     }
 
-    protected function buildPayload(User $user, array $selectedBranchIds): array
+    protected function buildPayload(User $user, array $selectedBranchIds, ?int $sparepartId = null): array
     {
         $scopedBranchIds = $this->scopedBranchIds($user, $selectedBranchIds);
 
@@ -146,6 +190,7 @@ class DashboardController extends Controller
             'chartTrend' => $this->dummyChartTrend(),
             'chartReceivables' => $this->dummyChartReceivables(),
             'pkbInvoiceRows' => $this->dummyPkbInvoiceRows(),
+            'kartuStok' => $this->computeKartuStok($scopedBranchIds, $sparepartId),
         ];
     }
 }

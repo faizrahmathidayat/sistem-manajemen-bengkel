@@ -22,8 +22,26 @@
         </div>
     </div>
 
-    <div id="dashboardContent">
-        <p class="text-muted">Data ringkasan akan tampil di sini.</p>
+    <div class="row g-3 mb-4" id="kpiCardsRow">
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-value" id="kpiStockAvailable">{{ number_format($stockOverview['available'], 0, ',', '.') }}</div>
+                    <div class="stat-label">Stok Tersedia</div>
+                    <div class="small mt-1" style="color: var(--color-ink-muted);">On-hand {{ number_format($stockOverview['onHand'], 0, ',', '.') }} &middot; Reservasi {{ number_format($stockOverview['reserved'], 0, ',', '.') }}</div>
+                </div>
+                <i class="bi bi-box-seam stat-icon"></i>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-value" id="kpiCriticalStock" style="{{ $criticalStockCount > 0 ? 'color: var(--color-warning);' : '' }}">{{ $criticalStockCount }}</div>
+                    <div class="stat-label">Alert Stok Kritis</div>
+                </div>
+                <i class="bi bi-exclamation-triangle stat-icon"></i>
+            </div>
+        </div>
     </div>
 @endsection
 

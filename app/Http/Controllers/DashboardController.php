@@ -96,6 +96,16 @@ class DashboardController extends Controller
             ->count();
     }
 
+    protected function dummyPkbStatus(): array
+    {
+        return ['open' => 8, 'shortage' => 2, 'completed' => 15];
+    }
+
+    protected function dummyReceivables(): array
+    {
+        return ['revenue' => 42500000, 'unpaid' => 7300000];
+    }
+
     protected function buildPayload(User $user, array $selectedBranchIds): array
     {
         $scopedBranchIds = $this->scopedBranchIds($user, $selectedBranchIds);
@@ -104,6 +114,8 @@ class DashboardController extends Controller
             'selectedBranchIds' => $selectedBranchIds,
             'stockOverview' => $this->computeStockOverview($scopedBranchIds),
             'criticalStockCount' => $this->computeCriticalStockCount($scopedBranchIds),
+            'pkbStatus' => $this->dummyPkbStatus(),
+            'receivables' => $this->dummyReceivables(),
         ];
     }
 }

@@ -135,4 +135,16 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertSee('belum ditugaskan ke cabang manapun', false);
     }
+
+    public function test_dashboard_includes_dummy_pkb_status_and_receivables(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch, true);
+
+        $response = $this->actingAs(User::find($user->id))->getJson('/dashboard');
+
+        $response->assertOk();
+        $response->assertJsonStructure(['pkbStatus' => ['open', 'shortage', 'completed'], 'receivables' => ['revenue', 'unpaid']]);
+    }
 }

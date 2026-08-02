@@ -42,6 +42,26 @@
                 <i class="bi bi-exclamation-triangle stat-icon"></i>
             </div>
         </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-value" id="kpiPkbTotal">{{ $pkbStatus['open'] + $pkbStatus['shortage'] + $pkbStatus['completed'] }}</div>
+                    <div class="stat-label">Status PKB Hari Ini</div>
+                    <div class="small mt-1" style="color: var(--color-ink-muted);">Open {{ $pkbStatus['open'] }} &middot; Shortage {{ $pkbStatus['shortage'] }} &middot; Selesai {{ $pkbStatus['completed'] }}</div>
+                </div>
+                <i class="bi bi-clipboard-check stat-icon"></i>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-value" id="kpiRevenue">{{ number_format($receivables['revenue'], 0, ',', '.') }}</div>
+                    <div class="stat-label">Pendapatan & Piutang</div>
+                    <div class="small mt-1" style="color: var(--color-ink-muted);">Piutang belum lunas {{ number_format($receivables['unpaid'], 0, ',', '.') }}</div>
+                </div>
+                <i class="bi bi-cash-coin stat-icon"></i>
+            </div>
+        </div>
     </div>
 @endsection
 

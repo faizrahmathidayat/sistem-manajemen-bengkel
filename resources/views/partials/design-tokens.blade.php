@@ -129,6 +129,21 @@
         border-left-color: var(--color-accent);
         font-weight: 500;
     }
+    #sidebar .nav-link.nav-link-disabled {
+        cursor: not-allowed;
+        color: rgba(241, 245, 249, .35);
+    }
+    .badge-soon {
+        font-family: var(--font-mono);
+        font-size: .6rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        background: rgba(241, 245, 249, .12);
+        color: rgba(241, 245, 249, .5);
+        padding: .1rem .4rem;
+        border-radius: .25rem;
+        margin-left: auto;
+    }
 
     .app-body { align-items: stretch; }
 

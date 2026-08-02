@@ -200,4 +200,90 @@ class AppShellTest extends TestCase
         $response->assertOk();
         $response->assertSee('bi-bell', false);
     }
+
+    public function test_sidebar_shows_pkb_placeholder_when_user_has_pkb_view_permission_in_a_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'pkb.view', 'resource' => 'pkb', 'action' => 'view', 'description' => 'Melihat PKB']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Perintah Kerja Bengkel', false);
+        $response->assertSee('Segera Hadir', false);
+    }
+
+    public function test_sidebar_hides_pkb_placeholder_without_permission(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertDontSee('Perintah Kerja Bengkel', false);
+    }
+
+    public function test_sidebar_shows_kartu_stok_placeholder_alongside_master_sparepart(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'sparepart.view', 'resource' => 'sparepart', 'action' => 'view', 'description' => 'Melihat sparepart']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('sparepart-branches.index'), false);
+        $response->assertSee('Kartu Stok', false);
+    }
+
+    public function test_sidebar_shows_audit_log_placeholder_when_user_has_audit_log_view_permission(): void
+    {
+        $permission = Permission::create(['code' => 'audit_log.view', 'resource' => 'audit_log', 'action' => 'view', 'description' => 'Melihat audit log']);
+        $user = User::factory()->create();
+        UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Audit Log', false);
+    }
+
+    public function test_sidebar_shows_reporting_placeholder_when_user_has_report_pkb_view_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'report.pkb.view', 'resource' => 'report', 'action' => 'pkb.view', 'description' => 'Melihat laporan PKB']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Laporan PKB', false);
+    }
+
+    public function test_sidebar_hides_all_new_placeholder_headings_without_any_permission(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertDontSee('Perintah Kerja Bengkel', false);
+        // Not a bare assertDontSee('Invoice'): the navbar's quick-search placeholder
+        // ("...No. Invoice...", from Task 2) legitimately contains that substring on
+        // every authenticated page. Assert against the placeholder's unique icon class instead.
+        $response->assertDontSee('bi-receipt', false);
+        $response->assertDontSee('Penerimaan Pembayaran', false);
+        $response->assertDontSee('Penerimaan Barang', false);
+        $response->assertDontSee('Stock Adjustment', false);
+        $response->assertDontSee('Transfer Stock', false);
+        $response->assertDontSee('Audit Log', false);
+        $response->assertDontSee('Laporan PKB', false);
+    }
 }

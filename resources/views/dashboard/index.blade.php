@@ -30,7 +30,7 @@
                     <div>
                         <div class="stat-value" id="kpiStockAvailable">{{ number_format($stockOverview['available'], 0, ',', '.') }}</div>
                         <div class="stat-label">Stok Tersedia</div>
-                        <div class="small mt-1" style="color: var(--color-ink-muted);">On-hand {{ number_format($stockOverview['onHand'], 0, ',', '.') }} &middot; Reservasi {{ number_format($stockOverview['reserved'], 0, ',', '.') }}</div>
+                        <div class="small mt-1" style="color: var(--color-ink-muted);">On-hand <span id="kpiStockOnHand">{{ number_format($stockOverview['onHand'], 0, ',', '.') }}</span> &middot; Reservasi <span id="kpiStockReserved">{{ number_format($stockOverview['reserved'], 0, ',', '.') }}</span></div>
                     </div>
                     <i class="bi bi-box-seam stat-icon"></i>
                 </div>
@@ -172,21 +172,45 @@ const receivablesChart = new Chart(document.getElementById('receivablesChart'), 
         return new Promise(function (resolve) { setTimeout(resolve, ms); });
     }
 
+    function showFilterError(message) {
+        const menu = document.getElementById('branchFilterMenu');
+        if (!menu) return;
+        let errorEl = document.getElementById('branchFilterError');
+        if (!errorEl) {
+            errorEl = document.createElement('p');
+            errorEl.id = 'branchFilterError';
+            errorEl.className = 'text-danger small mt-2 mb-0';
+            menu.appendChild(errorEl);
+        }
+        errorEl.textContent = message;
+    }
+
     function fetchDashboard(params) {
         showOverlays();
         const url = '{{ route('dashboard') }}?' + params.toString();
 
         return Promise.all([
-            fetch(url, { headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }),
+            fetch(url, { headers: { Accept: 'application/json' } }).then(function (r) {
+                if (!r.ok) {
+                    throw new Error('Dashboard request failed with status ' + r.status);
+                }
+                return r.json();
+            }),
             minDelay(400),
         ]).then(function (results) {
             applyPayload(results[0]);
             hideOverlays();
+        }).catch(function (error) {
+            console.error('Gagal memuat data dashboard:', error);
+            hideOverlays();
+            showFilterError('Gagal memuat data dashboard. Silakan coba lagi.');
         });
     }
 
     function applyPayload(data) {
         document.getElementById('kpiStockAvailable').textContent = Math.round(data.stockOverview.available).toLocaleString('id-ID');
+        document.getElementById('kpiStockOnHand').textContent = Math.round(data.stockOverview.onHand).toLocaleString('id-ID');
+        document.getElementById('kpiStockReserved').textContent = Math.round(data.stockOverview.reserved).toLocaleString('id-ID');
         document.getElementById('kpiCriticalStock').textContent = data.criticalStockCount;
         document.getElementById('kpiPkbTotal').textContent = data.pkbStatus.open + data.pkbStatus.shortage + data.pkbStatus.completed;
         document.getElementById('kpiRevenue').textContent = Math.round(data.receivables.revenue).toLocaleString('id-ID');
@@ -214,6 +238,31 @@ const receivablesChart = new Chart(document.getElementById('receivablesChart'), 
                 option.selected = sparepart.id === data.kartuStok.selected.id;
                 sparepartSelect.appendChild(option);
             });
+        }
+
+        updateBranchFilterSummary(data.selectedBranchIds);
+    }
+
+    function updateBranchFilterSummary(selectedBranchIds) {
+        const label = document.getElementById('branchFilterLabel');
+        const allCheckboxes = document.querySelectorAll('.branch-filter-checkbox');
+        const total = allCheckboxes.length;
+        const selectedCount = selectedBranchIds.length;
+
+        if (label) {
+            if (total > 0 && selectedCount === total) {
+                label.textContent = 'Semua Cabang Saya';
+            } else if (selectedCount === 1) {
+                const checkbox = Array.from(allCheckboxes).find(function (cb) { return Number(cb.value) === Number(selectedBranchIds[0]); });
+                const branchLabel = checkbox ? document.querySelector('label[for="' + checkbox.id + '"]') : null;
+                label.textContent = branchLabel ? branchLabel.textContent : '1 Cabang Terpilih';
+            } else {
+                label.textContent = selectedCount + ' Cabang Terpilih';
+            }
+        }
+
+        if (selectAll) {
+            selectAll.checked = total > 0 && selectedCount === total;
         }
     }
 

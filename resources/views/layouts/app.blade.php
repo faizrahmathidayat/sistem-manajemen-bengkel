@@ -35,7 +35,7 @@
                              acting user holds that code globally, this navbar block will make the
                              assertion fail regardless of what the test is actually checking. --}}
                         @foreach (array_slice($permissionCodes, 0, 3) as $code)
-                            <code class="topbar-permission-badge">{{ $code }}</code>
+                            <span class="topbar-permission-badge">{{ $code }}</span>
                         @endforeach
                         @if (count($permissionCodes) > 3)
                             <span class="topbar-permission-badge topbar-permission-badge-more">+{{ count($permissionCodes) - 3 }} lainnya</span>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CustomerBranchAssignmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserBranchAssignmentController;
@@ -37,6 +38,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [CustomerController::class, 'store'])->name('store');
         Route::get('/{customer}', [CustomerController::class, 'show'])->name('show');
         Route::put('/{customer}', [CustomerController::class, 'update'])->name('update');
+
+        Route::prefix('{customer}/branches')->name('branches.')->group(function () {
+            Route::post('/{branch}', [CustomerBranchAssignmentController::class, 'store'])->name('store');
+            Route::delete('/{branch}', [CustomerBranchAssignmentController::class, 'destroy'])->name('destroy');
+        });
     });
 
     Route::prefix('users')->name('users.')->group(function () {

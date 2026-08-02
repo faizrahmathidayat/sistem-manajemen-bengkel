@@ -13,9 +13,24 @@ class CustomerController extends Controller
     {
         $this->authorize('customer.view');
 
-        $customers = Customer::orderBy('name')->simplePaginate(15);
+        $branchIds = collect(request('branch_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->intersect(auth()->user()->branches->pluck('id'))
+            ->values()->all();
 
-        return view('customers.index', compact('customers'));
+        $customers = Customer::orderBy('name')
+            ->when(request('q'), function ($query, $q) {
+                $query->where(function ($inner) use ($q) {
+                    $inner->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%");
+                });
+            })
+            ->when($branchIds, fn ($query) => $query->whereHas('customerBranches', fn ($q) => $q->whereIn('branch_id', $branchIds)->where('is_active', true)))
+            ->simplePaginate(15)
+            ->withQueryString();
+
+        $branches = auth()->user()->branches;
+
+        return view('customers.index', compact('customers', 'branches'))->with('selectedBranchIds', $branchIds);
     }
 
     public function create()

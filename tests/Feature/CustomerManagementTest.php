@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\CustomerBranch;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\UserPermission;
+use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -174,5 +177,65 @@ class CustomerManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('Tambah Customer Pertama');
+    }
+
+    public function test_index_search_by_name_filters_results(): void
+    {
+        Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Siti Aminah', 'stnk_name' => 'Siti Aminah']);
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get('/customers?q=Budi');
+
+        $response->assertOk();
+        $response->assertSee('Budi Santoso');
+        $response->assertDontSee('Siti Aminah');
+    }
+
+    public function test_index_search_by_phone_filters_results(): void
+    {
+        Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso', 'phone' => '081111111111']);
+        Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Siti Aminah', 'stnk_name' => 'Siti Aminah', 'phone' => '082222222222']);
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get('/customers?q=081111');
+
+        $response->assertOk();
+        $response->assertSee('Budi Santoso');
+        $response->assertDontSee('Siti Aminah');
+    }
+
+    public function test_index_branch_filter_scopes_to_selected_branch(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $customerA = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $customerB = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Siti Aminah', 'stnk_name' => 'Siti Aminah']);
+        CustomerBranch::create(['customer_id' => $customerA->id, 'branch_id' => $branchA->id]);
+        CustomerBranch::create(['customer_id' => $customerB->id, 'branch_id' => $branchB->id]);
+        $user = $this->userWithPermissions(['customer.view']);
+        (new UserBranchService())->assign($user, $branchA);
+        (new UserBranchService())->assign($user, $branchB);
+
+        $response = $this->actingAs(User::find($user->id))->get("/customers?branch_ids[]={$branchA->id}");
+
+        $response->assertOk();
+        $response->assertSee('Budi Santoso');
+        $response->assertDontSee('Siti Aminah');
+    }
+
+    public function test_index_branch_filter_drops_branch_ids_the_user_is_not_assigned_to(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $customerB = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Siti Aminah', 'stnk_name' => 'Siti Aminah']);
+        CustomerBranch::create(['customer_id' => $customerB->id, 'branch_id' => $branchB->id]);
+        $user = $this->userWithPermissions(['customer.view']);
+        (new UserBranchService())->assign($user, $branchA);
+
+        $response = $this->actingAs(User::find($user->id))->get("/customers?branch_ids[]={$branchB->id}");
+
+        $response->assertOk();
+        $response->assertSee('Siti Aminah');
     }
 }

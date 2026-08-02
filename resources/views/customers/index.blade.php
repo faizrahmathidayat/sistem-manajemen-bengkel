@@ -3,14 +3,19 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-person-badge me-2"></i>Customer</h1>
-        @can('customer.create')
-            <a href="{{ route('customers.create') }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-lg"></i> Tambah Customer
-            </a>
-        @endcan
     </div>
 
-    <div class="card">
+    @include('partials.list-filter-bar', [
+        'searchPlaceholder' => 'Cari nama atau telepon...',
+        'searchValue' => request('q'),
+        'branchFilterBranches' => $branches,
+        'branchFilterSelected' => $selectedBranchIds,
+        'actionsHtml' => auth()->user()->can('customer.create')
+            ? '<a href="' . route('customers.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Tambah Customer</a>'
+            : '',
+    ])
+
+    <div class="card mt-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">

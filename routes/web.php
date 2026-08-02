@@ -11,6 +11,7 @@ use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceCatalogController;
+use App\Http\Controllers\SparepartBranchController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
@@ -90,6 +91,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [ServiceCatalogController::class, 'store'])->name('store');
         Route::get('/{serviceCatalog}/edit', [ServiceCatalogController::class, 'edit'])->name('edit');
         Route::put('/{serviceCatalog}', [ServiceCatalogController::class, 'update'])->name('update');
+    });
+
+    Route::prefix('sparepart-branches')->name('sparepart-branches.')->group(function () {
+        Route::get('/', [SparepartBranchController::class, 'index'])->name('index');
+        Route::get('/create', [SparepartBranchController::class, 'create'])->name('create');
+        Route::post('/', [SparepartBranchController::class, 'store'])->name('store');
+        Route::get('/create-existing', [SparepartBranchController::class, 'createExisting'])->name('createExisting');
+        Route::post('/existing', [SparepartBranchController::class, 'storeExisting'])->name('storeExisting');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

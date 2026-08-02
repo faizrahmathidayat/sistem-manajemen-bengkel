@@ -213,7 +213,11 @@ class AppShellTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Perintah Kerja Bengkel', false);
-        $response->assertSee('Segera Hadir', false);
+        // Not a bare assertSee('Segera Hadir'): the Dashboard header's own "Buat
+        // PKB Baru — Segera Hadir" placeholder button (rendered unconditionally
+        // for every user) shares that exact text with this sidebar placeholder.
+        // Assert against the sidebar placeholder's unique icon class instead.
+        $response->assertSee('bi-clipboard-check', false);
     }
 
     public function test_sidebar_hides_pkb_placeholder_without_permission(): void
@@ -238,7 +242,11 @@ class AppShellTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(route('sparepart-branches.index'), false);
-        $response->assertSee('Kartu Stok', false);
+        // Not a bare assertSee('Kartu Stok'): the Dashboard's own "Kartu Stok"
+        // tab button (rendered unconditionally for every user) shares that
+        // exact text with this sidebar placeholder. Assert against the
+        // sidebar placeholder's unique icon class instead.
+        $response->assertSee('bi-card-list', false);
     }
 
     public function test_sidebar_shows_audit_log_placeholder_when_user_has_audit_log_view_permission(): void
@@ -250,7 +258,11 @@ class AppShellTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('Audit Log', false);
+        // Not a bare assertSee('Audit Log'): the Dashboard's own "Audit Log"
+        // tab button (rendered unconditionally for every user) shares that
+        // exact text with this sidebar placeholder. Assert against the
+        // sidebar placeholder's unique icon class instead.
+        $response->assertSee('bi-journal-text', false);
     }
 
     public function test_sidebar_shows_reporting_placeholder_when_user_has_report_pkb_view_permission(): void

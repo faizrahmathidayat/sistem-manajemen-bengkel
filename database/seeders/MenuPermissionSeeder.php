@@ -156,6 +156,15 @@ class MenuPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'code' => 'master.vehicle_reference',
+                'name' => 'Referensi Kendaraan',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'vehicle_reference.view', 'resource' => 'vehicle_reference', 'action' => 'view', 'description' => 'Melihat referensi kendaraan'],
+                    ['code' => 'vehicle_reference.manage', 'resource' => 'vehicle_reference', 'action' => 'manage', 'description' => 'Mengelola referensi kendaraan'],
+                ],
+            ],
+            [
                 'code' => 'master.mechanic',
                 'name' => 'Mekanik',
                 'is_branch_scoped' => false,

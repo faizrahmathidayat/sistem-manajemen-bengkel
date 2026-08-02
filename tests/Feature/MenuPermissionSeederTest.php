@@ -40,4 +40,13 @@ class MenuPermissionSeederTest extends TestCase
         $this->assertDatabaseHas('menus', ['code' => 'master.branch', 'is_branch_scoped' => false]);
         $this->assertDatabaseHas('menus', ['code' => 'administrasi.users', 'is_branch_scoped' => false]);
     }
+
+    public function test_seeder_creates_vehicle_reference_menu_and_permissions(): void
+    {
+        $this->seed(MenuPermissionSeeder::class);
+
+        $this->assertDatabaseHas('menus', ['code' => 'master.vehicle_reference', 'is_branch_scoped' => false]);
+        $this->assertDatabaseHas('permissions', ['code' => 'vehicle_reference.view']);
+        $this->assertDatabaseHas('permissions', ['code' => 'vehicle_reference.manage']);
+    }
 }

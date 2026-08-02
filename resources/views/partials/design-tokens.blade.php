@@ -148,6 +148,16 @@
         border-radius: .25rem;
         margin-left: auto;
     }
+    .dashboard-loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, .7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+    }
+    .dashboard-loading-parent { position: relative; min-height: 80px; }
 
     .app-body { align-items: stretch; }
 

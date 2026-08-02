@@ -238,4 +238,16 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertSee('sparepart.create', false);
     }
+
+    public function test_dashboard_page_includes_loading_overlay_markup(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch, true);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('dashboard-loading-overlay', false);
+    }
 }

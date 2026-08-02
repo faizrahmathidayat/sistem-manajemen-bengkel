@@ -59,12 +59,18 @@ class User extends Authenticatable
             ->wherePivot('is_active', true);
     }
 
+    protected $accessToBranchCache = [];
+
     public function hasAccessToBranch(int $branchId): bool
     {
-        return $this->userBranches()
-            ->where('branch_id', $branchId)
-            ->where('is_active', true)
-            ->exists();
+        if (! array_key_exists($branchId, $this->accessToBranchCache)) {
+            $this->accessToBranchCache[$branchId] = $this->userBranches()
+                ->where('branch_id', $branchId)
+                ->where('is_active', true)
+                ->exists();
+        }
+
+        return $this->accessToBranchCache[$branchId];
     }
 
     public function branchesWithPermission(string $code)

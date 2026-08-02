@@ -127,6 +127,54 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $response->assertSessionHasErrors(['code']);
     }
 
+    public function test_create_new_sparepart_writes_to_authorized_branch_even_when_view_permission_fallback_differs(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        // User has sparepart.create in branch A but NOT sparepart.view in branch A.
+        // User has sparepart.view in branch B (so resolveCurrentBranch() would fall back to B).
+        $this->grantBranchPermission($user, $branchA, 'sparepart.create');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.view');
+        session(['current_sparepart_branch_id' => $branchA->id]);
+
+        $response = $this->actingAs($user)->post('/sparepart-branches', [
+            'code' => 'BAN-01',
+            'name' => 'Ban Depan',
+            'rack_number' => 'A1',
+            'selling_price' => 150000,
+            'minimum_stock' => 2,
+        ]);
+
+        $response->assertRedirect('/sparepart-branches');
+        $sparepartBranch = SparepartBranch::whereHas('sparepart', fn ($q) => $q->where('code', 'BAN-01'))->first();
+        $this->assertNotNull($sparepartBranch);
+        $this->assertSame($branchA->id, $sparepartBranch->branch_id, 'Sparepart must be written to the authorized branch (A), not the view-permission fallback branch (B).');
+    }
+
+    public function test_store_existing_writes_to_authorized_branch_even_when_view_permission_fallback_differs(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->grantBranchPermission($user, $branchA, 'sparepart.create');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.view');
+        $sparepart = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
+        session(['current_sparepart_branch_id' => $branchA->id]);
+
+        $response = $this->actingAs($user)->post('/sparepart-branches/existing', [
+            'sparepart_id' => $sparepart->id,
+            'rack_number' => 'B2',
+            'selling_price' => 60000,
+            'minimum_stock' => 5,
+        ]);
+
+        $response->assertRedirect('/sparepart-branches');
+        $sparepartBranch = SparepartBranch::where('sparepart_id', $sparepart->id)->first();
+        $this->assertNotNull($sparepartBranch);
+        $this->assertSame($branchA->id, $sparepartBranch->branch_id, 'Sparepart must be attached to the authorized branch (A), not the view-permission fallback branch (B).');
+    }
+
     public function test_create_existing_lists_only_spareparts_not_yet_configured_for_current_branch(): void
     {
         $user = User::factory()->create();

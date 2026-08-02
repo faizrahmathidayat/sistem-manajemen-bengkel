@@ -57,7 +57,7 @@ class SparepartBranchController extends Controller
 
     public function store(StoreSparepartRequest $request)
     {
-        $branch = $this->resolveCurrentBranch(auth()->user());
+        $branch = Branch::findOrFail((int) session('current_sparepart_branch_id'));
         $data = $request->validated();
 
         DB::transaction(function () use ($data, $branch) {
@@ -98,7 +98,7 @@ class SparepartBranchController extends Controller
 
     public function storeExisting(StoreSparepartToBranchRequest $request)
     {
-        $branch = $this->resolveCurrentBranch(auth()->user());
+        $branch = Branch::findOrFail((int) session('current_sparepart_branch_id'));
         $data = $request->validated();
 
         DB::transaction(function () use ($data, $branch) {

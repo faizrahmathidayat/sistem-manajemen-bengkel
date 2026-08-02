@@ -63,9 +63,51 @@
             </div>
         </div>
     </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h6 mb-3">Tren PKB vs Invoice Posted Mingguan</h2>
+                    <canvas id="trendChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h6 mb-3">Komposisi Status Piutang</h2>
+                    <canvas id="receivablesChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+        labels: @json($chartTrend['labels']),
+        datasets: [
+            { label: 'PKB', data: @json($chartTrend['pkb']), borderColor: '#2563EB', backgroundColor: 'rgba(37, 99, 235, .1)', tension: 0.3 },
+            { label: 'Invoice', data: @json($chartTrend['invoice']), borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, .1)', tension: 0.3 },
+        ],
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
+});
+
+const receivablesChart = new Chart(document.getElementById('receivablesChart'), {
+    type: 'doughnut',
+    data: {
+        labels: @json($chartReceivables['labels']),
+        datasets: [{ data: @json($chartReceivables['values']), backgroundColor: ['#10B981', '#F59E0B', '#DC2626', '#64748B'] }],
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
+});
+</script>
 <script>
 (function () {
     const selectAll = document.getElementById('branchFilterSelectAll');

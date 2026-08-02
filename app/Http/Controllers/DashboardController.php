@@ -106,6 +106,23 @@ class DashboardController extends Controller
         return ['revenue' => 42500000, 'unpaid' => 7300000];
     }
 
+    protected function dummyChartTrend(): array
+    {
+        return [
+            'labels' => ['Pekan 1', 'Pekan 2', 'Pekan 3', 'Pekan 4', 'Pekan 5', 'Pekan 6'],
+            'pkb' => [12, 15, 9, 18, 14, 20],
+            'invoice' => [10, 13, 8, 16, 12, 17],
+        ];
+    }
+
+    protected function dummyChartReceivables(): array
+    {
+        return [
+            'labels' => ['Belum Jatuh Tempo', '1-30 Hari', '31-60 Hari', '>60 Hari'],
+            'values' => [4200000, 1800000, 900000, 400000],
+        ];
+    }
+
     protected function buildPayload(User $user, array $selectedBranchIds): array
     {
         $scopedBranchIds = $this->scopedBranchIds($user, $selectedBranchIds);
@@ -116,6 +133,8 @@ class DashboardController extends Controller
             'criticalStockCount' => $this->computeCriticalStockCount($scopedBranchIds),
             'pkbStatus' => $this->dummyPkbStatus(),
             'receivables' => $this->dummyReceivables(),
+            'chartTrend' => $this->dummyChartTrend(),
+            'chartReceivables' => $this->dummyChartReceivables(),
         ];
     }
 }

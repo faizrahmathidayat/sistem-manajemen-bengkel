@@ -147,4 +147,19 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertJsonStructure(['pkbStatus' => ['open', 'shortage', 'completed'], 'receivables' => ['revenue', 'unpaid']]);
     }
+
+    public function test_dashboard_includes_dummy_chart_data(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch, true);
+
+        $response = $this->actingAs(User::find($user->id))->getJson('/dashboard');
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'chartTrend' => ['labels', 'pkb', 'invoice'],
+            'chartReceivables' => ['labels', 'values'],
+        ]);
+    }
 }

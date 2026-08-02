@@ -99,6 +99,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [SparepartBranchController::class, 'store'])->name('store');
         Route::get('/create-existing', [SparepartBranchController::class, 'createExisting'])->name('createExisting');
         Route::post('/existing', [SparepartBranchController::class, 'storeExisting'])->name('storeExisting');
+        Route::get('/{sparepartBranch}/edit', [SparepartBranchController::class, 'edit'])->name('edit');
+        Route::put('/{sparepartBranch}', [SparepartBranchController::class, 'update'])->name('update');
+        Route::patch('/{sparepartBranch}/deactivate', [SparepartBranchController::class, 'deactivate'])->name('deactivate');
+        Route::patch('/{sparepartBranch}/activate', [SparepartBranchController::class, 'activate'])->name('activate');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

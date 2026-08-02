@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSparepartRequest;
 use App\Http\Requests\StoreSparepartToBranchRequest;
+use App\Http\Requests\UpdateSparepartBranchRequest;
 use App\Models\Branch;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
@@ -112,6 +113,40 @@ class SparepartBranchController extends Controller
         });
 
         return redirect()->route('sparepart-branches.index')->with('status', 'Sparepart berhasil ditambahkan ke cabang ini.');
+    }
+
+    public function edit(SparepartBranch $sparepartBranch)
+    {
+        $this->authorize('update', $sparepartBranch);
+
+        $sparepartBranch->load('sparepart');
+
+        return view('sparepart-branches.edit', compact('sparepartBranch'));
+    }
+
+    public function update(UpdateSparepartBranchRequest $request, SparepartBranch $sparepartBranch)
+    {
+        $sparepartBranch->update($request->validated());
+
+        return redirect()->route('sparepart-branches.index')->with('status', 'Konfigurasi sparepart berhasil diperbarui.');
+    }
+
+    public function deactivate(SparepartBranch $sparepartBranch)
+    {
+        $this->authorize('delete', $sparepartBranch);
+
+        $sparepartBranch->update(['is_active' => false]);
+
+        return redirect()->route('sparepart-branches.index')->with('status', 'Sparepart dinonaktifkan di cabang ini.');
+    }
+
+    public function activate(SparepartBranch $sparepartBranch)
+    {
+        $this->authorize('delete', $sparepartBranch);
+
+        $sparepartBranch->update(['is_active' => true]);
+
+        return redirect()->route('sparepart-branches.index')->with('status', 'Sparepart diaktifkan kembali di cabang ini.');
     }
 
     protected function resolveCurrentBranch(User $user): ?Branch

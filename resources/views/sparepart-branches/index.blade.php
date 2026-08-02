@@ -74,6 +74,21 @@
                                         <i class="bi bi-pencil"></i> Ubah
                                     </a>
                                 @endcan
+                                @can('delete', $sparepartBranch)
+                                    @if ($sparepartBranch->is_active)
+                                        <form method="POST" action="{{ route('sparepart-branches.deactivate', $sparepartBranch) }}" class="d-inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">Nonaktifkan</button>
+                                        </form>
+                                    @else
+                                        <form method="POST" action="{{ route('sparepart-branches.activate', $sparepartBranch) }}" class="d-inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="btn btn-outline-success btn-sm">Aktifkan</button>
+                                        </form>
+                                    @endif
+                                @endcan
                             </td>
                         </tr>
                     @empty

@@ -93,4 +93,21 @@ class AppShellTest extends TestCase
         $response->assertSee(route('vehicles.index'), false);
         $response->assertSee(route('vehicle-references.index'), false);
     }
+
+    public function test_sidebar_shows_mechanic_and_service_links_when_authorized(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (['mechanic.view', 'service.view'] as $code) {
+            [$resource, $action] = explode('.', $code, 2);
+            $permission = Permission::create(['code' => $code, 'resource' => $resource, 'action' => $action, 'description' => $code]);
+            UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
+        }
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('mechanics.index'), false);
+        $response->assertSee(route('service-catalogs.index'), false);
+    }
 }

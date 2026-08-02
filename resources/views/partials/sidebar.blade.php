@@ -1,6 +1,6 @@
 @php($user = auth()->user())
 
-@if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view')))
+@if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view') || $user->can('mechanic.view') || $user->can('service.view')))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Master Data</div>
     <ul class="nav flex-column mb-3">
         @can('branch.view')
@@ -28,6 +28,20 @@
         <li class="nav-item">
             <a href="{{ route('vehicle-references.index') }}" class="nav-link {{ request()->routeIs('vehicle-references.*') ? 'active' : '' }}">
                 <i class="bi bi-diagram-3 me-2"></i> Referensi Kendaraan
+            </a>
+        </li>
+        @endcan
+        @can('mechanic.view')
+        <li class="nav-item">
+            <a href="{{ route('mechanics.index') }}" class="nav-link {{ request()->routeIs('mechanics.*') ? 'active' : '' }}">
+                <i class="bi bi-person-gear me-2"></i> Mekanik
+            </a>
+        </li>
+        @endcan
+        @can('service.view')
+        <li class="nav-item">
+            <a href="{{ route('service-catalogs.index') }}" class="nav-link {{ request()->routeIs('service-catalogs.*') ? 'active' : '' }}">
+                <i class="bi bi-tools me-2"></i> Jasa Service
             </a>
         </li>
         @endcan

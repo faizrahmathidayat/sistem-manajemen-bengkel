@@ -42,7 +42,18 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted py-4">Belum ada customer.</td></tr>
+                        <tr>
+                            <td colspan="5" class="p-0">
+                                @include('partials.empty-state', [
+                                    'icon' => 'bi-person-badge',
+                                    'title' => 'Belum ada customer',
+                                    'description' => 'Mulai dengan menambahkan customer pertama Anda.',
+                                    'ctaRoute' => 'customers.create',
+                                    'ctaLabel' => '+ Tambah Customer Pertama',
+                                    'ctaPermission' => 'customer.create',
+                                ])
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

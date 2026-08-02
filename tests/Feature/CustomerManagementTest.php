@@ -144,4 +144,35 @@ class CustomerManagementTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_index_shows_empty_state_when_no_customers_match(): void
+    {
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get('/customers');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada customer');
+        $response->assertSee('Mulai dengan menambahkan customer pertama Anda.');
+    }
+
+    public function test_empty_state_cta_shown_with_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['customer.view', 'customer.create']);
+
+        $response = $this->actingAs($user)->get('/customers');
+
+        $response->assertOk();
+        $response->assertSee('Tambah Customer Pertama');
+    }
+
+    public function test_empty_state_cta_hidden_without_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get('/customers');
+
+        $response->assertOk();
+        $response->assertDontSee('Tambah Customer Pertama');
+    }
 }

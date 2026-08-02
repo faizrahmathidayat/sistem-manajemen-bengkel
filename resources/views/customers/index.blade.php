@@ -7,7 +7,7 @@
 
     @include('partials.list-filter-bar', [
         'searchPlaceholder' => 'Cari nama atau telepon...',
-        'searchValue' => request('q'),
+        'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
         'actionsHtml' => auth()->user()->can('customer.create')

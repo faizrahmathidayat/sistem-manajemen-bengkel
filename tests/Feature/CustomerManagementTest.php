@@ -192,6 +192,17 @@ class CustomerManagementTest extends TestCase
         $response->assertDontSee('Siti Aminah');
     }
 
+    public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void
+    {
+        Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $user = $this->userWithPermissions(['customer.view']);
+
+        $response = $this->actingAs($user)->get('/customers?q[]=Budi');
+
+        $response->assertOk();
+        $response->assertSee('Budi Santoso');
+    }
+
     public function test_index_search_by_phone_filters_results(): void
     {
         Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso', 'phone' => '081111111111']);

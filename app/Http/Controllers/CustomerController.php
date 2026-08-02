@@ -18,8 +18,13 @@ class CustomerController extends Controller
             ->intersect(auth()->user()->branches->pluck('id'))
             ->values()->all();
 
+        // Sanitize once here and reuse for both the query and the view's search
+        // input value — request('q') can be an array (?q[]=x), which would crash
+        // Blade's {{ }} (htmlspecialchars) if read raw a second time in the view.
+        $search = is_string(request('q')) ? trim(request('q')) : null;
+
         $customers = Customer::orderBy('name')
-            ->when(is_string(request('q')) ? trim(request('q')) : null, function ($query, $q) {
+            ->when($search, function ($query, $q) {
                 $query->where(function ($inner) use ($q) {
                     $inner->where('name', 'like', '%' . addcslashes($q, '%_\\') . '%')
                         ->orWhere('phone', 'like', '%' . addcslashes($q, '%_\\') . '%');
@@ -38,7 +43,8 @@ class CustomerController extends Controller
         // unscoped before this branch (not a new leak introduced here).
         return view('customers.index', compact('customers'))
             ->with('branches', $userBranches)
-            ->with('selectedBranchIds', $branchIds);
+            ->with('selectedBranchIds', $branchIds)
+            ->with('search', $search);
     }
 
     public function create()

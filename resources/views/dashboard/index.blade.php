@@ -10,7 +10,7 @@
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             @include('partials.branch-multiselect-filter')
-            @if (auth()->user()->branchesWithPermission('sparepart.view')->isNotEmpty())
+            @if (auth()->user()->branchesWithPermission('sparepart.create')->isNotEmpty())
                 <a href="{{ route('sparepart-branches.create') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-lg"></i> Sparepart Baru
                 </a>

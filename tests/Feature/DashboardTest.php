@@ -250,4 +250,28 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertSee('dashboard-loading-overlay', false);
     }
+
+    public function test_sparepart_baru_button_shown_when_user_has_create_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Sparepart Baru');
+    }
+
+    public function test_sparepart_baru_button_hidden_when_user_only_has_view_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertDontSee('Sparepart Baru');
+    }
 }

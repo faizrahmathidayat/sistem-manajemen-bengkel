@@ -295,19 +295,20 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $response->assertSee('Sparepart Baru');
     }
 
-    public function test_empty_state_cta_hidden_when_user_lacks_create_permission_in_current_branch(): void
+    public function test_empty_state_cta_shown_when_user_has_create_permission_in_a_different_branch(): void
     {
         $user = User::factory()->create();
         $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
         $this->grantBranchPermission($user, $branchA, 'sparepart.view');
         // sparepart.create granted only in branch B, not the current branch (A).
+        // The CTA must still show, since the create form now lets the user pick branch B.
         $this->grantBranchPermission($user, $branchB, 'sparepart.create');
 
         $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches?branch_id=' . $branchA->id);
 
         $response->assertOk();
-        $response->assertDontSee('Sparepart Baru');
+        $response->assertSee('Sparepart Baru');
     }
 
     public function test_index_renders_filter_bar_with_branch_switcher(): void
@@ -420,5 +421,57 @@ class SparepartBranchIndexAndCreateTest extends TestCase
 
         $response->assertRedirect('/sparepart-branches');
         $this->assertSame($branchA->id, session('current_sparepart_branch_id'), 'Creating into a different branch must not switch the session context.');
+    }
+
+    public function test_empty_state_cta_hidden_when_user_has_no_create_permission_in_any_branch(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches');
+
+        $response->assertOk();
+        $response->assertDontSee('Sparepart Baru');
+    }
+
+    public function test_header_link_shown_when_user_has_create_permission_in_a_different_branch(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches?branch_id=' . $branchA->id);
+
+        $response->assertOk();
+        $response->assertSee('Sparepart Baru');
+    }
+
+    public function test_header_link_hidden_when_user_has_no_create_permission_in_any_branch(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches');
+
+        $response->assertOk();
+        $response->assertDontSee('Sparepart Baru');
+    }
+
+    public function test_tambah_dari_cabang_lain_link_stays_hidden_when_create_permission_is_in_a_different_branch(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches?branch_id=' . $branchA->id);
+
+        $response->assertOk();
+        $response->assertDontSee('Tambah dari Cabang Lain');
     }
 }

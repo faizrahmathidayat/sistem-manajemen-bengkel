@@ -8,6 +8,8 @@
                 <a href="{{ route('sparepart-branches.createExisting') }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-link-45deg"></i> Tambah dari Cabang Lain
                 </a>
+            @endif
+            @if (auth()->user()->branchesWithPermission('sparepart.create')->isNotEmpty())
                 <a href="{{ route('sparepart-branches.create') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-lg"></i> Sparepart Baru
                 </a>
@@ -87,7 +89,7 @@
                                     'description' => 'Mulai dengan menambahkan sparepart pertama di cabang ini.',
                                     'ctaRoute' => 'sparepart-branches.create',
                                     'ctaLabel' => '+ Sparepart Baru',
-                                    'ctaVisible' => auth()->user()->hasPermissionToInBranch('sparepart.create', $currentBranch->id),
+                                    'ctaVisible' => auth()->user()->branchesWithPermission('sparepart.create')->isNotEmpty(),
                                 ])
                             </td>
                         </tr>

@@ -207,4 +207,85 @@ class VehicleManagementTest extends TestCase
         $response->assertJsonFragment(['name' => 'Beat']);
         $response->assertJsonMissing(['name' => 'Mio']);
     }
+
+    public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        Vehicle::create([
+            'customer_id' => $customer->id, 'category_id' => $category->id,
+            'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 1234 XYZ',
+        ]);
+        $user = $this->userWithPermissions(['vehicle.view']);
+
+        $response = $this->actingAs($user)->get('/vehicles?q[]=B%201234');
+
+        $response->assertOk();
+        $response->assertSee('B 1234 XYZ');
+    }
+
+    public function test_index_shows_empty_state_when_no_vehicles_match(): void
+    {
+        $user = $this->userWithPermissions(['vehicle.view']);
+
+        $response = $this->actingAs($user)->get('/vehicles');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada kendaraan');
+    }
+
+    public function test_empty_state_cta_shown_with_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['vehicle.view', 'vehicle.create']);
+
+        $response = $this->actingAs($user)->get('/vehicles');
+
+        $response->assertOk();
+        $response->assertSee('Tambah Kendaraan Pertama');
+    }
+
+    public function test_empty_state_cta_hidden_without_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['vehicle.view']);
+
+        $response = $this->actingAs($user)->get('/vehicles');
+
+        $response->assertOk();
+        $response->assertDontSee('Tambah Kendaraan Pertama');
+    }
+
+    public function test_index_renders_filter_bar_with_customer_dropdown(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        $user = $this->userWithPermissions(['vehicle.view']);
+
+        $response = $this->actingAs($user)->get('/vehicles');
+
+        $response->assertOk();
+        $response->assertSee('Terapkan');
+        $response->assertSee('Cari no. polisi/rangka/mesin...');
+        $response->assertSee('Budi');
+    }
+
+    public function test_index_customer_filter_still_scopes_results_after_retrofit(): void
+    {
+        $customerA = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        $customerB = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Siti', 'stnk_name' => 'Siti']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        Vehicle::create([
+            'customer_id' => $customerA->id, 'category_id' => $category->id,
+            'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 1111 AAA',
+        ]);
+        Vehicle::create([
+            'customer_id' => $customerB->id, 'category_id' => $category->id,
+            'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 2222 BBB',
+        ]);
+        $user = $this->userWithPermissions(['vehicle.view']);
+
+        $response = $this->actingAs($user)->get("/vehicles?customer_id={$customerA->id}");
+
+        $response->assertOk();
+        $response->assertSee('B 1111 AAA');
+        $response->assertDontSee('B 2222 BBB');
+    }
 }

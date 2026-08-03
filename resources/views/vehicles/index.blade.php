@@ -3,31 +3,20 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-car-front me-2"></i>Kendaraan</h1>
-        @can('vehicle.create')
-            <a href="{{ route('vehicles.create') }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-lg"></i> Tambah Kendaraan
-            </a>
-        @endcan
     </div>
 
-    <form method="GET" class="row g-2 mb-3">
-        <div class="col-md-4">
-            <select name="customer_id" class="form-select form-select-sm">
-                <option value="">-- Semua Customer --</option>
-                @foreach ($customers as $customer)
-                    <option value="{{ $customer->id }}" {{ (int) request('customer_id') === $customer->id ? 'selected' : '' }}>{{ $customer->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-md-4">
-            <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Cari no. polisi/rangka/mesin">
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-outline-secondary btn-sm">Cari</button>
-        </div>
-    </form>
+    @include('partials.list-filter-bar', [
+        'searchPlaceholder' => 'Cari no. polisi/rangka/mesin...',
+        'searchValue' => $search,
+        'branchFilterBranches' => null,
+        'branchFilterSelected' => [],
+        'extraFilterHtml' => view('vehicles._customer_filter_select', ['customers' => $customers, 'selectedCustomerId' => $selectedCustomerId])->render(),
+        'actionsHtml' => auth()->user()->can('vehicle.create')
+            ? '<a href="' . route('vehicles.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Tambah Kendaraan</a>'
+            : '',
+    ])
 
-    <div class="card">
+    <div class="card mt-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -61,7 +50,18 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted py-4">Belum ada kendaraan.</td></tr>
+                        <tr>
+                            <td colspan="5" class="p-0">
+                                @include('partials.empty-state', [
+                                    'icon' => 'bi-car-front',
+                                    'title' => 'Belum ada kendaraan',
+                                    'description' => 'Mulai dengan menambahkan kendaraan pertama.',
+                                    'ctaRoute' => 'vehicles.create',
+                                    'ctaLabel' => '+ Tambah Kendaraan Pertama',
+                                    'ctaPermission' => 'vehicle.create',
+                                ])
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

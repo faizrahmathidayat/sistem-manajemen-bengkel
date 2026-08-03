@@ -1,3 +1,4 @@
+@php($extraFilterHtml = $extraFilterHtml ?? '')
 <div class="card">
     <div class="card-body">
         <form method="GET" action="{{ url()->current() }}" id="listFilterBarForm" class="row g-2 align-items-center">
@@ -10,6 +11,15 @@
             @if ($branchFilterBranches !== null)
             <div class="col-md-3">
                 @include('partials.branch-multiselect-filter', ['allowedBranches' => $branchFilterBranches, 'selectedBranchIds' => $branchFilterSelected])
+            </div>
+            @endif
+            @if ($extraFilterHtml !== '')
+            <div class="col-md-3">
+                {{-- extraFilterHtml is always caller-authored (a rendered Blade partial), never
+                     request/user-controlled data — if a future caller ever interpolates
+                     user input into this string, it MUST be escaped before being passed in,
+                     since this echoes raw. --}}
+                {!! $extraFilterHtml !!}
             </div>
             @endif
             <div class="col-md-4 text-md-end">

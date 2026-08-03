@@ -16,13 +16,16 @@ class VehicleController extends Controller
     {
         $this->authorize('vehicle.view');
 
+        $search = is_string(request('q')) ? trim(request('q')) : null;
+        $customerId = request('customer_id') ? (int) request('customer_id') : null;
+
         $vehicles = Vehicle::with(['customer', 'category', 'brand', 'type'])
-            ->when(request('customer_id'), fn ($query, $customerId) => $query->where('customer_id', $customerId))
-            ->when(request('q'), function ($query, $q) {
+            ->when($customerId, fn ($query, $id) => $query->where('customer_id', $id))
+            ->when($search, function ($query, $q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('plate_number', 'like', "%{$q}%")
-                        ->orWhere('frame_number', 'like', "%{$q}%")
-                        ->orWhere('engine_number', 'like', "%{$q}%");
+                    $inner->where('plate_number', 'like', '%' . addcslashes($q, '%_\\') . '%')
+                        ->orWhere('frame_number', 'like', '%' . addcslashes($q, '%_\\') . '%')
+                        ->orWhere('engine_number', 'like', '%' . addcslashes($q, '%_\\') . '%');
                 });
             })
             ->orderBy('created_at', 'desc')
@@ -31,7 +34,9 @@ class VehicleController extends Controller
 
         $customers = Customer::where('is_active', true)->orderBy('name')->get();
 
-        return view('vehicles.index', compact('vehicles', 'customers'));
+        return view('vehicles.index', compact('vehicles', 'customers'))
+            ->with('search', $search)
+            ->with('selectedCustomerId', $customerId);
     }
 
     public function create()

@@ -50,13 +50,16 @@ class SparepartBranchController extends Controller
 
     public function create()
     {
-        $branch = $this->resolveCurrentBranch(auth()->user());
+        $branches = auth()->user()->branchesWithPermission('sparepart.create');
 
-        if (! $branch || ! auth()->user()->hasPermissionToInBranch('sparepart.create', $branch->id)) {
-            abort(403);
+        if ($branches->isEmpty()) {
+            return view('sparepart-branches.no-access');
         }
 
-        return view('sparepart-branches.create', compact('branch'));
+        $currentBranchId = session('current_sparepart_branch_id');
+        $selectedBranch = $branches->firstWhere('id', $currentBranchId) ?? $branches->first();
+
+        return view('sparepart-branches.create', compact('branches', 'selectedBranch'));
     }
 
     public function store(StoreSparepartRequest $request)

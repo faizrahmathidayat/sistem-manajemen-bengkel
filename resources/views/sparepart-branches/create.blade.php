@@ -2,13 +2,23 @@
 @section('title', 'Sparepart Baru')
 @section('content')
     <div class="mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-box-seam me-2"></i>Sparepart Baru — {{ $branch->name }}</h1>
+        <h1 class="h4 mb-0"><i class="bi bi-box-seam me-2"></i>Sparepart Baru</h1>
     </div>
     <div class="card">
         <div class="card-body">
             <form method="POST" action="{{ route('sparepart-branches.store') }}">
                 @csrf
-                <input type="hidden" name="branch_id" value="{{ $branch->id }}">
+                <div class="mb-3">
+                    <label for="branch_id" class="form-label">Cabang</label>
+                    <select name="branch_id" id="branch_id" class="form-select @error('branch_id') is-invalid @enderror" required>
+                        @foreach ($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ (int) old('branch_id', $selectedBranch->id) === $branch->id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
                 <div class="mb-3">
                     <label for="code" class="form-label">Kode Sparepart</label>
                     <input type="text" name="code" id="code" value="{{ old('code') }}" class="form-control @error('code') is-invalid @enderror" maxlength="30" required>

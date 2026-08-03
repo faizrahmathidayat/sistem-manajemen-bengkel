@@ -322,4 +322,103 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $response->assertSee('Terapkan');
         $response->assertSee('Cabang Jakarta');
     }
+
+    public function test_create_shows_no_access_page_for_user_without_create_permission_in_any_branch(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+
+        $response = $this->actingAs($user)->get('/sparepart-branches/create');
+
+        $response->assertOk();
+        $response->assertSee('belum memiliki akses');
+    }
+
+    public function test_create_lists_every_branch_the_user_can_create_in(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->grantBranchPermission($user, $branchA, 'sparepart.create');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.create');
+
+        $response = $this->actingAs($user)->get('/sparepart-branches/create');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Jakarta');
+        $response->assertSee('Cabang Bandung');
+    }
+
+    public function test_create_is_reachable_when_session_branch_lacks_create_permission_but_another_branch_has_it(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        // User has sparepart.view (only) in branch A, so the index page's session
+        // switcher parks them on branch A. They have sparepart.create only in branch B.
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.create');
+        $this->actingAs($user)->get('/sparepart-branches'); // establishes session on branch A
+
+        $response = $this->get('/sparepart-branches/create');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Bandung');
+        $response->assertDontSee('403');
+    }
+
+    public function test_create_defaults_select_to_session_branch_when_it_is_a_valid_option(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        $this->grantBranchPermission($user, $branchA, 'sparepart.create');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.view');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.create');
+        $this->actingAs($user)->get('/sparepart-branches?branch_id=' . $branchB->id); // session -> branch B
+
+        $response = $this->get('/sparepart-branches/create');
+
+        $response->assertOk();
+        $response->assertSee('<option value="' . $branchB->id . '" selected', false);
+    }
+
+    public function test_store_still_rejects_branch_id_the_user_cannot_create_in(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->grantBranchPermission($user, $branchA, 'sparepart.create');
+        // User has no sparepart.create grant in branch B.
+        $this->actingAs($user)->get('/sparepart-branches');
+
+        $response = $this->post('/sparepart-branches', [
+            'branch_id' => $branchB->id, 'code' => 'BAN-01', 'name' => 'Ban Depan', 'selling_price' => 150000,
+        ]);
+
+        $response->assertForbidden();
+    }
+
+    public function test_create_does_not_change_session_branch_after_successful_store_into_a_different_branch(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        $this->grantBranchPermission($user, $branchA, 'sparepart.create');
+        $this->grantBranchPermission($user, $branchB, 'sparepart.create');
+        $this->actingAs($user)->get('/sparepart-branches'); // session -> branch A (first allowed)
+
+        $response = $this->post('/sparepart-branches', [
+            'branch_id' => $branchB->id,
+            'code' => 'BAN-01',
+            'name' => 'Ban Depan',
+            'selling_price' => 150000,
+        ]);
+
+        $response->assertRedirect('/sparepart-branches');
+        $this->assertSame($branchA->id, session('current_sparepart_branch_id'), 'Creating into a different branch must not switch the session context.');
+    }
 }

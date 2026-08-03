@@ -5,10 +5,9 @@
     <ul class="nav flex-column mb-3">
         @if ($user->branchesWithPermission('pkb.view')->isNotEmpty())
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('work-orders.index') }}" class="nav-link {{ request()->routeIs('work-orders.*') ? 'active' : '' }}">
                 <i class="bi bi-clipboard-check me-2"></i> Perintah Kerja Bengkel
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
         @if ($user->branchesWithPermission('invoice.view')->isNotEmpty())

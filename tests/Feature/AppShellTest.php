@@ -212,14 +212,15 @@ class AppShellTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get('/dashboard');
 
         $response->assertOk();
-        // "Perintah Kerja Bengkel" (not a bare "Segera Hadir" — the Dashboard
-        // header's own "Buat PKB Baru — Segera Hadir" button shares that text)
-        // is unique to this sidebar placeholder and is the whole assertion:
-        // "bi-clipboard-check" was tried as a companion assertion but is NOT
-        // unique — the Dashboard's own "Status PKB Hari Ini" KPI card renders
-        // the same icon class unconditionally (dashboard/index.blade.php),
-        // which would make that assertion pass even if this sidebar placeholder
-        // were broken.
+        // "Perintah Kerja Bengkel" is the sidebar link's own unique text.
+        // "bi-clipboard-check" is NOT a safe companion assertion — the
+        // Dashboard's own "Status PKB Hari Ini" KPI card renders the same
+        // icon class unconditionally (dashboard/index.blade.php), which would
+        // make that assertion pass even if this sidebar link were broken.
+        // (The Dashboard's own "Buat PKB Baru" button, previously a disabled
+        // placeholder mentioned here, is now a real conditional link — see
+        // test_buat_pkb_baru_button_shown_when_user_has_pkb_create_permission
+        // in DashboardTest.php.)
         $response->assertSee('Perintah Kerja Bengkel', false);
     }
 

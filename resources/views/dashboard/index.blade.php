@@ -15,10 +15,11 @@
                     <i class="bi bi-plus-lg"></i> Sparepart Baru
                 </a>
             @endif
-            <span class="btn btn-outline-secondary btn-sm disabled" style="cursor: not-allowed;" aria-disabled="true">
-                <i class="bi bi-clipboard-plus"></i> Buat PKB Baru
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            @if (auth()->user()->branchesWithPermission('pkb.create')->isNotEmpty())
+                <a href="{{ route('work-orders.create') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-clipboard-plus"></i> Buat PKB Baru
+                </a>
+            @endif
         </div>
     </div>
 

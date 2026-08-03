@@ -274,4 +274,28 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('Sparepart Baru');
     }
+
+    public function test_buat_pkb_baru_button_shown_when_user_has_pkb_create_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Buat PKB Baru');
+    }
+
+    public function test_buat_pkb_baru_button_hidden_when_user_only_has_view_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertDontSee('Buat PKB Baru');
+    }
 }

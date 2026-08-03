@@ -149,4 +149,82 @@ class ServiceCatalogManagementTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_index_search_by_code_filters_results(): void
+    {
+        ServiceCatalog::create(['code' => 'GANTI-OLI', 'name' => 'Ganti Oli', 'default_price' => 75000]);
+        ServiceCatalog::create(['code' => 'TUNE-UP', 'name' => 'Tune Up', 'default_price' => 150000]);
+        $user = $this->userWithPermissions(['service.view']);
+
+        $response = $this->actingAs($user)->get('/service-catalogs?q=GANTI-OLI');
+
+        $response->assertOk();
+        $response->assertSee('Ganti Oli');
+        $response->assertDontSee('Tune Up');
+    }
+
+    public function test_index_search_by_name_filters_results(): void
+    {
+        ServiceCatalog::create(['code' => 'GANTI-OLI', 'name' => 'Ganti Oli', 'default_price' => 75000]);
+        ServiceCatalog::create(['code' => 'TUNE-UP', 'name' => 'Tune Up', 'default_price' => 150000]);
+        $user = $this->userWithPermissions(['service.view']);
+
+        $response = $this->actingAs($user)->get('/service-catalogs?q=Tune');
+
+        $response->assertOk();
+        $response->assertSee('Tune Up');
+        $response->assertDontSee('Ganti Oli');
+    }
+
+    public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void
+    {
+        ServiceCatalog::create(['code' => 'GANTI-OLI', 'name' => 'Ganti Oli', 'default_price' => 75000]);
+        $user = $this->userWithPermissions(['service.view']);
+
+        $response = $this->actingAs($user)->get('/service-catalogs?q[]=GANTI-OLI');
+
+        $response->assertOk();
+        $response->assertSee('Ganti Oli');
+    }
+
+    public function test_index_shows_empty_state_when_no_service_catalogs_match(): void
+    {
+        $user = $this->userWithPermissions(['service.view']);
+
+        $response = $this->actingAs($user)->get('/service-catalogs');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada jasa service');
+    }
+
+    public function test_empty_state_cta_shown_with_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['service.view', 'service.create']);
+
+        $response = $this->actingAs($user)->get('/service-catalogs');
+
+        $response->assertOk();
+        $response->assertSee('Tambah Jasa Pertama');
+    }
+
+    public function test_empty_state_cta_hidden_without_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['service.view']);
+
+        $response = $this->actingAs($user)->get('/service-catalogs');
+
+        $response->assertOk();
+        $response->assertDontSee('Tambah Jasa Pertama');
+    }
+
+    public function test_index_renders_filter_bar(): void
+    {
+        $user = $this->userWithPermissions(['service.view']);
+
+        $response = $this->actingAs($user)->get('/service-catalogs');
+
+        $response->assertOk();
+        $response->assertSee('Terapkan');
+        $response->assertSee('Cari kode atau nama jasa...');
+    }
 }

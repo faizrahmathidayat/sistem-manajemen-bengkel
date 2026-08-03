@@ -12,9 +12,19 @@ class ServiceCatalogController extends Controller
     {
         $this->authorize('service.view');
 
-        $serviceCatalogs = ServiceCatalog::orderBy('name')->simplePaginate(15);
+        $search = is_string(request('q')) ? trim(request('q')) : null;
 
-        return view('service-catalogs.index', compact('serviceCatalogs'));
+        $serviceCatalogs = ServiceCatalog::orderBy('name')
+            ->when($search, function ($query, $q) {
+                $query->where(function ($inner) use ($q) {
+                    $inner->where('code', 'like', '%' . addcslashes($q, '%_\\') . '%')
+                        ->orWhere('name', 'like', '%' . addcslashes($q, '%_\\') . '%');
+                });
+            })
+            ->simplePaginate(15)
+            ->withQueryString();
+
+        return view('service-catalogs.index', compact('serviceCatalogs'))->with('search', $search);
     }
 
     public function create()

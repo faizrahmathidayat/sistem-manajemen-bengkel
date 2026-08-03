@@ -15,9 +15,30 @@ class UserController extends Controller
     {
         $this->authorize('user.view');
 
-        $users = User::orderBy('name')->simplePaginate(15);
+        $branchIds = collect(request('branch_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->intersect(auth()->user()->branches->pluck('id'))
+            ->values()->all();
 
-        return view('users.index', compact('users'));
+        $search = is_string(request('q')) ? trim(request('q')) : null;
+
+        $users = User::orderBy('name')
+            ->when($search, function ($query, $q) {
+                $query->where(function ($inner) use ($q) {
+                    $inner->where('name', 'like', '%' . addcslashes($q, '%_\\') . '%')
+                        ->orWhere('username', 'like', '%' . addcslashes($q, '%_\\') . '%');
+                });
+            })
+            ->when($branchIds, fn ($query) => $query->whereHas('branches', fn ($q) => $q->whereIn('branches.id', $branchIds)))
+            ->simplePaginate(15)
+            ->withQueryString();
+
+        $userBranches = auth()->user()->branches;
+
+        return view('users.index', compact('users'))
+            ->with('branches', $userBranches)
+            ->with('selectedBranchIds', $branchIds)
+            ->with('search', $search);
     }
 
     public function create()

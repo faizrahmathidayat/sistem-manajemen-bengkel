@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\UserPermission;
+use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -180,5 +182,120 @@ class UserManagementTest extends TestCase
         ]);
 
         $response->assertForbidden();
+    }
+
+    public function test_index_search_by_name_filters_results(): void
+    {
+        User::factory()->create(['name' => 'Agus Setiawan']);
+        User::factory()->create(['name' => 'Budi Santoso']);
+        $user = $this->userWithPermissions(['user.view']);
+
+        $response = $this->actingAs($user)->get('/users?q=Agus');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertDontSee('Budi Santoso');
+    }
+
+    public function test_index_search_by_username_filters_results(): void
+    {
+        User::factory()->create(['name' => 'Agus Setiawan', 'username' => 'agus_setiawan']);
+        User::factory()->create(['name' => 'Budi Santoso', 'username' => 'budi_santoso']);
+        $user = $this->userWithPermissions(['user.view']);
+
+        $response = $this->actingAs($user)->get('/users?q=agus_setiawan');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertDontSee('Budi Santoso');
+    }
+
+    public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void
+    {
+        User::factory()->create(['name' => 'Agus Setiawan']);
+        $user = $this->userWithPermissions(['user.view']);
+
+        $response = $this->actingAs($user)->get('/users?q[]=Agus');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+    }
+
+    public function test_index_branch_filter_scopes_to_selected_branch(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $targetA = User::factory()->create(['name' => 'Agus Setiawan']);
+        $targetB = User::factory()->create(['name' => 'Budi Santoso']);
+        $admin = $this->userWithPermissions(['user.view']);
+        (new UserBranchService())->assign($targetA, $branchA);
+        (new UserBranchService())->assign($targetB, $branchB);
+        (new UserBranchService())->assign($admin, $branchA);
+        (new UserBranchService())->assign($admin, $branchB);
+
+        $response = $this->actingAs(User::find($admin->id))->get("/users?branch_ids[]={$branchA->id}");
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertDontSee('Budi Santoso');
+    }
+
+    public function test_index_branch_filter_drops_branch_ids_the_user_is_not_assigned_to(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $targetA = User::factory()->create(['name' => 'Agus Setiawan']);
+        $targetB = User::factory()->create(['name' => 'Budi Santoso']);
+        $admin = $this->userWithPermissions(['user.view']);
+        (new UserBranchService())->assign($targetA, $branchA);
+        (new UserBranchService())->assign($targetB, $branchB);
+        (new UserBranchService())->assign($admin, $branchA);
+
+        $response = $this->actingAs(User::find($admin->id))->get("/users?branch_ids[]={$branchB->id}");
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertSee('Budi Santoso');
+    }
+
+    public function test_index_shows_empty_state_when_no_users_match(): void
+    {
+        $user = $this->userWithPermissions(['user.view']);
+
+        $response = $this->actingAs($user)->get('/users?q=NoSuchUserXYZ');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada user');
+    }
+
+    public function test_empty_state_cta_shown_with_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['user.view', 'user.create']);
+
+        $response = $this->actingAs($user)->get('/users?q=NoSuchUserXYZ');
+
+        $response->assertOk();
+        $response->assertSee('Tambah User Pertama');
+    }
+
+    public function test_empty_state_cta_hidden_without_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['user.view']);
+
+        $response = $this->actingAs($user)->get('/users?q=NoSuchUserXYZ');
+
+        $response->assertOk();
+        $response->assertDontSee('Tambah User Pertama');
+    }
+
+    public function test_index_renders_filter_bar(): void
+    {
+        $user = $this->userWithPermissions(['user.view']);
+
+        $response = $this->actingAs($user)->get('/users');
+
+        $response->assertOk();
+        $response->assertSee('Terapkan');
+        $response->assertSee('Cari nama atau username...');
     }
 }

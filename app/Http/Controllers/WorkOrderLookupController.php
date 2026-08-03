@@ -25,7 +25,10 @@ class WorkOrderLookupController extends Controller
 
     public function vehiclesByCustomer(Customer $customer)
     {
-        $userBranchIds = auth()->user()->branchesWithPermission('pkb.create')->pluck('id');
+        $userBranchIds = auth()->user()->branchesWithPermission('pkb.create')
+            ->pluck('id')
+            ->merge(auth()->user()->branchesWithPermission('pkb.edit')->pluck('id'))
+            ->unique();
         $customerBranchIds = $customer->branches->pluck('id');
         abort_unless($userBranchIds->intersect($customerBranchIds)->isNotEmpty(), 403);
 

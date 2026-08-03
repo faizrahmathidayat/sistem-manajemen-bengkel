@@ -116,7 +116,44 @@ class WorkOrderController extends Controller
         $serviceCatalogs = ServiceCatalog::where('is_active', true)->orderBy('name')->get();
         $vehicles = $workOrder->customer->vehicles()->where('is_active', true)->orderBy('plate_number')->get();
 
-        return view('work-orders.edit', compact('workOrder', 'customers', 'mechanics', 'sparepartBranches', 'serviceCatalogs', 'vehicles'));
+        $sparepartOptionsForEdit = $sparepartBranches->map(function ($sb) {
+            return [
+                'id' => $sb->id,
+                'code' => $sb->sparepart->code,
+                'name' => $sb->sparepart->name,
+                'selling_price' => (float) $sb->selling_price,
+                'available_qty' => (float) $sb->stock->available_qty,
+            ];
+        })->values();
+
+        $existingServiceLines = $workOrder->serviceLines->map(function ($line) {
+            return [
+                'service_catalog_id' => $line->service_catalog_id,
+                'description' => $line->description,
+                'qty' => (float) $line->qty,
+                'unit_price' => (float) $line->unit_price,
+            ];
+        })->values();
+
+        $existingSparepartLines = $workOrder->sparepartLines->map(function ($line) {
+            return [
+                'sparepart_branch_id' => $line->sparepart_branch_id,
+                'qty' => (float) $line->qty,
+                'unit_price' => (float) $line->unit_price,
+            ];
+        })->values();
+
+        return view('work-orders.edit', compact(
+            'workOrder',
+            'customers',
+            'mechanics',
+            'sparepartBranches',
+            'serviceCatalogs',
+            'vehicles',
+            'sparepartOptionsForEdit',
+            'existingServiceLines',
+            'existingSparepartLines'
+        ));
     }
 
     public function update(UpdateWorkOrderRequest $request, WorkOrder $workOrder)

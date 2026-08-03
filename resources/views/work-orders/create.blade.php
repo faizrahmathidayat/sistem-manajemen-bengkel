@@ -95,21 +95,21 @@
         const mechanicSelect = document.getElementById('mechanicSelect');
         const addSparepartButton = document.getElementById('addSparepartLine');
 
-        branchSelect.addEventListener('change', async function () {
+        async function handleBranchChange(branchId) {
             customerSelect.disabled = true;
             mechanicSelect.disabled = true;
             addSparepartButton.disabled = true;
             WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', function (i) { return i.plate_number; });
             vehicleSelect.disabled = true;
-            if (!this.value) {
+            if (!branchId) {
                 WorkOrderLineItems.fillSelect(customerSelect, [], '-- Pilih Cabang Dulu --', 'id', function (i) { return i.name; });
                 WorkOrderLineItems.fillSelect(mechanicSelect, [], '-- Pilih Cabang Dulu --', 'id', function (i) { return i.name; });
                 return;
             }
             const [customers, mechanics, spareparts] = await Promise.all([
-                WorkOrderLineItems.fetchJson(`/work-orders/lookup/customers/${this.value}`),
-                WorkOrderLineItems.fetchJson(`/work-orders/lookup/mechanics/${this.value}`),
-                WorkOrderLineItems.fetchJson(`/work-orders/lookup/spareparts/${this.value}`),
+                WorkOrderLineItems.fetchJson(`/work-orders/lookup/customers/${branchId}`),
+                WorkOrderLineItems.fetchJson(`/work-orders/lookup/mechanics/${branchId}`),
+                WorkOrderLineItems.fetchJson(`/work-orders/lookup/spareparts/${branchId}`),
             ]);
             WorkOrderLineItems.fillSelect(customerSelect, customers, '-- Pilih Customer --', 'id', function (i) { return i.name; });
             customerSelect.disabled = false;
@@ -117,6 +117,10 @@
             mechanicSelect.disabled = false;
             WorkOrderLineItems.setSparepartOptions(spareparts);
             addSparepartButton.disabled = false;
+        }
+
+        branchSelect.addEventListener('change', function () {
+            handleBranchChange(this.value);
         });
 
         customerSelect.addEventListener('change', async function () {
@@ -129,6 +133,13 @@
             WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', function (i) { return i.plate_number || i.frame_number; });
             vehicleSelect.disabled = false;
         });
+
+        // Validation-error round-trip: old('branch_id') re-selects the branch option but
+        // does not fire a native `change` event, so the customer/mechanic/sparepart
+        // cascade would otherwise stay empty and disabled. Re-run it once on load.
+        if (branchSelect.value) {
+            handleBranchChange(branchSelect.value);
+        }
     })();
     </script>
     @endpush

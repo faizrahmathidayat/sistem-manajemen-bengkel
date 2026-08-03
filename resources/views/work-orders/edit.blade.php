@@ -89,25 +89,10 @@
         const customerSelect = document.getElementById('customerSelect');
         const vehicleSelect = document.getElementById('vehicleSelect');
 
-        const existingSparepartOptions = @json($sparepartBranches->map(function ($sb) {
-            return [
-                'id' => $sb->id,
-                'code' => $sb->sparepart->code,
-                'name' => $sb->sparepart->name,
-                'selling_price' => (float) $sb->selling_price,
-                'available_qty' => (float) $sb->stock->available_qty,
-            ];
-        }));
+        const existingSparepartOptions = @json($sparepartOptionsForEdit);
         WorkOrderLineItems.setSparepartOptions(existingSparepartOptions);
 
-        const existingServiceLines = @json($workOrder->serviceLines->map(function ($line) {
-            return [
-                'service_catalog_id' => $line->service_catalog_id,
-                'description' => $line->description,
-                'qty' => (float) $line->qty,
-                'unit_price' => (float) $line->unit_price,
-            ];
-        }));
+        const existingServiceLines = @json($existingServiceLines);
         existingServiceLines.forEach(function (line) {
             WorkOrderLineItems.addServiceLine();
             const rows = document.querySelectorAll('#serviceLines .service-line');
@@ -118,13 +103,7 @@
             row.querySelector('.service-unit-price').value = line.unit_price;
         });
 
-        const existingSparepartLines = @json($workOrder->sparepartLines->map(function ($line) {
-            return [
-                'sparepart_branch_id' => $line->sparepart_branch_id,
-                'qty' => (float) $line->qty,
-                'unit_price' => (float) $line->unit_price,
-            ];
-        }));
+        const existingSparepartLines = @json($existingSparepartLines);
         existingSparepartLines.forEach(function (line) {
             WorkOrderLineItems.addSparepartLine();
             const rows = document.querySelectorAll('#sparepartLines .sparepart-line');

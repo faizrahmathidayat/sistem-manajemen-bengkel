@@ -256,6 +256,33 @@ class WorkOrderManagementTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_create_form_renders_for_a_user_with_pkb_create_in_some_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/work-orders/create');
+
+        $response->assertOk();
+    }
+
+    public function test_edit_form_renders_for_a_user_with_pkb_edit_on_a_draft_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.edit');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
+
+        $response->assertOk();
+    }
+
     public function test_update_replaces_lines_and_recomputes_totals(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

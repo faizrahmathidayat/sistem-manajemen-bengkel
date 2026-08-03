@@ -16,6 +16,7 @@ use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
 use App\Http\Controllers\VehicleReferenceLookupController;
+use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\WorkOrderLookupController;
 use Illuminate\Support\Facades\Route;
 
@@ -111,6 +112,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/lookup/vehicles/{customer}', [WorkOrderLookupController::class, 'vehiclesByCustomer'])->name('lookup.vehicles');
         Route::get('/lookup/mechanics/{branch}', [WorkOrderLookupController::class, 'mechanicsByBranch'])->name('lookup.mechanics');
         Route::get('/lookup/spareparts/{branch}', [WorkOrderLookupController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
+
+        Route::get('/', [WorkOrderController::class, 'index'])->name('index');
+        Route::get('/create', [WorkOrderController::class, 'create'])->name('create');
+        Route::post('/', [WorkOrderController::class, 'store'])->name('store');
+        Route::get('/{workOrder}', [WorkOrderController::class, 'show'])->name('show');
+        Route::get('/{workOrder}/edit', [WorkOrderController::class, 'edit'])->name('edit');
+        Route::put('/{workOrder}', [WorkOrderController::class, 'update'])->name('update');
+        Route::patch('/{workOrder}/cancel', [WorkOrderController::class, 'cancel'])->name('cancel');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

@@ -209,6 +209,95 @@ class WorkOrderManagementTest extends TestCase
         $response->assertSessionHasErrors(['services']);
     }
 
+    public function test_store_rejects_all_blank_line_rows_instead_of_crashing(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['services'] = [
+            ['service_catalog_id' => null, 'description' => '', 'qty' => '', 'unit_price' => ''],
+        ];
+        $payload['spareparts'] = [
+            ['sparepart_branch_id' => '', 'qty' => '', 'unit_price' => ''],
+        ];
+
+        $response = $this->actingAs(User::find($user->id))->post('/work-orders', $payload);
+
+        $response->assertSessionHasErrors(['services']);
+        $this->assertSame(0, WorkOrder::count());
+    }
+
+    public function test_store_silently_drops_a_blank_row_mixed_with_a_real_line(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['services'] = [
+            ['service_catalog_id' => $scenario['catalog']->id, 'description' => 'Ganti Oli', 'qty' => 1, 'unit_price' => 50000],
+            ['service_catalog_id' => null, 'description' => '', 'qty' => '', 'unit_price' => ''],
+        ];
+        $payload['spareparts'] = [];
+
+        $response = $this->actingAs(User::find($user->id))->post('/work-orders', $payload);
+
+        $workOrder = WorkOrder::first();
+        $response->assertRedirect(route('work-orders.show', $workOrder));
+        $this->assertNotNull($workOrder);
+        $this->assertCount(1, $workOrder->serviceLines);
+        $this->assertSame('Ganti Oli', $workOrder->serviceLines->first()->description);
+    }
+
+    public function test_edit_form_still_renders_and_shows_a_now_inactive_customer(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.edit');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+        $scenario['customer']->update(['is_active' => false]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee($scenario['customer']->name);
+    }
+
+    public function test_update_does_not_silently_reassign_a_now_inactive_customer(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.edit');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+        $originalCustomerId = $workOrder->customer_id;
+        $scenario['customer']->update(['is_active' => false]);
+
+        $response = $this->actingAs(User::find($user->id))->put("/work-orders/{$workOrder->id}", [
+            'customer_id' => $originalCustomerId,
+            'vehicle_id' => $scenario['vehicle']->id,
+            'mechanic_id' => $scenario['mechanic']->id,
+            'work_order_date' => now()->format('Y-m-d'),
+            'notes' => 'Catatan diperbarui',
+            'services' => [
+                ['service_catalog_id' => null, 'description' => 'Servis tambahan', 'qty' => 2, 'unit_price' => 25000],
+            ],
+            'spareparts' => [],
+        ]);
+
+        $response->assertRedirect(route('work-orders.show', $workOrder));
+        $workOrder->refresh();
+        $this->assertSame($originalCustomerId, $workOrder->customer_id);
+        $this->assertSame('Catatan diperbarui', $workOrder->notes);
+    }
+
     public function test_index_lists_work_orders_for_authorized_branches_only(): void
     {
         $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

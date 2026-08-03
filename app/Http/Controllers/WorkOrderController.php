@@ -102,19 +102,41 @@ class WorkOrderController extends Controller
     {
         $this->authorize('update', $workOrder);
 
-        $workOrder->load(['serviceLines', 'sparepartLines']);
+        $workOrder->load(['customer', 'vehicle', 'mechanic', 'serviceLines', 'sparepartLines']);
+
         $customers = Customer::whereHas('customerBranches', function ($query) use ($workOrder) {
             $query->where('branch_id', $workOrder->branch_id)->where('is_active', true);
         })->where('is_active', true)->orderBy('name')->get();
+        if ($workOrder->customer && ! $customers->contains('id', $workOrder->customer->id)) {
+            $customers->push($workOrder->customer);
+        }
+
         $mechanics = Mechanic::whereHas('mechanicBranches', function ($query) use ($workOrder) {
             $query->where('branch_id', $workOrder->branch_id)->where('is_active', true);
         })->where('is_active', true)->orderBy('name')->get();
+        if ($workOrder->mechanic && ! $mechanics->contains('id', $workOrder->mechanic->id)) {
+            $mechanics->push($workOrder->mechanic);
+        }
+
         $sparepartBranches = SparepartBranch::with(['sparepart', 'stock'])
             ->where('branch_id', $workOrder->branch_id)
             ->where('is_active', true)
             ->get();
+        $missingSparepartBranchIds = $workOrder->sparepartLines
+            ->pluck('sparepart_branch_id')
+            ->unique()
+            ->diff($sparepartBranches->pluck('id'));
+        if ($missingSparepartBranchIds->isNotEmpty()) {
+            $sparepartBranches = $sparepartBranches->concat(
+                SparepartBranch::with(['sparepart', 'stock'])->whereIn('id', $missingSparepartBranchIds)->get()
+            );
+        }
+
         $serviceCatalogs = ServiceCatalog::where('is_active', true)->orderBy('name')->get();
         $vehicles = $workOrder->customer->vehicles()->where('is_active', true)->orderBy('plate_number')->get();
+        if ($workOrder->vehicle && ! $vehicles->contains('id', $workOrder->vehicle->id)) {
+            $vehicles->push($workOrder->vehicle);
+        }
 
         $sparepartOptionsForEdit = $sparepartBranches->map(function ($sb) {
             return [

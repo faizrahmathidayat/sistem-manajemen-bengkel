@@ -285,6 +285,11 @@ class DashboardTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Buat PKB Baru');
+        // Also assert on the real route URL: the old disabled-placeholder markup
+        // (<span class="btn ... disabled">...Buat PKB Baru...</span>) contained the
+        // same text but no href, so a text-only assertion would still pass on a
+        // regression back to a non-functional placeholder.
+        $response->assertSee(route('work-orders.create'), false);
     }
 
     public function test_buat_pkb_baru_button_hidden_when_user_only_has_view_permission(): void

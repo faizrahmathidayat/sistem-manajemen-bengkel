@@ -15,6 +15,18 @@ class UpdateWorkOrderRequest extends FormRequest
         return $this->user()->can('update', $this->route('workOrder'));
     }
 
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'services' => array_values(array_filter($this->input('services', []), function ($line) {
+                return isset($line['description']) && trim($line['description']) !== '';
+            })),
+            'spareparts' => array_values(array_filter($this->input('spareparts', []), function ($line) {
+                return ! empty($line['sparepart_branch_id']);
+            })),
+        ]);
+    }
+
     public function rules()
     {
         return [
@@ -25,11 +37,13 @@ class UpdateWorkOrderRequest extends FormRequest
             'odometer_km' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'services' => ['nullable', 'array'],
+            'services.*' => ['array'],
             'services.*.service_catalog_id' => ['nullable', 'integer', 'exists:service_catalogs,id'],
             'services.*.description' => ['required_with:services.*.qty', 'string', 'max:255'],
             'services.*.qty' => ['required_with:services.*.description', 'numeric', 'min:0.001'],
             'services.*.unit_price' => ['required_with:services.*.description', 'numeric', 'min:0'],
             'spareparts' => ['nullable', 'array'],
+            'spareparts.*' => ['array'],
             'spareparts.*.sparepart_branch_id' => ['required_with:spareparts.*.qty', 'integer', 'exists:sparepart_branches,id'],
             'spareparts.*.qty' => ['required_with:spareparts.*.sparepart_branch_id', 'numeric', 'min:0.001'],
             'spareparts.*.unit_price' => ['required_with:spareparts.*.sparepart_branch_id', 'numeric', 'min:0'],
@@ -65,9 +79,10 @@ class UpdateWorkOrderRequest extends FormRequest
                 }
             }
 
-            $services = array_filter($this->input('services', []));
-            $spareparts = array_filter($this->input('spareparts', []));
-            if (empty($services) && empty($spareparts)) {
+            // services/spareparts are already stripped of all-blank rows in
+            // prepareForValidation(), so an empty array here means the user
+            // genuinely submitted no meaningful lines.
+            if (empty($this->input('services', [])) && empty($this->input('spareparts', []))) {
                 $validator->errors()->add('services', 'PKB harus memiliki minimal satu baris jasa atau sparepart.');
             }
 

@@ -222,6 +222,13 @@ class AppShellTest extends TestCase
         // test_buat_pkb_baru_button_shown_when_user_has_pkb_create_permission
         // in DashboardTest.php.)
         $response->assertSee('Perintah Kerja Bengkel', false);
+        // Also assert on the real route URL: the old disabled-placeholder markup
+        // (<span class="nav-link nav-link-disabled">...) contained the same text
+        // but no href, so a text-only assertion would still pass on a regression
+        // back to a non-functional placeholder. Only a real <a href> link renders
+        // this URL (same precedent as test_sidebar_shows_kartu_stok_placeholder_
+        // alongside_master_sparepart below).
+        $response->assertSee(route('work-orders.index'), false);
     }
 
     public function test_sidebar_hides_pkb_placeholder_without_permission(): void

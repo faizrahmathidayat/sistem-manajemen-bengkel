@@ -134,11 +134,48 @@
             vehicleSelect.disabled = false;
         });
 
+        // Validation-error round-trip: replay the jasa/sparepart line rows submitted
+        // before the failed validation, the same way edit.blade.php replays a work
+        // order's persisted lines. These rows only exist in JS-managed DOM state
+        // (added via <template> cloning), so without this the user would have to
+        // retype every line from scratch after any validation error.
+        function replayOldLines() {
+            const oldServices = @json(old('services', []));
+            oldServices.forEach(function (line) {
+                WorkOrderLineItems.addServiceLine();
+                const rows = document.querySelectorAll('#serviceLines .service-line');
+                const row = rows[rows.length - 1];
+                if (line.service_catalog_id) row.querySelector('.service-catalog-select').value = line.service_catalog_id;
+                row.querySelector('.service-description').value = line.description || '';
+                row.querySelector('.service-qty').value = line.qty || '';
+                row.querySelector('.service-unit-price').value = line.unit_price || '';
+            });
+
+            const oldSpareparts = @json(old('spareparts', []));
+            oldSpareparts.forEach(function (line) {
+                WorkOrderLineItems.addSparepartLine();
+                const rows = document.querySelectorAll('#sparepartLines .sparepart-line');
+                const row = rows[rows.length - 1];
+                if (line.sparepart_branch_id) row.querySelector('.sparepart-select').value = line.sparepart_branch_id;
+                row.querySelector('.sparepart-qty').value = line.qty || '';
+                row.querySelector('.sparepart-unit-price').value = line.unit_price || '';
+            });
+        }
+
         // Validation-error round-trip: old('branch_id') re-selects the branch option but
         // does not fire a native `change` event, so the customer/mechanic/sparepart
         // cascade would otherwise stay empty and disabled. Re-run it once on load.
+        //
+        // The sparepart <select> options are populated dynamically from the branch's
+        // AJAX response (via WorkOrderLineItems.setSparepartOptions inside
+        // handleBranchChange), so line-replay MUST run after that AJAX call resolves —
+        // otherwise replayed sparepart rows would be added with no options to select
+        // from yet. handleBranchChange() is async and returns a promise, so we chain
+        // replayOldLines() onto it here instead of calling it eagerly.
         if (branchSelect.value) {
-            handleBranchChange(branchSelect.value);
+            handleBranchChange(branchSelect.value).then(replayOldLines);
+        } else {
+            replayOldLines();
         }
     })();
     </script>

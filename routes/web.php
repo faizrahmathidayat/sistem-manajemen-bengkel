@@ -16,6 +16,7 @@ use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
 use App\Http\Controllers\VehicleReferenceLookupController;
+use App\Http\Controllers\WorkOrderLookupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -103,6 +104,13 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{sparepartBranch}', [SparepartBranchController::class, 'update'])->name('update');
         Route::patch('/{sparepartBranch}/deactivate', [SparepartBranchController::class, 'deactivate'])->name('deactivate');
         Route::patch('/{sparepartBranch}/activate', [SparepartBranchController::class, 'activate'])->name('activate');
+    });
+
+    Route::prefix('work-orders')->name('work-orders.')->group(function () {
+        Route::get('/lookup/customers/{branch}', [WorkOrderLookupController::class, 'customersByBranch'])->name('lookup.customers');
+        Route::get('/lookup/vehicles/{customer}', [WorkOrderLookupController::class, 'vehiclesByCustomer'])->name('lookup.vehicles');
+        Route::get('/lookup/mechanics/{branch}', [WorkOrderLookupController::class, 'mechanicsByBranch'])->name('lookup.mechanics');
+        Route::get('/lookup/spareparts/{branch}', [WorkOrderLookupController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

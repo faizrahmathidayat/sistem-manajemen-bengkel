@@ -15,6 +15,7 @@ Migrasi 006 dari roadmap (`Rencana_Migrasi_Database_Sistem_Bengkel.md` §9): hea
 - CRUD PKB: create (DRAFT), list (search + filter cabang + empty-state, pola standar), detail, edit (ubah header + baris selama masih DRAFT), cancel (DRAFT → CANCELLED, final).
 - Validasi cascading cabang→customer→kendaraan, cabang→mekanik, cabang→sparepart aktif.
 - Swap sidebar placeholder "Perintah Kerja Bengkel" (sudah ada, gated `pkb.view`, branch-scoped) jadi link asli.
+- Swap Dashboard header button "Buat PKB Baru" (`resources/views/dashboard/index.blade.php:18-21`, saat ini `<span class="btn ... disabled">` dengan badge "Segera Hadir") jadi link asli ke `/work-orders/create`, gated `auth()->user()->branchesWithPermission('pkb.create')->isNotEmpty()` — pola persis sama dengan "Sparepart Baru" yang baru saja diperbaiki di sub-proyek sebelumnya. Ini placeholder yang memang dipasang menunggu migrasi ini.
 - Permission yang dipakai: `pkb.view`, `pkb.create`, `pkb.edit`, `pkb.cancel` — keempatnya **sudah ter-seed** di `MenuPermissionSeeder` (beseras `pkb.confirm`/`pkb.override_stock_shortage`/`pkb.print` yang belum dipakai sampai migrasi 007+). Tidak ada permission baru yang perlu ditambahkan.
 
 **Explicitly out of scope:**
@@ -136,6 +137,8 @@ class WorkOrderPolicy
 
 **Sidebar:** ganti `resources/views/partials/sidebar.blade.php` placeholder "Perintah Kerja Bengkel" (`<span class="nav-link nav-link-disabled">` + badge "Segera Hadir") jadi `<a href="{{ route('work-orders.index') }}">` asli, mempertahankan gating `pkb.view`/branch-scoped yang sudah ada — 3 baris, tidak menyentuh struktur `@if` heading di sekitarnya (sesuai catatan lama di memory proyek).
 
+**Dashboard button:** ganti `dashboard/index.blade.php:18-21` dari span disabled jadi `<a href="{{ route('work-orders.create') }}">`, gated `branchesWithPermission('pkb.create')->isNotEmpty()` — identik pola "Sparepart Baru".
+
 ## Testing
 
 Mengikuti pola project (`RefreshDatabase`, HTTP request nyata, bukan mock; helper `grantBranchPermission()` sudah ada polanya di beberapa test file lain):
@@ -151,6 +154,7 @@ Mengikuti pola project (`RefreshDatabase`, HTTP request nyata, bukan mock; helpe
   - test yang menegaskan placeholder muncul untuk user dengan `pkb.view` — tetap valid sebagai "link PKB muncul", tidak perlu diubah assertion-nya, tapi baca komentar di sekitarnya (baris ~215-222) karena menyebutkan alasan spesifik terkait bentuk disabled-span yang sudah tidak relevan lagi setelah jadi link — perbarui komentarnya.
   - `test_sidebar_hides_pkb_placeholder_without_permission` (baris ~226) dan test lain di baris ~289 yang meng-assertDontSee — tetap valid secara perilaku (user tanpa `pkb.view` tetap tidak melihat link), tapi nama method-nya menyebut "placeholder" — pertimbangkan rename agar tidak menyesatkan (mis. `test_sidebar_hides_pkb_link_without_permission`), TIDAK wajib tapi disarankan untuk kejelasan.
   - Jalankan grep text-collision standar terhadap `AppShellTest.php`/`DashboardTest.php` untuk string baru apa pun yang muncul dari halaman PKB (mis. "Belum ada PKB", label tombol) sebelum menyatakan task ini bersih.
+- Dashboard button "Buat PKB Baru": tes muncul untuk user dengan `pkb.create` (di cabang manapun), tes hilang untuk user tanpa `pkb.create` sama sekali — mirror persis dua test yang sudah ada untuk tombol "Sparepart Baru" di `DashboardTest.php`.
 
 ## Execution
 

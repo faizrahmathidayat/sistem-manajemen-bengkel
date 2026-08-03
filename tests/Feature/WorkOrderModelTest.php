@@ -27,7 +27,7 @@ class WorkOrderModelTest extends TestCase
 
     protected function makeVehicle(): Vehicle
     {
-        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
         $category = VehicleCategory::create(['name' => 'Mobil']);
         $brand = VehicleBrand::create(['category_id' => $category->id, 'name' => 'Toyota']);
         $type = VehicleType::create(['brand_id' => $brand->id, 'name' => 'Avanza']);

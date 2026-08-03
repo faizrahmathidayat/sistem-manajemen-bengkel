@@ -3,14 +3,19 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-person-gear me-2"></i>Mekanik</h1>
-        @can('mechanic.create')
-            <a href="{{ route('mechanics.create') }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-lg"></i> Tambah Mekanik
-            </a>
-        @endcan
     </div>
 
-    <div class="card">
+    @include('partials.list-filter-bar', [
+        'searchPlaceholder' => 'Cari nama atau telepon...',
+        'searchValue' => $search,
+        'branchFilterBranches' => $branches,
+        'branchFilterSelected' => $selectedBranchIds,
+        'actionsHtml' => auth()->user()->can('mechanic.create')
+            ? '<a href="' . route('mechanics.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Tambah Mekanik</a>'
+            : '',
+    ])
+
+    <div class="card mt-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -40,7 +45,18 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="text-center text-muted py-4">Belum ada mekanik.</td></tr>
+                        <tr>
+                            <td colspan="4" class="p-0">
+                                @include('partials.empty-state', [
+                                    'icon' => 'bi-person-gear',
+                                    'title' => 'Belum ada mekanik',
+                                    'description' => 'Mulai dengan menambahkan mekanik pertama.',
+                                    'ctaRoute' => 'mechanics.create',
+                                    'ctaLabel' => '+ Tambah Mekanik Pertama',
+                                    'ctaPermission' => 'mechanic.create',
+                                ])
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
 use App\Models\Mechanic;
+use App\Models\MechanicBranch;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\UserPermission;
+use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -118,5 +121,120 @@ class MechanicManagementTest extends TestCase
         $response = $this->actingAs($user)->put("/mechanics/{$mechanic->id}", ['name' => 'Agus Setiawan Edited']);
 
         $response->assertForbidden();
+    }
+
+    public function test_index_search_by_name_filters_results(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan']);
+        Mechanic::create(['name' => 'Budi Santoso']);
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics?q=Agus');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertDontSee('Budi Santoso');
+    }
+
+    public function test_index_search_by_phone_filters_results(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan', 'phone' => '081111111111']);
+        Mechanic::create(['name' => 'Budi Santoso', 'phone' => '082222222222']);
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics?q=081111');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertDontSee('Budi Santoso');
+    }
+
+    public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan']);
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics?q[]=Agus');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+    }
+
+    public function test_index_branch_filter_scopes_to_selected_branch(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $mechanicA = Mechanic::create(['name' => 'Agus Setiawan']);
+        $mechanicB = Mechanic::create(['name' => 'Budi Santoso']);
+        MechanicBranch::create(['mechanic_id' => $mechanicA->id, 'branch_id' => $branchA->id]);
+        MechanicBranch::create(['mechanic_id' => $mechanicB->id, 'branch_id' => $branchB->id]);
+        $user = $this->userWithPermissions(['mechanic.view']);
+        (new UserBranchService())->assign($user, $branchA);
+        (new UserBranchService())->assign($user, $branchB);
+
+        $response = $this->actingAs(User::find($user->id))->get("/mechanics?branch_ids[]={$branchA->id}");
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertDontSee('Budi Santoso');
+    }
+
+    public function test_index_branch_filter_drops_branch_ids_the_user_is_not_assigned_to(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $mechanicA = Mechanic::create(['name' => 'Agus Setiawan']);
+        $mechanicB = Mechanic::create(['name' => 'Budi Santoso']);
+        MechanicBranch::create(['mechanic_id' => $mechanicA->id, 'branch_id' => $branchA->id]);
+        MechanicBranch::create(['mechanic_id' => $mechanicB->id, 'branch_id' => $branchB->id]);
+        $user = $this->userWithPermissions(['mechanic.view']);
+        (new UserBranchService())->assign($user, $branchA);
+
+        $response = $this->actingAs(User::find($user->id))->get("/mechanics?branch_ids[]={$branchB->id}");
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertSee('Budi Santoso');
+    }
+
+    public function test_index_shows_empty_state_when_no_mechanics_match(): void
+    {
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada mekanik');
+    }
+
+    public function test_empty_state_cta_shown_with_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['mechanic.view', 'mechanic.create']);
+
+        $response = $this->actingAs($user)->get('/mechanics');
+
+        $response->assertOk();
+        $response->assertSee('Tambah Mekanik Pertama');
+    }
+
+    public function test_empty_state_cta_hidden_without_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics');
+
+        $response->assertOk();
+        $response->assertDontSee('Tambah Mekanik Pertama');
+    }
+
+    public function test_index_renders_filter_bar(): void
+    {
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics');
+
+        $response->assertOk();
+        $response->assertSee('Terapkan');
+        $response->assertSee('Cari nama atau telepon...');
     }
 }

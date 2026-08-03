@@ -13,9 +13,30 @@ class MechanicController extends Controller
     {
         $this->authorize('mechanic.view');
 
-        $mechanics = Mechanic::orderBy('name')->simplePaginate(15);
+        $branchIds = collect(request('branch_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->intersect(auth()->user()->branches->pluck('id'))
+            ->values()->all();
 
-        return view('mechanics.index', compact('mechanics'));
+        $search = is_string(request('q')) ? trim(request('q')) : null;
+
+        $mechanics = Mechanic::orderBy('name')
+            ->when($search, function ($query, $q) {
+                $query->where(function ($inner) use ($q) {
+                    $inner->where('name', 'like', '%' . addcslashes($q, '%_\\') . '%')
+                        ->orWhere('phone', 'like', '%' . addcslashes($q, '%_\\') . '%');
+                });
+            })
+            ->when($branchIds, fn ($query) => $query->whereHas('mechanicBranches', fn ($q) => $q->whereIn('branch_id', $branchIds)->where('is_active', true)))
+            ->simplePaginate(15)
+            ->withQueryString();
+
+        $userBranches = auth()->user()->branches;
+
+        return view('mechanics.index', compact('mechanics'))
+            ->with('branches', $userBranches)
+            ->with('selectedBranchIds', $branchIds)
+            ->with('search', $search);
     }
 
     public function create()

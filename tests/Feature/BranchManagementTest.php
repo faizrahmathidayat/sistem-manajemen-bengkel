@@ -105,4 +105,82 @@ class BranchManagementTest extends TestCase
             'is_active' => false,
         ]);
     }
+
+    public function test_index_search_by_code_filters_results(): void
+    {
+        Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = $this->userWithPermissions(['branch.view']);
+
+        $response = $this->actingAs($user)->get('/branches?q=JKT');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Jakarta');
+        $response->assertDontSee('Cabang Bandung');
+    }
+
+    public function test_index_search_by_name_filters_results(): void
+    {
+        Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = $this->userWithPermissions(['branch.view']);
+
+        $response = $this->actingAs($user)->get('/branches?q=Bandung');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Bandung');
+        $response->assertDontSee('Cabang Jakarta');
+    }
+
+    public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void
+    {
+        Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = $this->userWithPermissions(['branch.view']);
+
+        $response = $this->actingAs($user)->get('/branches?q[]=JKT');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Jakarta');
+    }
+
+    public function test_index_shows_empty_state_when_no_branches_match(): void
+    {
+        $user = $this->userWithPermissions(['branch.view']);
+
+        $response = $this->actingAs($user)->get('/branches');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada cabang');
+    }
+
+    public function test_empty_state_cta_shown_with_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['branch.view', 'branch.create']);
+
+        $response = $this->actingAs($user)->get('/branches');
+
+        $response->assertOk();
+        $response->assertSee('Tambah Cabang Pertama');
+    }
+
+    public function test_empty_state_cta_hidden_without_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['branch.view']);
+
+        $response = $this->actingAs($user)->get('/branches');
+
+        $response->assertOk();
+        $response->assertDontSee('Tambah Cabang Pertama');
+    }
+
+    public function test_index_renders_filter_bar(): void
+    {
+        $user = $this->userWithPermissions(['branch.view']);
+
+        $response = $this->actingAs($user)->get('/branches');
+
+        $response->assertOk();
+        $response->assertSee('Terapkan');
+        $response->assertSee('Cari kode atau nama cabang...');
+    }
 }

@@ -3,14 +3,19 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-shop me-2"></i>Cabang</h1>
-        @can('branch.create')
-            <a href="{{ route('branches.create') }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-lg"></i> Tambah Cabang
-            </a>
-        @endcan
     </div>
 
-    <div class="card">
+    @include('partials.list-filter-bar', [
+        'searchPlaceholder' => 'Cari kode atau nama cabang...',
+        'searchValue' => $search,
+        'branchFilterBranches' => null,
+        'branchFilterSelected' => [],
+        'actionsHtml' => auth()->user()->can('branch.create')
+            ? '<a href="' . route('branches.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Tambah Cabang</a>'
+            : '',
+    ])
+
+    <div class="card mt-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -44,7 +49,18 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted py-4">Belum ada cabang.</td></tr>
+                        <tr>
+                            <td colspan="5" class="p-0">
+                                @include('partials.empty-state', [
+                                    'icon' => 'bi-shop',
+                                    'title' => 'Belum ada cabang',
+                                    'description' => 'Mulai dengan menambahkan cabang pertama Anda.',
+                                    'ctaRoute' => 'branches.create',
+                                    'ctaLabel' => '+ Tambah Cabang Pertama',
+                                    'ctaPermission' => 'branch.create',
+                                ])
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

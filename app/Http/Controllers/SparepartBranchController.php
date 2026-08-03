@@ -31,18 +31,21 @@ class SparepartBranchController extends Controller
             ?? $allowedBranches->first();
         session(['current_sparepart_branch_id' => $currentBranch->id]);
 
+        $search = is_string(request('q')) ? trim(request('q')) : null;
+
         $sparepartBranches = SparepartBranch::with(['sparepart', 'stock'])
             ->where('branch_id', $currentBranch->id)
-            ->when(request('q'), function ($query, $q) {
+            ->when($search, function ($query, $q) {
                 $query->whereHas('sparepart', function ($inner) use ($q) {
-                    $inner->where('code', 'like', "%{$q}%")->orWhere('name', 'like', "%{$q}%");
+                    $inner->where('code', 'like', '%' . addcslashes($q, '%_\\') . '%')
+                        ->orWhere('name', 'like', '%' . addcslashes($q, '%_\\') . '%');
                 });
             })
             ->orderBy('id')
             ->simplePaginate(15)
             ->withQueryString();
 
-        return view('sparepart-branches.index', compact('sparepartBranches', 'allowedBranches', 'currentBranch'));
+        return view('sparepart-branches.index', compact('sparepartBranches', 'allowedBranches', 'currentBranch'))->with('search', $search);
     }
 
     public function create()

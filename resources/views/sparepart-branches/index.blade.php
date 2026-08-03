@@ -15,29 +15,16 @@
         </div>
     </div>
 
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <form method="GET" action="{{ route('sparepart-branches.index') }}">
-                <label for="branch_id" class="form-label">Cabang</label>
-                <select name="branch_id" id="branch_id" class="form-select" onchange="this.form.submit()">
-                    @foreach ($allowedBranches as $branch)
-                        <option value="{{ $branch->id }}" {{ $branch->id === $currentBranch->id ? 'selected' : '' }}>
-                            {{ $branch->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </form>
-        </div>
-        <div class="col-md-8">
-            <form method="GET" action="{{ route('sparepart-branches.index') }}">
-                <input type="hidden" name="branch_id" value="{{ $currentBranch->id }}">
-                <label for="q" class="form-label">Cari</label>
-                <input type="text" name="q" id="q" value="{{ request('q') }}" class="form-control" placeholder="Kode atau nama sparepart">
-            </form>
-        </div>
-    </div>
+    @include('partials.list-filter-bar', [
+        'searchPlaceholder' => 'Kode atau nama sparepart...',
+        'searchValue' => $search,
+        'branchFilterBranches' => null,
+        'branchFilterSelected' => [],
+        'extraFilterHtml' => view('sparepart-branches._branch_switcher_select', ['allowedBranches' => $allowedBranches, 'currentBranch' => $currentBranch])->render(),
+        'actionsHtml' => '',
+    ])
 
-    <div class="card">
+    <div class="card mt-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -92,7 +79,18 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-4">Belum ada sparepart di cabang ini.</td></tr>
+                        <tr>
+                            <td colspan="8" class="p-0">
+                                @include('partials.empty-state', [
+                                    'icon' => 'bi-box-seam',
+                                    'title' => 'Belum ada sparepart di cabang ini',
+                                    'description' => 'Mulai dengan menambahkan sparepart pertama di cabang ini.',
+                                    'ctaRoute' => 'sparepart-branches.create',
+                                    'ctaLabel' => '+ Sparepart Baru',
+                                    'ctaVisible' => auth()->user()->hasPermissionToInBranch('sparepart.create', $currentBranch->id),
+                                ])
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

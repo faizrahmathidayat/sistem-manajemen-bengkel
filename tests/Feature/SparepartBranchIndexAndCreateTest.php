@@ -255,4 +255,71 @@ class SparepartBranchIndexAndCreateTest extends TestCase
 
         $response->assertSessionHasErrors(['sparepart_id']);
     }
+
+    public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+        $sparepart = Sparepart::create(['code' => 'BAN-01', 'name' => 'Ban Depan']);
+        SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 100000]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches?q[]=Ban');
+
+        $response->assertOk();
+        $response->assertSee('Ban Depan');
+    }
+
+    public function test_index_shows_empty_state_when_branch_has_no_spareparts(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada sparepart di cabang ini');
+    }
+
+    public function test_empty_state_cta_shown_when_user_has_create_permission_in_current_branch(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+        $this->grantBranchPermission($user, $branch, 'sparepart.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches');
+
+        $response->assertOk();
+        $response->assertSee('Sparepart Baru');
+    }
+
+    public function test_empty_state_cta_hidden_when_user_lacks_create_permission_in_current_branch(): void
+    {
+        $user = User::factory()->create();
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->grantBranchPermission($user, $branchA, 'sparepart.view');
+        // sparepart.create granted only in branch B, not the current branch (A).
+        $this->grantBranchPermission($user, $branchB, 'sparepart.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches?branch_id=' . $branchA->id);
+
+        $response->assertOk();
+        $response->assertDontSee('Sparepart Baru');
+    }
+
+    public function test_index_renders_filter_bar_with_branch_switcher(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/sparepart-branches');
+
+        $response->assertOk();
+        $response->assertSee('Terapkan');
+        $response->assertSee('Cabang Jakarta');
+    }
 }

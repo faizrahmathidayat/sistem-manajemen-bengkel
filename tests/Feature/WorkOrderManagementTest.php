@@ -874,4 +874,73 @@ class WorkOrderManagementTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_show_renders_confirm_button_for_a_draft_work_order_with_confirm_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.confirm');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::latest('id')->first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee(route('work-orders.confirm', $workOrder), false);
+    }
+
+    public function test_show_renders_open_status_and_reserved_qty_after_confirm(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee('Dikonfirmasi');
+        $response->assertDontSee(route('work-orders.confirm', $workOrder), false);
+        $response->assertDontSee(route('work-orders.edit', $workOrder), false);
+    }
+
+    public function test_show_renders_shortage_status_and_override_form_when_not_yet_overridden(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee('Kurang Stok');
+        $response->assertSee(route('work-orders.overrideShortage', $workOrder), false);
+    }
+
+    public function test_show_hides_override_form_after_shortage_is_overridden(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+        $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/override-shortage", ['reason' => 'Ditunda menunggu barang datang.']);
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertDontSee(route('work-orders.overrideShortage', $workOrder), false);
+        $response->assertSee('Ditunda menunggu barang datang.');
+    }
 }

@@ -348,7 +348,7 @@ class StockAdjustmentManagementTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get("/stock-adjustments/{$stockAdjustment->id}");
 
         $response->assertOk();
-        $response->assertSee('Disetujui');
+        $response->assertSee('<span class="status-dot status-active">Disetujui</span>', false);
         $response->assertSee('Budi Approver');
     }
 
@@ -608,9 +608,10 @@ class StockAdjustmentManagementTest extends TestCase
         $response = $this->actingAs(User::find($poster->id))->patch("/stock-adjustments/{$stockAdjustment->id}/post");
 
         $response->assertRedirect(route('stock-adjustments.show', $stockAdjustment));
-        $response->assertSessionHas('status', function ($message) {
+        $response->assertSessionHas('error', function ($message) {
             return str_contains($message, 'OLI-01') && str_contains($message, 'PKB terkait');
         });
+        $response->assertSessionMissing('status');
         $stockAdjustment->refresh();
         $this->assertSame(StockAdjustmentStatus::APPROVED, $stockAdjustment->status, 'A rejected post must leave the document APPROVED, not POSTED.');
         $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
@@ -649,6 +650,74 @@ class StockAdjustmentManagementTest extends TestCase
             0,
             \DB::table('inventory_movements')->whereIn('sparepart_branch_id', [$okSparepartBranch->id, $violatingSparepartBranch->id])->count()
         );
+    }
+
+    public function test_update_second_call_with_a_stale_in_memory_status_flashes_an_accurate_message(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branch, $sparepartBranch));
+        $stockAdjustment = StockAdjustment::first();
+        $updatePayload = [
+            'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Revisi',
+            'lines' => [['sparepart_branch_id' => $sparepartBranch->id, 'physical_qty' => 9, 'reason' => 'x']],
+        ];
+        // Mirrors test_submit_second_call_with_a_stale_in_memory_status_flashes_an_accurate_message:
+        // simulate a concurrent action (e.g. another user's submit()) winning the race and moving
+        // the document out of DRAFT between this request's authorization and its transaction's
+        // locked recheck. The controller must not falsely report success. update() takes a
+        // FormRequest, so — mirroring the existing test's approach of calling the controller
+        // directly rather than going through real HTTP dispatch — a partial mock stands in for
+        // the FormRequest since only ->validated() is ever called by the controller itself.
+        $request = \Mockery::mock(\App\Http\Requests\UpdateStockAdjustmentRequest::class)->makePartial();
+        $request->shouldReceive('validated')->andReturn($updatePayload);
+
+        StockAdjustment::whereKey($stockAdjustment->id)->update(['status' => StockAdjustmentStatus::PENDING_APPROVAL]);
+
+        $controller = app(\App\Http\Controllers\StockAdjustmentController::class);
+        $controller->update($request, $stockAdjustment);
+
+        $stockAdjustment->refresh();
+        $this->assertSame(StockAdjustmentStatus::PENDING_APPROVAL, $stockAdjustment->status);
+        $this->assertNotSame('Revisi', $stockAdjustment->reason, 'A lost-race update() must not apply any field changes.');
+        $this->assertStringContainsString('sudah tidak dalam status draft', session('status'));
+    }
+
+    public function test_post_rejection_message_uses_the_error_flash_key_not_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $sparepartBranch->stock()->update(['reserved_qty' => 8]);
+        $poster = User::factory()->create();
+        $this->grantBranchPermission($poster, $branch, 'stock_adjustment.post');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00002', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+        ]);
+        \App\Models\StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'system_qty' => 10, 'physical_qty' => 5, 'adjustment_qty' => -5, 'reason' => 'Rusak',
+        ]);
+
+        $response = $this->actingAs(User::find($poster->id))->patch("/stock-adjustments/{$stockAdjustment->id}/post");
+
+        $response->assertSessionHas('error', function ($message) {
+            return str_contains($message, 'OLI-01') && str_contains($message, 'PKB terkait');
+        });
+        $response->assertSessionMissing('status');
+    }
+
+    public function test_status_badge_partial_shows_unknown_label_for_an_unrecognized_status(): void
+    {
+        $view = $this->blade(
+            "@include('stock-adjustments._status_badge', ['status' => \$status])",
+            ['status' => 'some_future_status_not_yet_handled']
+        );
+
+        $view->assertSee('Status tidak dikenal');
     }
 
     public function test_post_appends_a_note_to_the_adjustment_when_recomputed_delta_lands_on_zero_after_stock_already_drifted_to_match(): void

@@ -6,6 +6,8 @@
     <span class="status-dot status-active">Disetujui</span>
 @elseif ($status === \App\Support\StockAdjustmentStatus::POSTED)
     <span class="status-dot status-active">Diposting</span>
-@else
+@elseif ($status === \App\Support\StockAdjustmentStatus::CANCELLED)
     <span class="status-dot status-inactive">Dibatalkan</span>
+@else
+    <span class="status-dot status-inactive">Status tidak dikenal</span>
 @endif

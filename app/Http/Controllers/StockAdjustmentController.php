@@ -137,9 +137,13 @@ class StockAdjustmentController extends Controller
     {
         $data = $request->validated();
 
-        DB::transaction(function () use ($data, $stockAdjustment) {
+        $noLongerDraft = false;
+
+        DB::transaction(function () use ($data, $stockAdjustment, &$noLongerDraft) {
             $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
             if ($fresh->status !== StockAdjustmentStatus::DRAFT) {
+                $noLongerDraft = true;
+
                 return;
             }
 
@@ -151,6 +155,10 @@ class StockAdjustmentController extends Controller
 
             $this->syncLines($fresh, $data['lines']);
         });
+
+        if ($noLongerDraft) {
+            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment ini sudah tidak dalam status draft.');
+        }
 
         return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil diperbarui.');
     }
@@ -324,7 +332,7 @@ class StockAdjustmentController extends Controller
         if (! empty($reservationViolations)) {
             $message = 'Tidak bisa memposting: ' . implode('; ', $reservationViolations) . '. Selesaikan atau batalkan PKB terkait dahulu.';
 
-            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', $message);
+            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('error', $message);
         }
 
         return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil diposting.');

@@ -589,6 +589,122 @@ class StockAdjustmentManagementTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_post_rejects_the_whole_batch_when_any_line_physical_qty_is_below_reserved_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $sparepartBranch->stock()->update(['reserved_qty' => 8]);
+        $poster = User::factory()->create();
+        $this->grantBranchPermission($poster, $branch, 'stock_adjustment.post');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+        ]);
+        \App\Models\StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'system_qty' => 10, 'physical_qty' => 5, 'adjustment_qty' => -5, 'reason' => 'Rusak',
+        ]);
+
+        $response = $this->actingAs(User::find($poster->id))->patch("/stock-adjustments/{$stockAdjustment->id}/post");
+
+        $response->assertRedirect(route('stock-adjustments.show', $stockAdjustment));
+        $response->assertSessionHas('status', function ($message) {
+            return str_contains($message, 'OLI-01') && str_contains($message, 'PKB terkait');
+        });
+        $stockAdjustment->refresh();
+        $this->assertSame(StockAdjustmentStatus::APPROVED, $stockAdjustment->status, 'A rejected post must leave the document APPROVED, not POSTED.');
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
+        $this->assertSame(10.0, (float) $stock->on_hand_qty, 'Rejected posting must not mutate on_hand_qty.');
+        $this->assertSame(0, \DB::table('inventory_movements')->where('sparepart_branch_id', $sparepartBranch->id)->count());
+    }
+
+    public function test_post_rejects_the_whole_batch_even_when_only_one_of_multiple_lines_violates_reserved_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $okSparepartBranch = $this->makeSparepartBranch($branch, '-ok', 10);
+        $violatingSparepartBranch = $this->makeSparepartBranch($branch, '-bad', 10);
+        $violatingSparepartBranch->stock()->update(['reserved_qty' => 8]);
+        $poster = User::factory()->create();
+        $this->grantBranchPermission($poster, $branch, 'stock_adjustment.post');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+        ]);
+        \App\Models\StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $okSparepartBranch->id,
+            'system_qty' => 10, 'physical_qty' => 15, 'adjustment_qty' => 5, 'reason' => 'Ditemukan lebih', 'sort_order' => 0,
+        ]);
+        \App\Models\StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $violatingSparepartBranch->id,
+            'system_qty' => 10, 'physical_qty' => 5, 'adjustment_qty' => -5, 'reason' => 'Rusak', 'sort_order' => 1,
+        ]);
+
+        $this->actingAs(User::find($poster->id))->patch("/stock-adjustments/{$stockAdjustment->id}/post");
+
+        $stockAdjustment->refresh();
+        $this->assertSame(StockAdjustmentStatus::APPROVED, $stockAdjustment->status, 'Nothing should be posted when any line violates reserved_qty.');
+        $okStock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $okSparepartBranch->id)->first();
+        $this->assertSame(10.0, (float) $okStock->on_hand_qty, 'The valid line must not be posted either — all-or-nothing.');
+        $this->assertSame(
+            0,
+            \DB::table('inventory_movements')->whereIn('sparepart_branch_id', [$okSparepartBranch->id, $violatingSparepartBranch->id])->count()
+        );
+    }
+
+    public function test_post_appends_a_note_to_the_adjustment_when_recomputed_delta_lands_on_zero_after_stock_already_drifted_to_match(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 20);
+        $poster = User::factory()->create();
+        $this->grantBranchPermission($poster, $branch, 'stock_adjustment.post');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+        ]);
+        \App\Models\StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'system_qty' => 20, 'physical_qty' => 15, 'adjustment_qty' => -5, 'reason' => 'Rusak',
+        ]);
+        // Simulate the discrepancy having already been resolved by another movement before posting.
+        $sparepartBranch->stock()->update(['on_hand_qty' => 15]);
+
+        $response = $this->actingAs(User::find($poster->id))->patch("/stock-adjustments/{$stockAdjustment->id}/post");
+
+        $response->assertRedirect(route('stock-adjustments.show', $stockAdjustment));
+        $stockAdjustment->refresh();
+        $this->assertSame(StockAdjustmentStatus::POSTED, $stockAdjustment->status);
+        $this->assertSame(0, \DB::table('inventory_movements')->where('sparepart_branch_id', $sparepartBranch->id)->count());
+        $this->assertNotNull($stockAdjustment->notes);
+        $this->assertStringContainsString('OLI-01', $stockAdjustment->notes);
+        $this->assertStringContainsString('sudah sesuai', $stockAdjustment->notes);
+    }
+
+    public function test_submit_second_call_with_a_stale_in_memory_status_flashes_an_accurate_message(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'), 'reason' => 'Opname',
+        ]);
+        $this->actingAs(User::find($user->id));
+        // Simulate two requests that both loaded the StockAdjustment (e.g. via route-model
+        // binding) while it was still DRAFT, before either had actually processed the submit —
+        // the controller must re-check status from a locked, freshly-read row inside the
+        // transaction rather than trusting the in-memory object's (possibly stale) status, and
+        // the second call's response must say so instead of falsely claiming success.
+        $staleOne = StockAdjustment::find($stockAdjustment->id);
+        $staleTwo = StockAdjustment::find($stockAdjustment->id);
+
+        $controller = app(\App\Http\Controllers\StockAdjustmentController::class);
+        $controller->submit($staleOne);
+        $controller->submit($staleTwo);
+
+        $stockAdjustment->refresh();
+        $this->assertSame(StockAdjustmentStatus::PENDING_APPROVAL, $stockAdjustment->status);
+        $this->assertStringContainsString('sudah tidak dalam status draft', session('status'));
+    }
+
     public function test_cancel_from_draft_sets_cancelled_with_no_stock_impact(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

@@ -159,15 +159,23 @@ class StockAdjustmentController extends Controller
     {
         $this->authorize('submit', $stockAdjustment);
 
-        DB::transaction(function () use ($stockAdjustment) {
+        $noLongerDraft = false;
+
+        DB::transaction(function () use ($stockAdjustment, &$noLongerDraft) {
             $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
             if ($fresh->status !== StockAdjustmentStatus::DRAFT) {
+                $noLongerDraft = true;
+
                 return;
             }
 
             $fresh->status = StockAdjustmentStatus::PENDING_APPROVAL;
             $fresh->save();
         });
+
+        if ($noLongerDraft) {
+            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment ini sudah tidak dalam status draft.');
+        }
 
         return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil diajukan untuk persetujuan.');
     }
@@ -176,9 +184,13 @@ class StockAdjustmentController extends Controller
     {
         $this->authorize('approve', $stockAdjustment);
 
-        DB::transaction(function () use ($stockAdjustment) {
+        $noLongerPendingApproval = false;
+
+        DB::transaction(function () use ($stockAdjustment, &$noLongerPendingApproval) {
             $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
             if ($fresh->status !== StockAdjustmentStatus::PENDING_APPROVAL) {
+                $noLongerPendingApproval = true;
+
                 return;
             }
 
@@ -188,6 +200,10 @@ class StockAdjustmentController extends Controller
             $fresh->save();
         });
 
+        if ($noLongerPendingApproval) {
+            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment ini sudah tidak dalam status diajukan.');
+        }
+
         return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil disetujui.');
     }
 
@@ -195,31 +211,84 @@ class StockAdjustmentController extends Controller
     {
         $this->authorize('post', $stockAdjustment);
 
-        DB::transaction(function () use ($stockAdjustment) {
+        $noLongerApproved = false;
+        $reservationViolations = [];
+
+        DB::transaction(function () use ($stockAdjustment, &$noLongerApproved, &$reservationViolations) {
             $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
             if ($fresh->status !== StockAdjustmentStatus::APPROVED) {
+                $noLongerApproved = true;
+
                 return;
             }
 
-            $lines = $fresh->lines()->reorder()->orderBy('sparepart_branch_id')->get();
+            $lines = $fresh->lines()->reorder()->orderBy('sparepart_branch_id')->with('sparepartBranch.sparepart')->get();
 
+            // Pass 1: lock every affected stock row (already in ascending sparepart_branch_id
+            // order) and validate physical_qty against the CURRENT reserved_qty before mutating
+            // anything. sparepart_branch_stocks enforces CHECK (reserved_qty <= on_hand_qty); a
+            // physical count that comes in below what's currently reserved for open PKBs would
+            // violate that constraint. Validating in a fully separate pass — rather than
+            // check-then-mutate per line — guarantees this is all-or-nothing: a violation
+            // discovered on line 2 must not leave line 1 already posted.
+            $lockedStocks = [];
             foreach ($lines as $line) {
                 $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
                     ->lockForUpdate()
                     ->firstOrFail();
 
+                $lockedStocks[$line->id] = $stock;
+
+                $physicalQty = (float) $line->physical_qty;
+                $reservedQty = (float) $stock->reserved_qty;
+
+                if (($reservedQty - $physicalQty) >= 0.0005) {
+                    $reservationViolations[] = sprintf(
+                        '%s sedang direservasi %s, tapi qty fisik hanya %s',
+                        $line->sparepartBranch->sparepart->code,
+                        $this->formatQtyForMessage($reservedQty),
+                        $this->formatQtyForMessage($physicalQty)
+                    );
+                }
+            }
+
+            if (! empty($reservationViolations)) {
+                return;
+            }
+
+            // Pass 2: recompute each line's delta against the CURRENT on_hand_qty (locked above)
+            // and mutate. Safe now that pass 1 has confirmed no line will drive reserved_qty
+            // above on_hand_qty.
+            foreach ($lines as $line) {
+                $stock = $lockedStocks[$line->id];
+
                 $currentOnHandQty = (float) $stock->on_hand_qty;
                 $physicalQty = (float) $line->physical_qty;
                 $delta = round($physicalQty - $currentOnHandQty, 3);
+                $recordedDelta = round((float) $line->adjustment_qty, 3);
 
                 if (abs($delta) < 0.0005) {
+                    // No ledger row is written for a zero-delta line (the CHECK constraint
+                    // forbids a zero qty_in/qty_out movement), but if the ORIGINALLY recorded
+                    // adjustment_qty was non-zero, stock drifted between approval and posting
+                    // and happened to land exactly back on physical_qty — that fact would
+                    // otherwise be lost entirely. Record it on the document's own notes instead.
+                    if (abs($recordedDelta) >= 0.0005) {
+                        $driftNote = sprintf(
+                            'Baris %s: selisih tercatat %+.3f tidak diterapkan karena stok sudah sesuai (%s) saat posting.',
+                            $line->sparepartBranch->sparepart->code,
+                            $recordedDelta,
+                            $this->formatQtyForMessage($physicalQty)
+                        );
+                        $fresh->notes = $fresh->notes ? $fresh->notes . "\n" . $driftNote : $driftNote;
+                    }
+
                     continue;
                 }
 
                 $stock->on_hand_qty = $physicalQty;
                 $stock->save();
 
-                $recordedDelta = round((float) $line->adjustment_qty, 3);
                 $notes = null;
                 if (abs($recordedDelta - $delta) >= 0.0005) {
                     $notes = sprintf(
@@ -248,6 +317,16 @@ class StockAdjustmentController extends Controller
             $fresh->save();
         });
 
+        if ($noLongerApproved) {
+            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment ini sudah tidak dalam status disetujui.');
+        }
+
+        if (! empty($reservationViolations)) {
+            $message = 'Tidak bisa memposting: ' . implode('; ', $reservationViolations) . '. Selesaikan atau batalkan PKB terkait dahulu.';
+
+            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', $message);
+        }
+
         return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil diposting.');
     }
 
@@ -255,10 +334,14 @@ class StockAdjustmentController extends Controller
     {
         $this->authorize('cancel', $stockAdjustment);
 
-        DB::transaction(function () use ($stockAdjustment) {
+        $noLongerCancellable = false;
+
+        DB::transaction(function () use ($stockAdjustment, &$noLongerCancellable) {
             $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
             $cancellableStatuses = [StockAdjustmentStatus::DRAFT, StockAdjustmentStatus::PENDING_APPROVAL, StockAdjustmentStatus::APPROVED];
             if (! in_array($fresh->status, $cancellableStatuses, true)) {
+                $noLongerCancellable = true;
+
                 return;
             }
 
@@ -266,7 +349,16 @@ class StockAdjustmentController extends Controller
             $fresh->save();
         });
 
+        if ($noLongerCancellable) {
+            return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment ini sudah tidak bisa dibatalkan.');
+        }
+
         return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil dibatalkan.');
+    }
+
+    protected function formatQtyForMessage(float $qty): string
+    {
+        return rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.');
     }
 
     public function sparepartsByBranch(Branch $branch)

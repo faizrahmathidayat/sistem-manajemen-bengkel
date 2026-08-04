@@ -47,10 +47,9 @@
         @endif
         @if ($user->branchesWithPermission('receipt.view')->isNotEmpty())
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('goods-receipts.index') }}" class="nav-link {{ request()->routeIs('goods-receipts.*') ? 'active' : '' }}">
                 <i class="bi bi-truck me-2"></i> Penerimaan Barang
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
         @if ($user->branchesWithPermission('stock_adjustment.view')->isNotEmpty())

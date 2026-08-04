@@ -120,4 +120,91 @@ class WorkOrderAuthorizationTest extends TestCase
 
         $this->assertTrue($reloaded->can('cancel', $workOrder));
     }
+
+    public function test_policy_grants_cancel_for_an_open_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+        $workOrder = $this->makeWorkOrder($branch, ['status' => WorkOrderStatus::OPEN]);
+
+        $reloaded = User::find($user->id);
+
+        $this->assertTrue($reloaded->can('cancel', $workOrder));
+    }
+
+    public function test_policy_grants_cancel_for_a_shortage_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+        $workOrder = $this->makeWorkOrder($branch, ['status' => WorkOrderStatus::SHORTAGE]);
+
+        $reloaded = User::find($user->id);
+
+        $this->assertTrue($reloaded->can('cancel', $workOrder));
+    }
+
+    public function test_policy_grants_confirm_for_a_draft_work_order_with_confirm_code(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.confirm');
+        $workOrder = $this->makeWorkOrder($branch);
+
+        $reloaded = User::find($user->id);
+
+        $this->assertTrue($reloaded->can('confirm', $workOrder));
+    }
+
+    public function test_policy_denies_confirm_for_a_non_draft_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.confirm');
+        $workOrder = $this->makeWorkOrder($branch, ['status' => WorkOrderStatus::OPEN]);
+
+        $reloaded = User::find($user->id);
+
+        $this->assertFalse($reloaded->can('confirm', $workOrder));
+    }
+
+    public function test_policy_grants_override_shortage_for_a_not_yet_overridden_shortage_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+        $workOrder = $this->makeWorkOrder($branch, ['status' => WorkOrderStatus::SHORTAGE]);
+
+        $reloaded = User::find($user->id);
+
+        $this->assertTrue($reloaded->can('overrideShortage', $workOrder));
+    }
+
+    public function test_policy_denies_override_shortage_when_already_overridden(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+        $workOrder = $this->makeWorkOrder($branch, [
+            'status' => WorkOrderStatus::SHORTAGE,
+            'shortage_overridden_at' => now(),
+        ]);
+
+        $reloaded = User::find($user->id);
+
+        $this->assertFalse($reloaded->can('overrideShortage', $workOrder));
+    }
+
+    public function test_policy_denies_override_shortage_for_a_non_shortage_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+        $workOrder = $this->makeWorkOrder($branch, ['status' => WorkOrderStatus::OPEN]);
+
+        $reloaded = User::find($user->id);
+
+        $this->assertFalse($reloaded->can('overrideShortage', $workOrder));
+    }
 }

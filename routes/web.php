@@ -14,6 +14,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SparepartBranchController;
 use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
@@ -152,6 +153,17 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{stockAdjustment}/approve', [StockAdjustmentController::class, 'approve'])->name('approve');
         Route::patch('/{stockAdjustment}/post', [StockAdjustmentController::class, 'post'])->name('post');
         Route::patch('/{stockAdjustment}/cancel', [StockAdjustmentController::class, 'cancel'])->name('cancel');
+    });
+
+    Route::prefix('stock-transfers')->name('stock-transfers.')->group(function () {
+        Route::get('/lookup/spareparts/{branch}', [StockTransferController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
+
+        Route::get('/', [StockTransferController::class, 'index'])->name('index');
+        Route::get('/create', [StockTransferController::class, 'create'])->name('create');
+        Route::post('/', [StockTransferController::class, 'store'])->name('store');
+        Route::get('/{stockTransfer}', [StockTransferController::class, 'show'])->name('show');
+        Route::get('/{stockTransfer}/edit', [StockTransferController::class, 'edit'])->name('edit');
+        Route::put('/{stockTransfer}', [StockTransferController::class, 'update'])->name('update');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

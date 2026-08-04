@@ -42,6 +42,10 @@
                             <td>
                                 @if ($workOrder->status === \App\Support\WorkOrderStatus::DRAFT)
                                     <span class="status-dot status-active">Draft</span>
+                                @elseif ($workOrder->status === \App\Support\WorkOrderStatus::OPEN)
+                                    <span class="status-dot status-active">Dikonfirmasi</span>
+                                @elseif ($workOrder->status === \App\Support\WorkOrderStatus::SHORTAGE)
+                                    <span class="status-dot status-inactive">Kurang Stok</span>
                                 @else
                                     <span class="status-dot status-inactive">Dibatalkan</span>
                                 @endif

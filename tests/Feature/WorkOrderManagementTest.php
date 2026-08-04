@@ -320,6 +320,40 @@ class WorkOrderManagementTest extends TestCase
         $response->assertDontSee($workOrderB->number);
     }
 
+    public function test_index_shows_dikonfirmasi_label_for_an_open_work_order_not_dibatalkan(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $this->assertSame(WorkOrderStatus::OPEN, $workOrder->status);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/work-orders');
+
+        $response->assertOk();
+        $response->assertSee('Dikonfirmasi');
+        $response->assertDontSee('Dibatalkan');
+    }
+
+    public function test_index_shows_kurang_stok_label_for_a_shortage_work_order_not_dibatalkan(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $this->assertSame(WorkOrderStatus::SHORTAGE, $workOrder->status);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/work-orders');
+
+        $response->assertOk();
+        $response->assertSee('Kurang Stok');
+        $response->assertDontSee('Dibatalkan');
+    }
+
     public function test_index_shows_no_access_page_without_any_pkb_view_grant(): void
     {
         $user = User::factory()->create();

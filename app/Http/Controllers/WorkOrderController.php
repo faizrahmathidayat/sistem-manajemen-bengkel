@@ -253,8 +253,26 @@ class WorkOrderController extends Controller
     {
         $data = $request->validated();
 
-        DB::transaction(function () use ($data, $workOrder) {
-            $workOrder->update([
+        $noLongerDraft = false;
+
+        DB::transaction(function () use ($data, $workOrder, &$noLongerDraft) {
+            // Re-lock and re-verify status here even though UpdateWorkOrderRequest::authorize()
+            // already checked the Policy (DRAFT-only) using the route-bound instance: Eloquent's
+            // update() issues NO SQL when no header field is dirty (the common case when only
+            // lines changed), so without an explicit lock a concurrent confirm() could sneak in
+            // between the HTTP-layer authorization check and this transaction, read the
+            // about-to-be-deleted lines, create reservations against them, and commit OPEN/
+            // SHORTAGE — leaving those reservations (and reserved_qty) orphaned forever once
+            // syncServiceLines()/syncSparepartLines() delete-and-recreate the lines below.
+            $fresh = WorkOrder::whereKey($workOrder->id)->lockForUpdate()->first();
+
+            if ($fresh->status !== WorkOrderStatus::DRAFT) {
+                $noLongerDraft = true;
+
+                return;
+            }
+
+            $fresh->update([
                 'customer_id' => $data['customer_id'],
                 'vehicle_id' => $data['vehicle_id'],
                 'mechanic_id' => $data['mechanic_id'],
@@ -263,9 +281,13 @@ class WorkOrderController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            $this->syncServiceLines($workOrder, $data['services'] ?? []);
-            $this->syncSparepartLines($workOrder, $data['spareparts'] ?? []);
+            $this->syncServiceLines($fresh, $data['services'] ?? []);
+            $this->syncSparepartLines($fresh, $data['spareparts'] ?? []);
         });
+
+        if ($noLongerDraft) {
+            return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB sudah tidak dalam status draft, tidak bisa diubah lagi.');
+        }
 
         return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil diperbarui.');
     }
@@ -300,7 +322,15 @@ class WorkOrderController extends Controller
                         ->lockForUpdate()
                         ->firstOrFail();
 
-                    $activeReservations = $line->reservations()->where('status', 'active')->lockForUpdate()->get();
+                    // No lockForUpdate() here — the WorkOrder row lock taken above already
+                    // guarantees exclusive access to this work order's reservations (confirm()
+                    // and cancel() are the only two paths that ever create or release
+                    // reservations, and both lock the WorkOrder row first). A locking read on
+                    // this query would take next-key/gap locks under REPEATABLE-READ because it
+                    // filters via the non-unique reference_type/reference_id index, which can
+                    // deadlock (AB-BA) against confirm()'s reservation inserts for a different
+                    // work order sharing the same sparepart.
+                    $activeReservations = $line->reservations()->where('status', 'active')->get();
 
                     foreach ($activeReservations as $reservation) {
                         $stock->reserved_qty -= $reservation->qty;

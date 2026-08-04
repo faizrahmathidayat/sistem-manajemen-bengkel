@@ -810,6 +810,53 @@ class WorkOrderManagementTest extends TestCase
         $this->assertSame('released', $reservation->status);
     }
 
+    public function test_cancel_releases_reservations_and_decrements_stock_for_two_sparepart_lines(): void
+    {
+        // Regression test for the cancel() lock-ordering fix: cancel() must lock each line's
+        // stock row BEFORE locking/reading that line's reservations (matching confirm()'s
+        // stock-then-reservations order) rather than locking all of a line's reservations first
+        // via the unindexed reference_type/reference_id query. This test can't observe lock
+        // ORDER directly (no real concurrent threads in PHPUnit), but it proves the restructured
+        // per-line loop in cancel() still produces correct functional results — every line's
+        // reservation released and its own stock row decremented by the right amount — for a
+        // work order with 2+ sparepart lines against different SparepartBranch records.
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $sparepartTwo = Sparepart::create(['code' => 'OLI-02-JKT', 'name' => 'Oli Gardan']);
+        $sparepartBranchTwo = SparepartBranch::create([
+            'sparepart_id' => $sparepartTwo->id, 'branch_id' => $branch->id, 'selling_price' => 70000,
+        ]);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchTwo->id)->update(['on_hand_qty' => 10]);
+
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['spareparts'] = [
+            ['sparepart_branch_id' => $sparepartBranchTwo->id, 'qty' => 3, 'unit_price' => 70000],
+            ['sparepart_branch_id' => $scenario['sparepartBranch']->id, 'qty' => 2, 'unit_price' => 60000],
+        ];
+
+        $workOrder = $this->confirmWorkOrder($branch, $scenario, $payload);
+        $this->assertSame(WorkOrderStatus::OPEN, $workOrder->status);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/cancel");
+
+        $response->assertRedirect(route('work-orders.show', $workOrder));
+        $workOrder->refresh();
+        $this->assertSame(WorkOrderStatus::CANCELLED, $workOrder->status);
+
+        $lineOne = $workOrder->sparepartLines->firstWhere('sparepart_branch_id', $scenario['sparepartBranch']->id);
+        $lineTwo = $workOrder->sparepartLines->firstWhere('sparepart_branch_id', $sparepartBranchTwo->id);
+        $this->assertSame('released', $lineOne->reservations->first()->status);
+        $this->assertSame('released', $lineTwo->reservations->first()->status);
+
+        $stockOne = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $stockTwo = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchTwo->id)->first();
+        $this->assertSame(0.0, (float) $stockOne->reserved_qty);
+        $this->assertSame(0.0, (float) $stockTwo->reserved_qty);
+    }
+
     public function test_update_is_still_forbidden_for_open_and_shortage_status(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

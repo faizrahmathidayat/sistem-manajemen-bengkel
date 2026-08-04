@@ -279,7 +279,7 @@ class WorkOrderController extends Controller
         DB::transaction(function () use ($workOrder, &$alreadyCancelled) {
             $fresh = WorkOrder::whereKey($workOrder->id)->lockForUpdate()->first();
 
-            if ($fresh->status === WorkOrderStatus::CANCELLED) {
+            if (! in_array($fresh->status, [WorkOrderStatus::DRAFT, WorkOrderStatus::OPEN, WorkOrderStatus::SHORTAGE], true)) {
                 $alreadyCancelled = true;
 
                 return;
@@ -289,18 +289,27 @@ class WorkOrderController extends Controller
                 $lines = $workOrder->sparepartLines()->reorder()->orderBy('sparepart_branch_id')->get();
 
                 foreach ($lines as $line) {
+                    // Lock the stock row BEFORE querying/locking this line's reservations, so the
+                    // lock order here matches confirm()'s (work_orders row -> stock rows in
+                    // sparepart_branch_id order -> reservation rows). Locking reservations first
+                    // (as a prior fix did) takes a wide, unindexed lock over inventory_reservations
+                    // (no index on reference_type/reference_id) before touching the stock row,
+                    // which is the inverse of confirm()'s order and reintroduces an AB-BA deadlock
+                    // between concurrent confirm()/cancel() calls sharing a sparepart.
+                    $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
                     $activeReservations = $line->reservations()->where('status', 'active')->lockForUpdate()->get();
 
                     foreach ($activeReservations as $reservation) {
-                        $stock = SparepartBranchStock::where('sparepart_branch_id', $reservation->sparepart_branch_id)
-                            ->lockForUpdate()
-                            ->firstOrFail();
                         $stock->reserved_qty -= $reservation->qty;
-                        $stock->save();
 
                         $reservation->status = 'released';
                         $reservation->save();
                     }
+
+                    $stock->save();
                 }
             }
 

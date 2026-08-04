@@ -258,6 +258,84 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_create_form_renders_for_a_user_with_receipt_create_in_some_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
+
+        $response->assertOk();
+    }
+
+    public function test_edit_form_renders_for_a_user_with_receipt_create_on_a_draft_receipt(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $goodsReceipt = GoodsReceipt::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/goods-receipts/{$goodsReceipt->id}/edit");
+
+        $response->assertOk();
+    }
+
+    public function test_update_successfully_replaces_lines_and_recomputes_totals(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $updatedSparepartBranch = $this->makeSparepartBranch($branch, '-updated');
+        $user = User::find(User::factory()->create()->id);
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $this->actingAs($user)->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $goodsReceipt = GoodsReceipt::first();
+
+        $response = $this->actingAs($user)->put("/goods-receipts/{$goodsReceipt->id}", [
+            'receipt_date' => now()->format('Y-m-d'),
+            'reference_number' => 'NOTA-001',
+            'lines' => [
+                ['sparepart_branch_id' => $updatedSparepartBranch->id, 'qty' => 3, 'purchase_price' => 25000],
+            ],
+        ]);
+
+        $response->assertRedirect(route('goods-receipts.show', $goodsReceipt));
+        $goodsReceipt->refresh();
+        $this->assertCount(1, $goodsReceipt->lines);
+        $this->assertSame($updatedSparepartBranch->id, $goodsReceipt->lines->first()->sparepart_branch_id);
+        $this->assertSame(75000.0, (float) $goodsReceipt->lines->first()->line_total);
+
+        $oldStock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
+        $newStock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $updatedSparepartBranch->id)->first();
+        $this->assertSame(0.0, (float) $oldStock->on_hand_qty, 'Updating a DRAFT receipt must never touch stock.');
+        $this->assertSame(0.0, (float) $newStock->on_hand_qty, 'Updating a DRAFT receipt must never touch stock.');
+    }
+
+    public function test_update_can_change_header_fields(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::find(User::factory()->create()->id);
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $this->actingAs($user)->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $goodsReceipt = GoodsReceipt::first();
+
+        $this->actingAs($user)->put("/goods-receipts/{$goodsReceipt->id}", [
+            'receipt_date' => now()->format('Y-m-d'),
+            'reference_number' => 'NOTA-UPDATED',
+            'notes' => 'Catatan diperbarui',
+            'lines' => [
+                ['sparepart_branch_id' => $sparepartBranch->id, 'qty' => 10, 'purchase_price' => 40000],
+            ],
+        ]);
+
+        $goodsReceipt->refresh();
+        $this->assertSame('NOTA-UPDATED', $goodsReceipt->reference_number);
+        $this->assertSame('Catatan diperbarui', $goodsReceipt->notes);
+    }
+
     public function test_index_lists_receipts_for_authorized_branches_only(): void
     {
         $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

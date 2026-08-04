@@ -14,11 +14,13 @@ class WorkOrder extends Model
     protected $fillable = [
         'number', 'branch_id', 'customer_id', 'vehicle_id', 'mechanic_id',
         'work_order_date', 'odometer_km', 'status', 'notes',
+        'shortage_override_reason', 'shortage_overridden_by', 'shortage_overridden_at',
     ];
 
     protected $casts = [
         'work_order_date' => 'date',
         'odometer_km' => 'decimal:1',
+        'shortage_overridden_at' => 'datetime',
     ];
 
     protected $attributes = [
@@ -43,6 +45,11 @@ class WorkOrder extends Model
     public function mechanic()
     {
         return $this->belongsTo(Mechanic::class);
+    }
+
+    public function shortageOverriddenBy()
+    {
+        return $this->belongsTo(User::class, 'shortage_overridden_by');
     }
 
     public function serviceLines()

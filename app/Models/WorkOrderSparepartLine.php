@@ -31,4 +31,10 @@ class WorkOrderSparepartLine extends Model
     {
         return $this->belongsTo(SparepartBranch::class);
     }
+
+    public function reservations()
+    {
+        return $this->hasMany(InventoryReservation::class, 'reference_id')
+            ->where('reference_type', 'work_order_sparepart_line');
+    }
 }

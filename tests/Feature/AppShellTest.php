@@ -280,6 +280,26 @@ class AppShellTest extends TestCase
         $response->assertSee(route('goods-receipts.index'), false);
     }
 
+    public function test_sidebar_shows_stock_adjustment_placeholder_when_user_has_stock_adjustment_view_permission_in_a_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'stock_adjustment.view', 'resource' => 'stock_adjustment', 'action' => 'view', 'description' => 'Melihat stock adjustment']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Stock Adjustment', false);
+        // Also assert on the real route URL: the old disabled-placeholder markup
+        // (<span class="nav-link nav-link-disabled">...) contained the same text
+        // but no href, so a text-only assertion would still pass on a regression
+        // back to a non-functional placeholder (same precedent as
+        // test_sidebar_shows_pkb_placeholder_when_user_has_pkb_view_permission_in_a_branch above).
+        $response->assertSee(route('stock-adjustments.index'), false);
+    }
+
     public function test_sidebar_shows_audit_log_placeholder_when_user_has_audit_log_view_permission(): void
     {
         $permission = Permission::create(['code' => 'audit_log.view', 'resource' => 'audit_log', 'action' => 'view', 'description' => 'Melihat audit log']);

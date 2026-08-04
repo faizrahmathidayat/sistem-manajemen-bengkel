@@ -7,4 +7,6 @@ class InventoryMovementType
     const RECEIPT = 'receipt';
     const ADJUSTMENT_IN = 'adjustment_in';
     const ADJUSTMENT_OUT = 'adjustment_out';
+    const TRANSFER_OUT = 'transfer_out';
+    const TRANSFER_IN = 'transfer_in';
 }

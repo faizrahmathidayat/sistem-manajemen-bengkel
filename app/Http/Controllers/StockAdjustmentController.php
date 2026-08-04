@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreStockAdjustmentRequest;
 use App\Http\Requests\UpdateStockAdjustmentRequest;
 use App\Models\Branch;
+use App\Models\InventoryMovement;
 use App\Models\SparepartBranch;
+use App\Models\SparepartBranchStock;
 use App\Models\StockAdjustment;
 use App\Models\StockAdjustmentLine;
 use App\Services\DocumentNumberGenerator;
+use App\Support\InventoryMovementType;
 use App\Support\StockAdjustmentStatus;
 use Illuminate\Support\Facades\DB;
 
@@ -150,6 +153,120 @@ class StockAdjustmentController extends Controller
         });
 
         return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil diperbarui.');
+    }
+
+    public function submit(StockAdjustment $stockAdjustment)
+    {
+        $this->authorize('submit', $stockAdjustment);
+
+        DB::transaction(function () use ($stockAdjustment) {
+            $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
+            if ($fresh->status !== StockAdjustmentStatus::DRAFT) {
+                return;
+            }
+
+            $fresh->status = StockAdjustmentStatus::PENDING_APPROVAL;
+            $fresh->save();
+        });
+
+        return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil diajukan untuk persetujuan.');
+    }
+
+    public function approve(StockAdjustment $stockAdjustment)
+    {
+        $this->authorize('approve', $stockAdjustment);
+
+        DB::transaction(function () use ($stockAdjustment) {
+            $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
+            if ($fresh->status !== StockAdjustmentStatus::PENDING_APPROVAL) {
+                return;
+            }
+
+            $fresh->status = StockAdjustmentStatus::APPROVED;
+            $fresh->approved_by = auth()->id();
+            $fresh->approved_at = now();
+            $fresh->save();
+        });
+
+        return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil disetujui.');
+    }
+
+    public function post(StockAdjustment $stockAdjustment)
+    {
+        $this->authorize('post', $stockAdjustment);
+
+        DB::transaction(function () use ($stockAdjustment) {
+            $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
+            if ($fresh->status !== StockAdjustmentStatus::APPROVED) {
+                return;
+            }
+
+            $lines = $fresh->lines()->reorder()->orderBy('sparepart_branch_id')->get();
+
+            foreach ($lines as $line) {
+                $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $currentOnHandQty = (float) $stock->on_hand_qty;
+                $physicalQty = (float) $line->physical_qty;
+                $delta = round($physicalQty - $currentOnHandQty, 3);
+
+                if (abs($delta) < 0.0005) {
+                    continue;
+                }
+
+                $stock->on_hand_qty = $physicalQty;
+                $stock->save();
+
+                $recordedDelta = round((float) $line->adjustment_qty, 3);
+                $notes = null;
+                if (abs($recordedDelta - $delta) >= 0.0005) {
+                    $notes = sprintf(
+                        'Tercatat saat diajukan: %+.3f, diterapkan saat posting: %+.3f (stok bergeser sejak diajukan).',
+                        $recordedDelta,
+                        $delta
+                    );
+                }
+
+                InventoryMovement::create([
+                    'movement_at' => now(),
+                    'branch_id' => $fresh->branch_id,
+                    'sparepart_branch_id' => $line->sparepart_branch_id,
+                    'movement_type' => $delta > 0 ? InventoryMovementType::ADJUSTMENT_IN : InventoryMovementType::ADJUSTMENT_OUT,
+                    'qty_in' => $delta > 0 ? $delta : 0,
+                    'qty_out' => $delta < 0 ? abs($delta) : 0,
+                    'balance_after' => $physicalQty,
+                    'reference_type' => 'stock_adjustment_line',
+                    'reference_id' => $line->id,
+                    'notes' => $notes,
+                    'created_by' => auth()->id(),
+                ]);
+            }
+
+            $fresh->status = StockAdjustmentStatus::POSTED;
+            $fresh->save();
+        });
+
+        return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil diposting.');
+    }
+
+    public function cancel(StockAdjustment $stockAdjustment)
+    {
+        $this->authorize('cancel', $stockAdjustment);
+
+        DB::transaction(function () use ($stockAdjustment) {
+            $fresh = StockAdjustment::whereKey($stockAdjustment->id)->lockForUpdate()->first();
+            $cancellableStatuses = [StockAdjustmentStatus::DRAFT, StockAdjustmentStatus::PENDING_APPROVAL, StockAdjustmentStatus::APPROVED];
+            if (! in_array($fresh->status, $cancellableStatuses, true)) {
+                return;
+            }
+
+            $fresh->status = StockAdjustmentStatus::CANCELLED;
+            $fresh->save();
+        });
+
+        return redirect()->route('stock-adjustments.show', $stockAdjustment)->with('status', 'Stock adjustment berhasil dibatalkan.');
     }
 
     public function sparepartsByBranch(Branch $branch)

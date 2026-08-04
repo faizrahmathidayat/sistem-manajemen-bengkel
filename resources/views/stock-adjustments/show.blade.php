@@ -9,6 +9,34 @@
                     <i class="bi bi-pencil"></i> Ubah
                 </a>
             @endcan
+            @can('submit', $stockAdjustment)
+                <form method="POST" action="{{ route('stock-adjustments.submit', $stockAdjustment) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Ajukan</button>
+                </form>
+            @endcan
+            @can('approve', $stockAdjustment)
+                <form method="POST" action="{{ route('stock-adjustments.approve', $stockAdjustment) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-primary btn-sm">Setujui</button>
+                </form>
+            @endcan
+            @can('post', $stockAdjustment)
+                <form method="POST" action="{{ route('stock-adjustments.post', $stockAdjustment) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-primary btn-sm">Posting</button>
+                </form>
+            @endcan
+            @can('cancel', $stockAdjustment)
+                <form method="POST" action="{{ route('stock-adjustments.cancel', $stockAdjustment) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Batalkan</button>
+                </form>
+            @endcan
         </div>
     </div>
 

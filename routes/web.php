@@ -148,6 +148,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{stockAdjustment}', [StockAdjustmentController::class, 'show'])->name('show');
         Route::get('/{stockAdjustment}/edit', [StockAdjustmentController::class, 'edit'])->name('edit');
         Route::put('/{stockAdjustment}', [StockAdjustmentController::class, 'update'])->name('update');
+        Route::patch('/{stockAdjustment}/submit', [StockAdjustmentController::class, 'submit'])->name('submit');
+        Route::patch('/{stockAdjustment}/approve', [StockAdjustmentController::class, 'approve'])->name('approve');
+        Route::patch('/{stockAdjustment}/post', [StockAdjustmentController::class, 'post'])->name('post');
+        Route::patch('/{stockAdjustment}/cancel', [StockAdjustmentController::class, 'cancel'])->name('cancel');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

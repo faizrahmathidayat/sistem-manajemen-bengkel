@@ -596,6 +596,51 @@ class WorkOrderManagementTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_confirm_reserves_correctly_for_two_sparepart_lines_submitted_in_reverse_id_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $sparepartTwo = Sparepart::create(['code' => 'OLI-02-JKT', 'name' => 'Oli Gardan']);
+        $sparepartBranchTwo = SparepartBranch::create([
+            'sparepart_id' => $sparepartTwo->id, 'branch_id' => $branch->id, 'selling_price' => 70000,
+        ]);
+        // sparepartBranchTwo necessarily has a higher id than scenario['sparepartBranch'] since it
+        // was created afterwards — submitting it FIRST below deliberately reverses ascending
+        // sparepart_branch_id order relative to submission/sort_order, which is what would trigger
+        // an AB-BA lock-ordering deadlock between two work orders if orderBy('sparepart_branch_id')
+        // were silently ignored (Finding 1: it was being appended after the relation's own
+        // orderBy('sort_order'), so it never actually reordered anything).
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchTwo->id)->update(['on_hand_qty' => 10]);
+
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['spareparts'] = [
+            ['sparepart_branch_id' => $sparepartBranchTwo->id, 'qty' => 3, 'unit_price' => 70000],
+            ['sparepart_branch_id' => $scenario['sparepartBranch']->id, 'qty' => 2, 'unit_price' => 60000],
+        ];
+
+        $workOrder = $this->confirmWorkOrder($branch, $scenario, $payload);
+
+        $this->assertSame(WorkOrderStatus::OPEN, $workOrder->status);
+
+        $orderedLines = $workOrder->sparepartLines()->reorder()->orderBy('sparepart_branch_id')->get();
+        $this->assertCount(2, $orderedLines);
+        $this->assertSame($scenario['sparepartBranch']->id, $orderedLines->first()->sparepart_branch_id);
+        $this->assertSame($sparepartBranchTwo->id, $orderedLines->last()->sparepart_branch_id);
+
+        $lineOne = $workOrder->sparepartLines->firstWhere('sparepart_branch_id', $scenario['sparepartBranch']->id);
+        $lineTwo = $workOrder->sparepartLines->firstWhere('sparepart_branch_id', $sparepartBranchTwo->id);
+        $this->assertCount(1, $lineOne->reservations);
+        $this->assertCount(1, $lineTwo->reservations);
+        $this->assertSame(2.0, (float) $lineOne->reservations->first()->qty);
+        $this->assertSame(3.0, (float) $lineTwo->reservations->first()->qty);
+
+        $stockOne = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $stockTwo = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchTwo->id)->first();
+        $this->assertSame(2.0, (float) $stockOne->reserved_qty);
+        $this->assertSame(3.0, (float) $stockTwo->reserved_qty);
+    }
+
     public function test_override_shortage_records_reason_without_changing_status_or_reservations(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
@@ -710,6 +755,59 @@ class WorkOrderManagementTest extends TestCase
 
         $response->assertRedirect(route('work-orders.show', $workOrder));
         $this->assertSame(WorkOrderStatus::CANCELLED, $workOrder->fresh()->status);
+    }
+
+    public function test_cancel_called_twice_in_sequence_is_rejected_on_the_second_call(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+
+        $firstResponse = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/cancel");
+        $secondResponse = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/cancel");
+
+        $firstResponse->assertRedirect(route('work-orders.show', $workOrder));
+        // Once cancelled, the WorkOrderPolicy itself rejects a further cancel attempt since the
+        // work order is no longer in a cancellable status — proving the second call cannot
+        // reach the release logic again and cannot further decrement reserved_qty.
+        $secondResponse->assertForbidden();
+
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $this->assertSame(0.0, (float) $stock->reserved_qty);
+        $this->assertSame(WorkOrderStatus::CANCELLED, $workOrder->fresh()->status);
+    }
+
+    public function test_cancel_second_call_with_a_stale_in_memory_status_is_a_safe_no_op(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+        $this->actingAs(User::find($user->id));
+
+        // Simulate two requests that both loaded the WorkOrder (e.g. via route-model binding)
+        // while it was still OPEN, before either had actually processed the cancel — this is
+        // exactly the race Finding 2 covers: the controller must re-check status from a locked,
+        // freshly-read row inside the transaction rather than trusting the in-memory object's
+        // (possibly stale) status, or a second in-flight request could double-release the
+        // reservation and drive reserved_qty negative.
+        $staleOne = WorkOrder::find($workOrder->id);
+        $staleTwo = WorkOrder::find($workOrder->id);
+
+        $controller = app(\App\Http\Controllers\WorkOrderController::class);
+        $controller->cancel($staleOne);
+        $controller->cancel($staleTwo);
+
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $this->assertSame(0.0, (float) $stock->reserved_qty);
+        $this->assertSame(WorkOrderStatus::CANCELLED, $workOrder->fresh()->status);
+        $reservation = $workOrder->sparepartLines->first()->reservations()->first();
+        $this->assertSame('released', $reservation->status);
     }
 
     public function test_update_is_still_forbidden_for_open_and_shortage_status(): void

@@ -96,14 +96,24 @@ class WorkOrderController extends Controller
     {
         $this->authorize('confirm', $workOrder);
 
-        DB::transaction(function () use ($workOrder) {
-            $lines = $workOrder->sparepartLines()->orderBy('sparepart_branch_id')->get();
+        $alreadyProcessed = false;
+
+        DB::transaction(function () use ($workOrder, &$alreadyProcessed) {
+            $fresh = WorkOrder::whereKey($workOrder->id)->lockForUpdate()->first();
+
+            if ($fresh->status !== WorkOrderStatus::DRAFT) {
+                $alreadyProcessed = true;
+
+                return;
+            }
+
+            $lines = $workOrder->sparepartLines()->reorder()->orderBy('sparepart_branch_id')->get();
             $hasShortage = false;
 
             foreach ($lines as $line) {
                 $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
                     ->lockForUpdate()
-                    ->first();
+                    ->firstOrFail();
 
                 $available = $stock->on_hand_qty - $stock->reserved_qty;
                 $reserveQty = min($available, $line->qty);
@@ -128,9 +138,13 @@ class WorkOrderController extends Controller
                 }
             }
 
-            $workOrder->status = $hasShortage ? WorkOrderStatus::SHORTAGE : WorkOrderStatus::OPEN;
-            $workOrder->save();
+            $fresh->status = $hasShortage ? WorkOrderStatus::SHORTAGE : WorkOrderStatus::OPEN;
+            $fresh->save();
         });
+
+        if ($alreadyProcessed) {
+            return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB sudah tidak dalam status draft.');
+        }
 
         return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil dikonfirmasi.');
     }
@@ -260,17 +274,27 @@ class WorkOrderController extends Controller
     {
         $this->authorize('cancel', $workOrder);
 
-        DB::transaction(function () use ($workOrder) {
-            if (in_array($workOrder->status, [WorkOrderStatus::OPEN, WorkOrderStatus::SHORTAGE], true)) {
-                $lines = $workOrder->sparepartLines()->orderBy('sparepart_branch_id')->get();
+        $alreadyCancelled = false;
+
+        DB::transaction(function () use ($workOrder, &$alreadyCancelled) {
+            $fresh = WorkOrder::whereKey($workOrder->id)->lockForUpdate()->first();
+
+            if ($fresh->status === WorkOrderStatus::CANCELLED) {
+                $alreadyCancelled = true;
+
+                return;
+            }
+
+            if (in_array($fresh->status, [WorkOrderStatus::OPEN, WorkOrderStatus::SHORTAGE], true)) {
+                $lines = $workOrder->sparepartLines()->reorder()->orderBy('sparepart_branch_id')->get();
 
                 foreach ($lines as $line) {
-                    $activeReservations = $line->reservations()->where('status', 'active')->get();
+                    $activeReservations = $line->reservations()->where('status', 'active')->lockForUpdate()->get();
 
                     foreach ($activeReservations as $reservation) {
                         $stock = SparepartBranchStock::where('sparepart_branch_id', $reservation->sparepart_branch_id)
                             ->lockForUpdate()
-                            ->first();
+                            ->firstOrFail();
                         $stock->reserved_qty -= $reservation->qty;
                         $stock->save();
 
@@ -280,9 +304,13 @@ class WorkOrderController extends Controller
                 }
             }
 
-            $workOrder->status = WorkOrderStatus::CANCELLED;
-            $workOrder->save();
+            $fresh->status = WorkOrderStatus::CANCELLED;
+            $fresh->save();
         });
+
+        if ($alreadyCancelled) {
+            return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB sudah dibatalkan sebelumnya.');
+        }
 
         return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil dibatalkan.');
     }

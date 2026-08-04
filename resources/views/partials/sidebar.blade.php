@@ -61,10 +61,9 @@
         @endif
         @if ($user->branchesWithPermission('stock_transfer.view')->isNotEmpty())
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('stock-transfers.index') }}" class="nav-link {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}">
                 <i class="bi bi-arrow-left-right me-2"></i> Transfer Stock
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
     </ul>

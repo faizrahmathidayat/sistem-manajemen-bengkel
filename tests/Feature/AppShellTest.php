@@ -213,12 +213,12 @@ class AppShellTest extends TestCase
 
         $response->assertOk();
         // "Perintah Kerja Bengkel" is the sidebar link's own unique text.
-        // "bi-clipboard-check" is NOT a safe companion assertion — the
+        // "bi-clipboard-check" is NOT a safe companion assertion â€” the
         // Dashboard's own "Status PKB Hari Ini" KPI card renders the same
         // icon class unconditionally (dashboard/index.blade.php), which would
         // make that assertion pass even if this sidebar link were broken.
         // (The Dashboard's own "Buat PKB Baru" button, previously a disabled
-        // placeholder mentioned here, is now a real conditional link — see
+        // placeholder mentioned here, is now a real conditional link â€” see
         // test_buat_pkb_baru_button_shown_when_user_has_pkb_create_permission
         // in DashboardTest.php.)
         $response->assertSee('Perintah Kerja Bengkel', false);
@@ -300,6 +300,26 @@ class AppShellTest extends TestCase
         $response->assertSee(route('stock-adjustments.index'), false);
     }
 
+
+    public function test_sidebar_shows_transfer_stock_link_when_user_has_stock_transfer_view_permission_in_a_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'stock_transfer.view', 'resource' => 'stock_transfer', 'action' => 'view', 'description' => 'Melihat transfer stock']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Transfer Stock', false);
+        // Also assert on the real route URL: the old disabled-placeholder markup
+        // (<span class="nav-link nav-link-disabled">...) contained the same text
+        // but no href, so a text-only assertion would still pass on a regression
+        // back to a non-functional placeholder (same precedent as
+        // test_sidebar_shows_pkb_placeholder_when_user_has_pkb_view_permission_in_a_branch above).
+        $response->assertSee(route('stock-transfers.index'), false);
+    }
     public function test_sidebar_shows_audit_log_placeholder_when_user_has_audit_log_view_permission(): void
     {
         $permission = Permission::create(['code' => 'audit_log.view', 'resource' => 'audit_log', 'action' => 'view', 'description' => 'Melihat audit log']);

@@ -501,4 +501,232 @@ class WorkOrderManagementTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('Buat PKB Pertama');
     }
+
+    protected function confirmWorkOrder(Branch $branch, array $scenario, array $overrides = []): WorkOrder
+    {
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.confirm');
+        $this->actingAs(User::find($user->id))->post('/work-orders', array_merge($this->baseStorePayload($branch, $scenario), $overrides));
+        $workOrder = WorkOrder::latest('id')->first();
+        $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/confirm");
+
+        return $workOrder->fresh();
+    }
+
+    public function test_confirm_reserves_full_qty_and_sets_open_when_stock_is_sufficient(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+
+        $this->assertSame(WorkOrderStatus::OPEN, $workOrder->status);
+        $line = $workOrder->sparepartLines->first();
+        $this->assertCount(1, $line->reservations);
+        $this->assertSame(2.0, (float) $line->reservations->first()->qty);
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $this->assertSame(2.0, (float) $stock->reserved_qty);
+    }
+
+    public function test_confirm_partially_reserves_and_sets_shortage_when_stock_is_insufficient(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+
+        $this->assertSame(WorkOrderStatus::SHORTAGE, $workOrder->status);
+        $line = $workOrder->sparepartLines->first();
+        $this->assertCount(1, $line->reservations);
+        $this->assertSame(1.0, (float) $line->reservations->first()->qty);
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $this->assertSame(1.0, (float) $stock->reserved_qty);
+    }
+
+    public function test_confirm_creates_no_reservation_when_stock_is_zero(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+
+        $this->assertSame(WorkOrderStatus::SHORTAGE, $workOrder->status);
+        $this->assertCount(0, $workOrder->sparepartLines->first()->reservations);
+    }
+
+    public function test_confirm_sets_open_immediately_for_a_jasa_only_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['spareparts'] = [];
+
+        $workOrder = $this->confirmWorkOrder($branch, $scenario, $payload);
+
+        $this->assertSame(WorkOrderStatus::OPEN, $workOrder->status);
+    }
+
+    public function test_confirm_is_forbidden_without_pkb_confirm_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::latest('id')->first();
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/confirm");
+
+        $response->assertForbidden();
+    }
+
+    public function test_confirm_is_forbidden_for_a_non_draft_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.confirm');
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/confirm");
+
+        $response->assertForbidden();
+    }
+
+    public function test_override_shortage_records_reason_without_changing_status_or_reservations(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/override-shortage", [
+            'reason' => 'Sparepart dipesan dari cabang lain, tetap lanjutkan servis.',
+        ]);
+
+        $response->assertRedirect(route('work-orders.show', $workOrder));
+        $workOrder->refresh();
+        $this->assertSame(WorkOrderStatus::SHORTAGE, $workOrder->status);
+        $this->assertNotNull($workOrder->shortage_overridden_at);
+        $this->assertSame($user->id, $workOrder->shortage_overridden_by);
+        $stockAfter = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $this->assertSame(1.0, (float) $stockAfter->reserved_qty);
+    }
+
+    public function test_override_shortage_requires_a_reason(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/override-shortage", ['reason' => '']);
+
+        $response->assertSessionHasErrors(['reason']);
+    }
+
+    public function test_override_shortage_is_forbidden_when_status_is_not_shortage(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/override-shortage", ['reason' => 'x']);
+
+        $response->assertForbidden();
+    }
+
+    public function test_override_shortage_is_forbidden_when_already_overridden(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+        $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/override-shortage", ['reason' => 'first']);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/override-shortage", ['reason' => 'second']);
+
+        $response->assertForbidden();
+    }
+
+    public function test_cancel_from_open_releases_active_reservations(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/cancel");
+
+        $response->assertRedirect(route('work-orders.show', $workOrder));
+        $workOrder->refresh();
+        $this->assertSame(WorkOrderStatus::CANCELLED, $workOrder->status);
+        $line = $workOrder->sparepartLines->first();
+        $this->assertSame('released', $line->reservations->first()->status);
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $this->assertSame(0.0, (float) $stock->reserved_qty);
+    }
+
+    public function test_cancel_from_shortage_releases_partial_reservation(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 1]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+
+        $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/cancel");
+
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->first();
+        $this->assertSame(0.0, (float) $stock->reserved_qty);
+    }
+
+    public function test_cancel_from_draft_still_works_without_touching_reservations(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.cancel');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::latest('id')->first();
+
+        $response = $this->actingAs(User::find($user->id))->patch("/work-orders/{$workOrder->id}/cancel");
+
+        $response->assertRedirect(route('work-orders.show', $workOrder));
+        $this->assertSame(WorkOrderStatus::CANCELLED, $workOrder->fresh()->status);
+    }
+
+    public function test_update_is_still_forbidden_for_open_and_shortage_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.edit');
+
+        $response = $this->actingAs(User::find($user->id))->put("/work-orders/{$workOrder->id}", [
+            'customer_id' => $scenario['customer']->id, 'vehicle_id' => $scenario['vehicle']->id,
+            'mechanic_id' => $scenario['mechanic']->id, 'work_order_date' => now()->format('Y-m-d'),
+            'services' => [['service_catalog_id' => null, 'description' => 'X', 'qty' => 1, 'unit_price' => 1000]],
+        ]);
+
+        $response->assertForbidden();
+    }
 }

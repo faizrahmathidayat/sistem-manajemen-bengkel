@@ -120,6 +120,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{workOrder}/edit', [WorkOrderController::class, 'edit'])->name('edit');
         Route::put('/{workOrder}', [WorkOrderController::class, 'update'])->name('update');
         Route::patch('/{workOrder}/cancel', [WorkOrderController::class, 'cancel'])->name('cancel');
+        Route::patch('/{workOrder}/confirm', [WorkOrderController::class, 'confirm'])->name('confirm');
+        Route::patch('/{workOrder}/override-shortage', [WorkOrderController::class, 'overrideShortage'])->name('overrideShortage');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

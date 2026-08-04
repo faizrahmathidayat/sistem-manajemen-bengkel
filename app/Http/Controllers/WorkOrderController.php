@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\OverrideShortageRequest;
 use App\Http\Requests\StoreWorkOrderRequest;
 use App\Http\Requests\UpdateWorkOrderRequest;
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\InventoryReservation;
 use App\Models\Mechanic;
 use App\Models\ServiceCatalog;
 use App\Models\SparepartBranch;
+use App\Models\SparepartBranchStock;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderServiceLine;
 use App\Models\WorkOrderSparepartLine;
@@ -87,6 +90,60 @@ class WorkOrderController extends Controller
         });
 
         return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil dibuat.');
+    }
+
+    public function confirm(WorkOrder $workOrder)
+    {
+        $this->authorize('confirm', $workOrder);
+
+        DB::transaction(function () use ($workOrder) {
+            $lines = $workOrder->sparepartLines()->orderBy('sparepart_branch_id')->get();
+            $hasShortage = false;
+
+            foreach ($lines as $line) {
+                $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $available = $stock->on_hand_qty - $stock->reserved_qty;
+                $reserveQty = min($available, $line->qty);
+
+                if ($reserveQty > 0) {
+                    InventoryReservation::create([
+                        'branch_id' => $workOrder->branch_id,
+                        'sparepart_branch_id' => $line->sparepart_branch_id,
+                        'reservation_type' => 'pkb',
+                        'reference_type' => 'work_order_sparepart_line',
+                        'reference_id' => $line->id,
+                        'qty' => $reserveQty,
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    $stock->reserved_qty += $reserveQty;
+                    $stock->save();
+                }
+
+                if ((float) $reserveQty < (float) $line->qty) {
+                    $hasShortage = true;
+                }
+            }
+
+            $workOrder->status = $hasShortage ? WorkOrderStatus::SHORTAGE : WorkOrderStatus::OPEN;
+            $workOrder->save();
+        });
+
+        return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil dikonfirmasi.');
+    }
+
+    public function overrideShortage(OverrideShortageRequest $request, WorkOrder $workOrder)
+    {
+        $workOrder->update([
+            'shortage_override_reason' => $request->validated()['reason'],
+            'shortage_overridden_by' => auth()->id(),
+            'shortage_overridden_at' => now(),
+        ]);
+
+        return redirect()->route('work-orders.show', $workOrder)->with('status', 'Kekurangan stok berhasil dicatat sebagai disetujui.');
     }
 
     public function show(WorkOrder $workOrder)
@@ -203,7 +260,29 @@ class WorkOrderController extends Controller
     {
         $this->authorize('cancel', $workOrder);
 
-        $workOrder->update(['status' => WorkOrderStatus::CANCELLED]);
+        DB::transaction(function () use ($workOrder) {
+            if (in_array($workOrder->status, [WorkOrderStatus::OPEN, WorkOrderStatus::SHORTAGE], true)) {
+                $lines = $workOrder->sparepartLines()->orderBy('sparepart_branch_id')->get();
+
+                foreach ($lines as $line) {
+                    $activeReservations = $line->reservations()->where('status', 'active')->get();
+
+                    foreach ($activeReservations as $reservation) {
+                        $stock = SparepartBranchStock::where('sparepart_branch_id', $reservation->sparepart_branch_id)
+                            ->lockForUpdate()
+                            ->first();
+                        $stock->reserved_qty -= $reservation->qty;
+                        $stock->save();
+
+                        $reservation->status = 'released';
+                        $reservation->save();
+                    }
+                }
+            }
+
+            $workOrder->status = WorkOrderStatus::CANCELLED;
+            $workOrder->save();
+        });
 
         return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil dibatalkan.');
     }

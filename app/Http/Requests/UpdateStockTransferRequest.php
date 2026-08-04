@@ -24,7 +24,7 @@ class UpdateStockTransferRequest extends FormRequest
     public function rules()
     {
         return [
-            'to_branch_id' => ['required', 'integer', 'exists:branches,id', 'different:from_branch_id_placeholder'],
+            'to_branch_id' => ['required', 'integer', 'exists:branches,id'],
             'transfer_date' => ['required', 'date'],
             'notes' => ['nullable', 'string'],
             'lines' => ['required', 'array', 'min:1'],

@@ -250,7 +250,7 @@ class StockTransferController extends Controller
                 $onHandQty = (float) $stock->on_hand_qty;
                 $reservedQty = (float) $stock->reserved_qty;
 
-                if (($onHandQty - $qty) < $reservedQty) {
+                if (($reservedQty - ($onHandQty - $qty)) >= 0.0005) {
                     $reservationViolations[] = sprintf(
                         '%s: stok %s dikurangi %s akan turun di bawah reservasi %s',
                         $line->sparepart->code,

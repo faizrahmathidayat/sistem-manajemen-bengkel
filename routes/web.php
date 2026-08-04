@@ -13,6 +13,7 @@ use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SparepartBranchController;
+use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
@@ -136,6 +137,17 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{goodsReceipt}', [GoodsReceiptController::class, 'update'])->name('update');
         Route::patch('/{goodsReceipt}/post', [GoodsReceiptController::class, 'post'])->name('post');
         Route::patch('/{goodsReceipt}/cancel', [GoodsReceiptController::class, 'cancel'])->name('cancel');
+    });
+
+    Route::prefix('stock-adjustments')->name('stock-adjustments.')->group(function () {
+        Route::get('/lookup/spareparts/{branch}', [StockAdjustmentController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
+
+        Route::get('/', [StockAdjustmentController::class, 'index'])->name('index');
+        Route::get('/create', [StockAdjustmentController::class, 'create'])->name('create');
+        Route::post('/', [StockAdjustmentController::class, 'store'])->name('store');
+        Route::get('/{stockAdjustment}', [StockAdjustmentController::class, 'show'])->name('show');
+        Route::get('/{stockAdjustment}/edit', [StockAdjustmentController::class, 'edit'])->name('edit');
+        Route::put('/{stockAdjustment}', [StockAdjustmentController::class, 'update'])->name('update');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

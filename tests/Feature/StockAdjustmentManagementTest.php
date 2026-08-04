@@ -1,0 +1,354 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Branch;
+use App\Models\Permission;
+use App\Models\Sparepart;
+use App\Models\SparepartBranch;
+use App\Models\StockAdjustment;
+use App\Models\User;
+use App\Models\UserBranchPermission;
+use App\Services\UserBranchService;
+use App\Support\StockAdjustmentStatus;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class StockAdjustmentManagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function grantBranchPermission(User $user, Branch $branch, string $code): void
+    {
+        (new UserBranchService())->assign($user, $branch);
+        [$resource, $action] = explode('.', $code, 2);
+        $permission = Permission::firstOrCreate(
+            ['code' => $code],
+            ['resource' => $resource, 'action' => $action, 'description' => $code]
+        );
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+    }
+
+    protected function makeSparepartBranch(Branch $branch, string $codeSuffix = '', float $onHandQty = 0): SparepartBranch
+    {
+        $sparepart = Sparepart::create(['code' => "OLI-01{$codeSuffix}", 'name' => 'Oli Mesin']);
+        $sparepartBranch = SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 60000]);
+
+        if ($onHandQty > 0) {
+            $sparepartBranch->stock()->update(['on_hand_qty' => $onHandQty]);
+        }
+
+        return $sparepartBranch;
+    }
+
+    protected function baseStorePayload(Branch $branch, SparepartBranch $sparepartBranch, float $physicalQty = 8): array
+    {
+        return [
+            'branch_id' => $branch->id,
+            'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Stock opname bulanan',
+            'lines' => [
+                ['sparepart_branch_id' => $sparepartBranch->id, 'physical_qty' => $physicalQty, 'reason' => 'Selisih hitung fisik'],
+            ],
+        ];
+    }
+
+    public function test_store_creates_stock_adjustment_with_lines_and_captures_system_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branch, $sparepartBranch, 8));
+
+        $stockAdjustment = StockAdjustment::first();
+        $response->assertRedirect(route('stock-adjustments.show', $stockAdjustment));
+        $this->assertSame(StockAdjustmentStatus::DRAFT, $stockAdjustment->status);
+        $this->assertStringStartsWith('SA/JKT/', $stockAdjustment->number);
+        $this->assertCount(1, $stockAdjustment->lines);
+        $line = $stockAdjustment->lines->first();
+        $this->assertSame(10.0, (float) $line->system_qty);
+        $this->assertSame(8.0, (float) $line->physical_qty);
+        $this->assertSame(-2.0, (float) $line->adjustment_qty);
+
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
+        $this->assertSame(10.0, (float) $stock->on_hand_qty, 'Creating a DRAFT adjustment must not touch stock.');
+    }
+
+    public function test_store_ignores_client_supplied_system_qty_and_adjustment_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $payload = $this->baseStorePayload($branch, $sparepartBranch, 8);
+        $payload['lines'][0]['system_qty'] = 999;
+        $payload['lines'][0]['adjustment_qty'] = 999;
+
+        $this->actingAs(User::find($user->id))->post('/stock-adjustments', $payload);
+
+        $line = StockAdjustment::first()->lines->first();
+        $this->assertSame(10.0, (float) $line->system_qty);
+        $this->assertSame(-2.0, (float) $line->adjustment_qty);
+    }
+
+    public function test_store_is_forbidden_without_stock_adjustment_create_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post('/stock-adjustments', $this->baseStorePayload($branch, $sparepartBranch));
+
+        $response->assertForbidden();
+    }
+
+    public function test_store_rejects_an_adjustment_with_no_lines(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->post('/stock-adjustments', [
+            'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'), 'reason' => 'Opname', 'lines' => [],
+        ]);
+
+        $response->assertSessionHasErrors(['lines']);
+    }
+
+    public function test_store_rejects_duplicate_sparepart_in_same_document(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->post('/stock-adjustments', [
+            'branch_id' => $branch->id,
+            'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname',
+            'lines' => [
+                ['sparepart_branch_id' => $sparepartBranch->id, 'physical_qty' => 8, 'reason' => 'Rusak'],
+                ['sparepart_branch_id' => $sparepartBranch->id, 'physical_qty' => 9, 'reason' => 'Hilang'],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['lines.0.sparepart_branch_id', 'lines.1.sparepart_branch_id']);
+    }
+
+    public function test_store_rejects_sparepart_from_a_different_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $otherBranch = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $otherSparepartBranch = $this->makeSparepartBranch($otherBranch, '-other');
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branch, $otherSparepartBranch));
+
+        $response->assertSessionHasErrors(['lines.0.sparepart_branch_id']);
+    }
+
+    public function test_index_lists_adjustments_for_authorized_branches_only(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepartBranchA = $this->makeSparepartBranch($branchA, '-a');
+        $sparepartBranchB = $this->makeSparepartBranch($branchB, '-b');
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'stock_adjustment.view');
+        $this->grantBranchPermission($user, $branchA, 'stock_adjustment.create');
+        $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branchA, $sparepartBranchA));
+        $this->grantBranchPermission($user, $branchB, 'stock_adjustment.create');
+        $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branchB, $sparepartBranchB));
+
+        $response = $this->actingAs(User::find($user->id))->get('/stock-adjustments');
+
+        $response->assertOk();
+        $adjustmentA = StockAdjustment::where('branch_id', $branchA->id)->first();
+        $adjustmentB = StockAdjustment::where('branch_id', $branchB->id)->first();
+        $response->assertSee($adjustmentA->number);
+        $response->assertDontSee($adjustmentB->number);
+    }
+
+    public function test_index_shows_no_access_page_without_any_stock_adjustment_view_grant(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/stock-adjustments');
+
+        $response->assertOk();
+        $response->assertSee('belum memiliki akses');
+    }
+
+    public function test_index_shows_empty_state_when_no_adjustments_match(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.view');
+
+        $response = $this->actingAs(User::find($user->id))->get('/stock-adjustments');
+
+        $response->assertOk();
+        $response->assertSee('Belum ada stock adjustment');
+    }
+
+    public function test_index_renders_all_five_status_badges_correctly(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.view');
+        $statuses = [
+            StockAdjustmentStatus::DRAFT => 'Draft',
+            StockAdjustmentStatus::PENDING_APPROVAL => 'Diajukan',
+            StockAdjustmentStatus::APPROVED => 'Disetujui',
+            StockAdjustmentStatus::POSTED => 'Diposting',
+            StockAdjustmentStatus::CANCELLED => 'Dibatalkan',
+        ];
+        foreach (array_keys($statuses) as $index => $status) {
+            StockAdjustment::create([
+                'number' => "SA/JKT/202608/0000{$index}9",
+                'branch_id' => $branch->id,
+                'adjustment_date' => now()->format('Y-m-d'),
+                'reason' => 'Opname',
+                'status' => $status,
+            ]);
+        }
+
+        $response = $this->actingAs(User::find($user->id))->get('/stock-adjustments');
+
+        $response->assertOk();
+        foreach ($statuses as $label) {
+            $response->assertSee($label);
+        }
+    }
+
+    public function test_create_form_renders_for_a_user_with_stock_adjustment_create_in_some_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/stock-adjustments/create');
+
+        $response->assertOk();
+    }
+
+    public function test_create_form_replays_old_lines_after_a_validation_error(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $payload = $this->baseStorePayload($branch, $sparepartBranch, 7);
+        unset($payload['adjustment_date']);
+
+        $this->from(route('stock-adjustments.create'))->actingAs(User::find($user->id))->post('/stock-adjustments', $payload);
+        $response = $this->actingAs(User::find($user->id))->get(route('stock-adjustments.create'));
+
+        $response->assertOk();
+        $response->assertSee('oldLines', false);
+        $response->assertSee('"physical_qty":7', false);
+    }
+
+    public function test_edit_form_renders_for_a_user_with_stock_adjustment_create_on_a_draft_adjustment(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branch, $sparepartBranch));
+        $stockAdjustment = StockAdjustment::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/stock-adjustments/{$stockAdjustment->id}/edit");
+
+        $response->assertOk();
+    }
+
+    public function test_update_successfully_replaces_lines_and_recomputes_system_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $newSparepartBranch = $this->makeSparepartBranch($branch, '-updated', 20);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branch, $sparepartBranch, 8));
+        $stockAdjustment = StockAdjustment::first();
+
+        $response = $this->actingAs(User::find($user->id))->put("/stock-adjustments/{$stockAdjustment->id}", [
+            'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname revisi',
+            'lines' => [
+                ['sparepart_branch_id' => $newSparepartBranch->id, 'physical_qty' => 18, 'reason' => 'Selisih baru'],
+            ],
+        ]);
+
+        $response->assertRedirect(route('stock-adjustments.show', $stockAdjustment));
+        $stockAdjustment->refresh();
+        $this->assertCount(1, $stockAdjustment->lines);
+        $line = $stockAdjustment->lines->first();
+        $this->assertSame($newSparepartBranch->id, $line->sparepart_branch_id);
+        $this->assertSame(20.0, (float) $line->system_qty);
+        $this->assertSame(-2.0, (float) $line->adjustment_qty);
+    }
+
+    public function test_update_can_change_header_fields(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branch, $sparepartBranch));
+        $stockAdjustment = StockAdjustment::first();
+
+        $this->actingAs(User::find($user->id))->put("/stock-adjustments/{$stockAdjustment->id}", [
+            'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Alasan yang diperbarui',
+            'lines' => [
+                ['sparepart_branch_id' => $sparepartBranch->id, 'physical_qty' => 8, 'reason' => 'Selisih hitung fisik'],
+            ],
+        ]);
+
+        $stockAdjustment->refresh();
+        $this->assertSame('Alasan yang diperbarui', $stockAdjustment->reason);
+    }
+
+    public function test_update_is_forbidden_for_a_non_draft_adjustment(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::PENDING_APPROVAL,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->put("/stock-adjustments/{$stockAdjustment->id}", [
+            'adjustment_date' => now()->format('Y-m-d'), 'reason' => 'Opname',
+            'lines' => [['sparepart_branch_id' => $sparepartBranch->id, 'physical_qty' => 1, 'reason' => 'x']],
+        ]);
+
+        $response->assertForbidden();
+    }
+
+    public function test_show_renders_status_badge_and_approval_info_when_approved(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $approver = User::factory()->create(['name' => 'Budi Approver']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.view');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+            'approved_by' => $approver->id, 'approved_at' => now(),
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/stock-adjustments/{$stockAdjustment->id}");
+
+        $response->assertOk();
+        $response->assertSee('Disetujui');
+        $response->assertSee('Budi Approver');
+    }
+}

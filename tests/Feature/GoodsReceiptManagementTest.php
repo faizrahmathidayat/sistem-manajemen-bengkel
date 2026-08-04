@@ -269,6 +269,36 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_create_form_replays_old_lines_after_a_validation_error(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $payload = [
+            'branch_id' => $branch->id,
+            // receipt_date deliberately omitted so validation fails, while
+            // 'lines' remains present and valid so old('lines') is non-empty
+            // on the redirected-back create form.
+            'reference_number' => 'NOTA-001',
+            'lines' => [
+                ['sparepart_branch_id' => $sparepartBranch->id, 'qty' => 7, 'purchase_price' => 40000],
+            ],
+        ];
+
+        $this->actingAs(User::find($user->id))
+            ->from(route('goods-receipts.create'))
+            ->post('/goods-receipts', $payload)
+            ->assertSessionHasErrors(['receipt_date']);
+
+        $response = $this->actingAs(User::find($user->id))->get(route('goods-receipts.create'));
+
+        $response->assertOk();
+        $response->assertSee('oldLines', false);
+        $response->assertSee((string) $sparepartBranch->id, false);
+        $response->assertSee('"qty":7', false);
+    }
+
     public function test_edit_form_renders_for_a_user_with_receipt_create_on_a_draft_receipt(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

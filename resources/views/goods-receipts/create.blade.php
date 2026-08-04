@@ -55,21 +55,59 @@
 
     @include('goods-receipts._line_item_scripts')
 
+    @php($oldLines = old('lines', []))
     @push('scripts')
     <script>
     (function () {
         const branchSelect = document.getElementById('branchSelect');
         const addButton = document.getElementById('addGoodsReceiptLine');
 
-        branchSelect.addEventListener('change', async function () {
+        async function handleBranchChange(branchId) {
             addButton.disabled = true;
-            if (!this.value) {
+            if (!branchId) {
                 return;
             }
-            const spareparts = await GoodsReceiptLineItems.fetchJson(`/goods-receipts/lookup/spareparts/${this.value}`);
+            const spareparts = await GoodsReceiptLineItems.fetchJson(`/goods-receipts/lookup/spareparts/${branchId}`);
             GoodsReceiptLineItems.setSparepartOptions(spareparts);
             addButton.disabled = false;
+        }
+
+        branchSelect.addEventListener('change', function () {
+            handleBranchChange(this.value);
         });
+
+        // Validation-error round-trip: replay the sparepart line rows submitted
+        // before the failed validation. These rows only exist in JS-managed DOM
+        // state (added via <template> cloning), so without this the user would
+        // have to retype every line from scratch after any validation error.
+        function replayOldLines() {
+            const oldLines = @json($oldLines);
+            oldLines.forEach(function (line) {
+                GoodsReceiptLineItems.addLine();
+                const rows = document.querySelectorAll('#goodsReceiptLines .goods-receipt-line');
+                const row = rows[rows.length - 1];
+                if (line.sparepart_branch_id) row.querySelector('.goods-receipt-sparepart-select').value = line.sparepart_branch_id;
+                row.querySelector('.goods-receipt-qty').value = line.qty || '';
+                row.querySelector('.goods-receipt-purchase-price').value = line.purchase_price || '';
+            });
+        }
+
+        // Validation-error round-trip: old('branch_id') re-selects the branch option
+        // but does not fire a native `change` event, so the sparepart cascade and
+        // add-line button would otherwise stay empty and disabled. Re-run it once
+        // on load.
+        //
+        // The sparepart <select> options are populated dynamically from the
+        // branch's AJAX response (via GoodsReceiptLineItems.setSparepartOptions
+        // inside handleBranchChange), so line-replay MUST run after that AJAX call
+        // resolves — otherwise replayed rows would be added with no options to
+        // select from yet. handleBranchChange() is async and returns a promise, so
+        // we chain replayOldLines() onto it here instead of calling it eagerly.
+        if (branchSelect.value) {
+            handleBranchChange(branchSelect.value).then(replayOldLines);
+        } else {
+            replayOldLines();
+        }
     })();
     </script>
     @endpush

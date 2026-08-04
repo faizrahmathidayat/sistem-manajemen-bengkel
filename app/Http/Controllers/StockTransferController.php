@@ -206,10 +206,12 @@ class StockTransferController extends Controller
 
             $lines = $fresh->lines()->reorder()->orderBy('sparepart_id')->with('sparepart')->get();
 
-            // Pass 1: resolve and lock every line's ORIGIN stock row, validate qty against the
-            // CURRENT reserved_qty before mutating anything — same two-pass all-or-nothing
-            // pattern already proven in migration 008b's StockAdjustmentController::post().
-            $lockedStocks = [];
+            // Pass 1a: resolve every line's ORIGIN SparepartBranch config — WITHOUT locking
+            // any stock row yet. StockTransferLine only stores sparepart_id (a transfer spans
+            // two branches, so lines can't reference a single per-branch SparepartBranch row
+            // the way single-branch documents' lines do), so we cannot order the query itself
+            // by sparepart_branch_id — we must resolve first, then sort, then lock.
+            $resolvedLines = [];
             foreach ($lines as $line) {
                 $sparepartBranch = SparepartBranch::where('sparepart_id', $line->sparepart_id)
                     ->where('branch_id', $fresh->from_branch_id)
@@ -222,7 +224,23 @@ class StockTransferController extends Controller
                     continue;
                 }
 
-                $stock = SparepartBranchStock::where('sparepart_branch_id', $sparepartBranch->id)
+                $resolvedLines[] = ['line' => $line, 'sparepartBranch' => $sparepartBranch];
+            }
+
+            // Pass 1b: lock stock rows in ascending sparepart_branch_id order — the
+            // project-wide lock-ordering invariant (see WorkOrderController,
+            // GoodsReceiptController::post(), StockAdjustmentController::post()) that prevents
+            // an AB-BA deadlock when two documents touch overlapping spareparts at the same
+            // branch concurrently. Only after every row is locked do we validate qty against
+            // the CURRENT reserved_qty — same two-pass all-or-nothing pattern already proven
+            // in migration 008b's StockAdjustmentController::post().
+            usort($resolvedLines, fn ($a, $b) => $a['sparepartBranch']->id <=> $b['sparepartBranch']->id);
+
+            $lockedStocks = [];
+            foreach ($resolvedLines as $resolved) {
+                $line = $resolved['line'];
+
+                $stock = SparepartBranchStock::where('sparepart_branch_id', $resolved['sparepartBranch']->id)
                     ->lockForUpdate()
                     ->firstOrFail();
 
@@ -247,9 +265,11 @@ class StockTransferController extends Controller
                 return;
             }
 
-            // Pass 2: mutate. Safe now that pass 1 confirmed every line's origin stock exists
-            // and won't drop below its reserved_qty.
-            foreach ($lines as $line) {
+            // Pass 2: mutate, in the same sparepart_branch_id-sorted order the locks were
+            // acquired in. Safe now that pass 1 confirmed every line's origin stock exists and
+            // won't drop below its reserved_qty.
+            foreach ($resolvedLines as $resolved) {
+                $line = $resolved['line'];
                 $stock = $lockedStocks[$line->id];
                 $qty = (float) $line->qty;
 
@@ -306,10 +326,13 @@ class StockTransferController extends Controller
 
             $lines = $fresh->lines()->reorder()->orderBy('sparepart_id')->with('sparepart')->get();
 
-            // Pass 1: resolve and lock every line's DESTINATION stock row. A sparepart's
-            // SparepartBranch config at the destination could have been deactivated between
-            // dispatch and receive — validated here, all-or-nothing, before mutating anything.
-            $lockedStocks = [];
+            // Pass 1a: resolve every line's DESTINATION SparepartBranch config — WITHOUT
+            // locking any stock row yet. A sparepart's SparepartBranch config at the
+            // destination could have been deactivated between dispatch and receive. As in
+            // dispatchTransfer(), StockTransferLine only stores sparepart_id, so we resolve
+            // first, then sort by sparepart_branch_id, then lock — we cannot order the query
+            // itself by sparepart_branch_id.
+            $resolvedLines = [];
             foreach ($lines as $line) {
                 $sparepartBranch = SparepartBranch::where('sparepart_id', $line->sparepart_id)
                     ->where('branch_id', $fresh->to_branch_id)
@@ -322,7 +345,20 @@ class StockTransferController extends Controller
                     continue;
                 }
 
-                $lockedStocks[$line->id] = SparepartBranchStock::where('sparepart_branch_id', $sparepartBranch->id)
+                $resolvedLines[] = ['line' => $line, 'sparepartBranch' => $sparepartBranch];
+            }
+
+            // Pass 1b: lock stock rows in ascending sparepart_branch_id order — the
+            // project-wide lock-ordering invariant (see WorkOrderController,
+            // GoodsReceiptController::post(), StockAdjustmentController::post()) that prevents
+            // an AB-BA deadlock when two documents touch overlapping spareparts at the same
+            // branch concurrently. All-or-nothing: bail before mutating anything if any line's
+            // config was missing/inactive.
+            usort($resolvedLines, fn ($a, $b) => $a['sparepartBranch']->id <=> $b['sparepartBranch']->id);
+
+            $lockedStocks = [];
+            foreach ($resolvedLines as $resolved) {
+                $lockedStocks[$resolved['line']->id] = SparepartBranchStock::where('sparepart_branch_id', $resolved['sparepartBranch']->id)
                     ->lockForUpdate()
                     ->firstOrFail();
             }
@@ -331,8 +367,10 @@ class StockTransferController extends Controller
                 return;
             }
 
-            // Pass 2: mutate.
-            foreach ($lines as $line) {
+            // Pass 2: mutate, in the same sparepart_branch_id-sorted order the locks were
+            // acquired in.
+            foreach ($resolvedLines as $resolved) {
+                $line = $resolved['line'];
                 $stock = $lockedStocks[$line->id];
                 $qty = (float) $line->qty;
 

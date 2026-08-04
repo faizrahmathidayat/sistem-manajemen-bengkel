@@ -5,6 +5,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CustomerBranchAssignmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GoodsReceiptController;
 use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\UserBranchAssignmentController;
@@ -122,6 +123,19 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{workOrder}/cancel', [WorkOrderController::class, 'cancel'])->name('cancel');
         Route::patch('/{workOrder}/confirm', [WorkOrderController::class, 'confirm'])->name('confirm');
         Route::patch('/{workOrder}/override-shortage', [WorkOrderController::class, 'overrideShortage'])->name('overrideShortage');
+    });
+
+    Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {
+        Route::get('/lookup/spareparts/{branch}', [GoodsReceiptController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
+
+        Route::get('/', [GoodsReceiptController::class, 'index'])->name('index');
+        Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+        Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
+        Route::get('/{goodsReceipt}', [GoodsReceiptController::class, 'show'])->name('show');
+        Route::get('/{goodsReceipt}/edit', [GoodsReceiptController::class, 'edit'])->name('edit');
+        Route::put('/{goodsReceipt}', [GoodsReceiptController::class, 'update'])->name('update');
+        Route::patch('/{goodsReceipt}/post', [GoodsReceiptController::class, 'post'])->name('post');
+        Route::patch('/{goodsReceipt}/cancel', [GoodsReceiptController::class, 'cancel'])->name('cancel');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

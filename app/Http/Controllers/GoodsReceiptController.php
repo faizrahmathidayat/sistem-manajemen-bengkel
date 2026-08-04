@@ -1,0 +1,244 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\StoreGoodsReceiptRequest;
+use App\Http\Requests\UpdateGoodsReceiptRequest;
+use App\Models\Branch;
+use App\Models\GoodsReceipt;
+use App\Models\GoodsReceiptLine;
+use App\Models\InventoryMovement;
+use App\Models\SparepartBranch;
+use App\Models\SparepartBranchStock;
+use App\Services\DocumentNumberGenerator;
+use App\Support\GoodsReceiptStatus;
+use App\Support\InventoryMovementType;
+use Illuminate\Support\Facades\DB;
+
+class GoodsReceiptController extends Controller
+{
+    public function index()
+    {
+        $user = auth()->user();
+        $permittedBranches = $user->branchesWithPermission('receipt.view');
+
+        if ($permittedBranches->isEmpty()) {
+            return view('goods-receipts.no-access');
+        }
+
+        $branchIds = collect(request('branch_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->intersect($permittedBranches->pluck('id'))
+            ->values()->all();
+
+        $search = is_string(request('q')) ? trim(request('q')) : null;
+
+        $goodsReceipts = GoodsReceipt::with('branch')
+            ->whereIn('branch_id', $permittedBranches->pluck('id'))
+            ->when($branchIds, fn ($query) => $query->whereIn('branch_id', $branchIds))
+            ->when($search, function ($query, $q) {
+                $query->where('number', 'like', '%' . addcslashes($q, '%_\\') . '%');
+            })
+            ->orderByDesc('receipt_date')
+            ->orderByDesc('id')
+            ->simplePaginate(15)
+            ->withQueryString();
+
+        return view('goods-receipts.index', compact('goodsReceipts'))
+            ->with('branches', $permittedBranches)
+            ->with('selectedBranchIds', $branchIds)
+            ->with('search', $search);
+    }
+
+    public function create()
+    {
+        $branches = auth()->user()->branchesWithPermission('receipt.create');
+
+        if ($branches->isEmpty()) {
+            return view('goods-receipts.no-access');
+        }
+
+        return view('goods-receipts.create', compact('branches'));
+    }
+
+    public function store(StoreGoodsReceiptRequest $request)
+    {
+        $data = $request->validated();
+        $branch = Branch::findOrFail($data['branch_id']);
+
+        $goodsReceipt = DB::transaction(function () use ($data, $branch) {
+            $goodsReceipt = GoodsReceipt::create([
+                'number' => (new DocumentNumberGenerator())->next($branch, 'PB'),
+                'branch_id' => $branch->id,
+                'receipt_date' => $data['receipt_date'],
+                'reference_number' => $data['reference_number'] ?? null,
+                'status' => GoodsReceiptStatus::DRAFT,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            $this->syncLines($goodsReceipt, $data['lines']);
+
+            return $goodsReceipt;
+        });
+
+        return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil dibuat.');
+    }
+
+    public function show(GoodsReceipt $goodsReceipt)
+    {
+        $this->authorize('view', $goodsReceipt);
+
+        $goodsReceipt->load(['branch', 'lines.sparepartBranch.sparepart']);
+
+        return view('goods-receipts.show', compact('goodsReceipt'));
+    }
+
+    public function edit(GoodsReceipt $goodsReceipt)
+    {
+        $this->authorize('update', $goodsReceipt);
+
+        $goodsReceipt->load('lines');
+        $sparepartBranches = SparepartBranch::with(['sparepart', 'stock'])
+            ->where('branch_id', $goodsReceipt->branch_id)
+            ->where('is_active', true)
+            ->get();
+        $missingIds = $goodsReceipt->lines->pluck('sparepart_branch_id')->unique()->diff($sparepartBranches->pluck('id'));
+        if ($missingIds->isNotEmpty()) {
+            $sparepartBranches = $sparepartBranches->concat(
+                SparepartBranch::with(['sparepart', 'stock'])->whereIn('id', $missingIds)->get()
+            );
+        }
+
+        $sparepartOptions = $sparepartBranches->map(function ($sb) {
+            return [
+                'id' => $sb->id,
+                'code' => $sb->sparepart->code,
+                'name' => $sb->sparepart->name,
+            ];
+        })->values();
+
+        $existingLines = $goodsReceipt->lines->map(function ($line) {
+            return [
+                'sparepart_branch_id' => $line->sparepart_branch_id,
+                'qty' => (float) $line->qty,
+                'purchase_price' => (float) $line->purchase_price,
+            ];
+        })->values();
+
+        return view('goods-receipts.edit', compact('goodsReceipt', 'sparepartOptions', 'existingLines'));
+    }
+
+    public function update(UpdateGoodsReceiptRequest $request, GoodsReceipt $goodsReceipt)
+    {
+        $data = $request->validated();
+
+        DB::transaction(function () use ($data, $goodsReceipt) {
+            $fresh = GoodsReceipt::whereKey($goodsReceipt->id)->lockForUpdate()->first();
+            if ($fresh->status !== GoodsReceiptStatus::DRAFT) {
+                return;
+            }
+
+            $fresh->update([
+                'receipt_date' => $data['receipt_date'],
+                'reference_number' => $data['reference_number'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            $this->syncLines($fresh, $data['lines']);
+        });
+
+        return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil diperbarui.');
+    }
+
+    public function post(GoodsReceipt $goodsReceipt)
+    {
+        $this->authorize('post', $goodsReceipt);
+
+        DB::transaction(function () use ($goodsReceipt) {
+            $fresh = GoodsReceipt::whereKey($goodsReceipt->id)->lockForUpdate()->first();
+            if ($fresh->status !== GoodsReceiptStatus::DRAFT) {
+                return;
+            }
+
+            $lines = $fresh->lines()->reorder()->orderBy('sparepart_branch_id')->get();
+
+            foreach ($lines as $line) {
+                $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $stock->on_hand_qty += $line->qty;
+                $stock->save();
+
+                InventoryMovement::create([
+                    'movement_at' => now(),
+                    'branch_id' => $fresh->branch_id,
+                    'sparepart_branch_id' => $line->sparepart_branch_id,
+                    'movement_type' => InventoryMovementType::RECEIPT,
+                    'qty_in' => $line->qty,
+                    'qty_out' => 0,
+                    'balance_after' => $stock->on_hand_qty,
+                    'reference_type' => 'goods_receipt_line',
+                    'reference_id' => $line->id,
+                    'created_by' => auth()->id(),
+                ]);
+            }
+
+            $fresh->status = GoodsReceiptStatus::POSTED;
+            $fresh->save();
+        });
+
+        return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil diposting.');
+    }
+
+    public function cancel(GoodsReceipt $goodsReceipt)
+    {
+        $this->authorize('cancel', $goodsReceipt);
+
+        DB::transaction(function () use ($goodsReceipt) {
+            $fresh = GoodsReceipt::whereKey($goodsReceipt->id)->lockForUpdate()->first();
+            if ($fresh->status !== GoodsReceiptStatus::DRAFT) {
+                return;
+            }
+
+            $fresh->status = GoodsReceiptStatus::CANCELLED;
+            $fresh->save();
+        });
+
+        return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil dibatalkan.');
+    }
+
+    public function sparepartsByBranch(Branch $branch)
+    {
+        abort_unless(auth()->user()->hasPermissionToInBranch('receipt.create', $branch->id), 403);
+
+        return response()->json(
+            SparepartBranch::with('sparepart')
+                ->where('branch_id', $branch->id)
+                ->where('is_active', true)
+                ->get()
+                ->map(function (SparepartBranch $sb) {
+                    return ['id' => $sb->id, 'code' => $sb->sparepart->code, 'name' => $sb->sparepart->name];
+                })
+                ->values()
+        );
+    }
+
+    protected function syncLines(GoodsReceipt $goodsReceipt, array $lines): void
+    {
+        $goodsReceipt->lines()->delete();
+
+        foreach (array_values(array_filter($lines)) as $index => $line) {
+            $qty = (float) $line['qty'];
+            $purchasePrice = (float) $line['purchase_price'];
+            GoodsReceiptLine::create([
+                'goods_receipt_id' => $goodsReceipt->id,
+                'sparepart_branch_id' => $line['sparepart_branch_id'],
+                'qty' => $qty,
+                'purchase_price' => $purchasePrice,
+                'line_total' => round($qty * $purchasePrice, 2),
+                'sort_order' => $index,
+            ]);
+        }
+    }
+}

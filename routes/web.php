@@ -164,6 +164,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{stockTransfer}', [StockTransferController::class, 'show'])->name('show');
         Route::get('/{stockTransfer}/edit', [StockTransferController::class, 'edit'])->name('edit');
         Route::put('/{stockTransfer}', [StockTransferController::class, 'update'])->name('update');
+        Route::patch('/{stockTransfer}/approve', [StockTransferController::class, 'approve'])->name('approve');
+        Route::patch('/{stockTransfer}/dispatch', [StockTransferController::class, 'dispatchTransfer'])->name('dispatch');
+        Route::patch('/{stockTransfer}/receive', [StockTransferController::class, 'receive'])->name('receive');
+        Route::patch('/{stockTransfer}/cancel', [StockTransferController::class, 'cancel'])->name('cancel');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

@@ -355,4 +355,364 @@ class StockTransferManagementTest extends TestCase
         $response->assertSee('Cabang Bandung');
         $response->assertSee('<span class="status-dot status-active">Draft</span>', false);
     }
+
+    public function test_approve_moves_draft_to_approved(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $approver = User::factory()->create();
+        $this->grantBranchPermission($approver, $from, 'stock_transfer.approve');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'),
+        ]);
+
+        $response = $this->actingAs(User::find($approver->id))->patch("/stock-transfers/{$stockTransfer->id}/approve");
+
+        $response->assertRedirect(route('stock-transfers.show', $stockTransfer));
+        $stockTransfer->refresh();
+        $this->assertSame(TransferStatus::APPROVED, $stockTransfer->status);
+        $this->assertSame($approver->id, $stockTransfer->approved_by);
+        $this->assertNotNull($stockTransfer->approved_at);
+    }
+
+    public function test_approve_is_forbidden_without_stock_transfer_approve_permission(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.view');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'),
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/approve");
+
+        $response->assertForbidden();
+    }
+
+    public function test_approve_is_forbidden_for_a_non_draft_transfer(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.approve');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/approve");
+
+        $response->assertForbidden();
+    }
+
+    public function test_dispatch_decreases_origin_stock_and_writes_transfer_out_movement(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepart = $this->makeSparepartAtBranches($from, $to);
+        $fromSparepartBranch = SparepartBranch::where('sparepart_id', $sparepart->id)->where('branch_id', $from->id)->first();
+        $fromSparepartBranch->stock()->update(['on_hand_qty' => 20]);
+        $dispatcher = User::factory()->create();
+        $this->grantBranchPermission($dispatcher, $from, 'stock_transfer.dispatch');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+        \App\Models\StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $sparepart->id, 'qty' => 8]);
+
+        $response = $this->actingAs(User::find($dispatcher->id))->patch("/stock-transfers/{$stockTransfer->id}/dispatch");
+
+        $response->assertRedirect(route('stock-transfers.show', $stockTransfer));
+        $stockTransfer->refresh();
+        $this->assertSame(TransferStatus::DISPATCHED, $stockTransfer->status);
+        $this->assertNotNull($stockTransfer->dispatched_by);
+        $fromStock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $fromSparepartBranch->id)->first();
+        $this->assertSame(12.0, (float) $fromStock->on_hand_qty);
+        $movement = \DB::table('inventory_movements')->where('sparepart_branch_id', $fromSparepartBranch->id)->first();
+        $this->assertNotNull($movement);
+        $this->assertSame('transfer_out', $movement->movement_type);
+        $this->assertSame(8.0, (float) $movement->qty_out);
+        $this->assertSame(12.0, (float) $movement->balance_after);
+    }
+
+    public function test_dispatch_rejects_the_whole_batch_when_any_line_violates_reserved_qty_at_origin(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $okSparepart = $this->makeSparepartAtBranches($from, $to, '-ok');
+        $badSparepart = $this->makeSparepartAtBranches($from, $to, '-bad');
+        $okFromStock = SparepartBranch::where('sparepart_id', $okSparepart->id)->where('branch_id', $from->id)->first();
+        $okFromStock->stock()->update(['on_hand_qty' => 20]);
+        $badFromStock = SparepartBranch::where('sparepart_id', $badSparepart->id)->where('branch_id', $from->id)->first();
+        $badFromStock->stock()->update(['on_hand_qty' => 10, 'reserved_qty' => 8]);
+        $dispatcher = User::factory()->create();
+        $this->grantBranchPermission($dispatcher, $from, 'stock_transfer.dispatch');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+        \App\Models\StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $okSparepart->id, 'qty' => 5, 'sort_order' => 0]);
+        \App\Models\StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $badSparepart->id, 'qty' => 5, 'sort_order' => 1]);
+
+        $response = $this->actingAs(User::find($dispatcher->id))->patch("/stock-transfers/{$stockTransfer->id}/dispatch");
+
+        $response->assertSessionHas('error', function ($message) {
+            return str_contains($message, 'OLI-01-bad');
+        });
+        $stockTransfer->refresh();
+        $this->assertSame(TransferStatus::APPROVED, $stockTransfer->status, 'A rejected dispatch must leave the document APPROVED.');
+        $okStock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $okFromStock->id)->first();
+        $this->assertSame(20.0, (float) $okStock->on_hand_qty, 'The valid line must not be dispatched either — all-or-nothing.');
+        $this->assertSame(0, \DB::table('inventory_movements')->count());
+    }
+
+    public function test_dispatch_is_forbidden_without_stock_transfer_dispatch_permission(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.approve');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/dispatch");
+
+        $response->assertForbidden();
+    }
+
+    public function test_dispatch_is_forbidden_for_a_draft_transfer(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.dispatch');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'),
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/dispatch");
+
+        $response->assertForbidden();
+    }
+
+    public function test_receive_increases_destination_stock_and_writes_transfer_in_movement(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepart = $this->makeSparepartAtBranches($from, $to);
+        $toSparepartBranch = SparepartBranch::where('sparepart_id', $sparepart->id)->where('branch_id', $to->id)->first();
+        $toSparepartBranch->stock()->update(['on_hand_qty' => 3]);
+        $receiver = User::factory()->create();
+        $this->grantBranchPermission($receiver, $to, 'stock_transfer.receive');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DISPATCHED,
+        ]);
+        \App\Models\StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $sparepart->id, 'qty' => 8]);
+
+        $response = $this->actingAs(User::find($receiver->id))->patch("/stock-transfers/{$stockTransfer->id}/receive");
+
+        $response->assertRedirect(route('stock-transfers.show', $stockTransfer));
+        $stockTransfer->refresh();
+        $this->assertSame(TransferStatus::RECEIVED, $stockTransfer->status);
+        $this->assertNotNull($stockTransfer->received_by);
+        $toStock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $toSparepartBranch->id)->first();
+        $this->assertSame(11.0, (float) $toStock->on_hand_qty);
+        $movement = \DB::table('inventory_movements')->where('sparepart_branch_id', $toSparepartBranch->id)->first();
+        $this->assertNotNull($movement);
+        $this->assertSame('transfer_in', $movement->movement_type);
+        $this->assertSame(8.0, (float) $movement->qty_in);
+        $this->assertSame(11.0, (float) $movement->balance_after);
+    }
+
+    public function test_receive_rejects_when_destination_sparepart_branch_was_deactivated_after_dispatch(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepart = $this->makeSparepartAtBranches($from, $to);
+        $toSparepartBranch = SparepartBranch::where('sparepart_id', $sparepart->id)->where('branch_id', $to->id)->first();
+        $toSparepartBranch->update(['is_active' => false]);
+        $receiver = User::factory()->create();
+        $this->grantBranchPermission($receiver, $to, 'stock_transfer.receive');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DISPATCHED,
+        ]);
+        \App\Models\StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $sparepart->id, 'qty' => 8]);
+
+        $response = $this->actingAs(User::find($receiver->id))->patch("/stock-transfers/{$stockTransfer->id}/receive");
+
+        $response->assertSessionHas('error');
+        $stockTransfer->refresh();
+        $this->assertSame(TransferStatus::DISPATCHED, $stockTransfer->status, 'A rejected receive must leave the document DISPATCHED.');
+        $this->assertSame(0, \DB::table('inventory_movements')->count());
+    }
+
+    public function test_receive_is_forbidden_without_stock_transfer_receive_permission(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $to, 'stock_transfer.view');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DISPATCHED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/receive");
+
+        $response->assertForbidden();
+    }
+
+    public function test_receive_is_forbidden_for_an_approved_transfer(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $to, 'stock_transfer.receive');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/receive");
+
+        $response->assertForbidden();
+    }
+
+    public function test_cancel_from_draft_sets_cancelled_with_no_stock_impact(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.cancel');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'),
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/cancel");
+
+        $response->assertRedirect(route('stock-transfers.show', $stockTransfer));
+        $stockTransfer->refresh();
+        $this->assertSame(TransferStatus::CANCELLED, $stockTransfer->status);
+    }
+
+    public function test_cancel_from_approved_sets_cancelled_with_no_stock_impact(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.cancel');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/cancel");
+
+        $stockTransfer->refresh();
+        $this->assertSame(TransferStatus::CANCELLED, $stockTransfer->status);
+    }
+
+    public function test_cancel_is_forbidden_for_a_dispatched_transfer(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.cancel');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DISPATCHED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->patch("/stock-transfers/{$stockTransfer->id}/cancel");
+
+        $response->assertForbidden();
+    }
+
+    public function test_show_renders_approve_button_for_a_draft_transfer_with_approve_permission(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.view');
+        $this->grantBranchPermission($user, $from, 'stock_transfer.approve');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'),
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/stock-transfers/{$stockTransfer->id}");
+
+        $response->assertOk();
+        $response->assertSee(route('stock-transfers.approve', $stockTransfer), false);
+    }
+
+    public function test_show_renders_dispatch_button_for_an_approved_transfer_with_dispatch_permission(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.view');
+        $this->grantBranchPermission($user, $from, 'stock_transfer.dispatch');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/stock-transfers/{$stockTransfer->id}");
+
+        $response->assertOk();
+        $response->assertSee(route('stock-transfers.dispatch', $stockTransfer), false);
+    }
+
+    public function test_show_renders_receive_button_for_a_dispatched_transfer_with_receive_permission(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $to, 'stock_transfer.view');
+        $this->grantBranchPermission($user, $to, 'stock_transfer.receive');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DISPATCHED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/stock-transfers/{$stockTransfer->id}");
+
+        $response->assertOk();
+        $response->assertSee(route('stock-transfers.receive', $stockTransfer), false);
+    }
+
+    public function test_show_hides_all_action_buttons_for_a_received_transfer(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.view');
+        $this->grantBranchPermission($user, $from, 'stock_transfer.create');
+        $this->grantBranchPermission($user, $from, 'stock_transfer.approve');
+        $this->grantBranchPermission($user, $from, 'stock_transfer.dispatch');
+        $this->grantBranchPermission($user, $from, 'stock_transfer.cancel');
+        $this->grantBranchPermission($user, $to, 'stock_transfer.receive');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::RECEIVED,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/stock-transfers/{$stockTransfer->id}");
+
+        $response->assertOk();
+        $response->assertDontSee(route('stock-transfers.approve', $stockTransfer), false);
+        $response->assertDontSee(route('stock-transfers.dispatch', $stockTransfer), false);
+        $response->assertDontSee(route('stock-transfers.receive', $stockTransfer), false);
+        $response->assertDontSee(route('stock-transfers.cancel', $stockTransfer), false);
+    }
 }

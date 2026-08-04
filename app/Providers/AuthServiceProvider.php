@@ -15,6 +15,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         \App\Models\SparepartBranch::class => \App\Policies\SparepartBranchPolicy::class,
         \App\Models\WorkOrder::class => \App\Policies\WorkOrderPolicy::class,
+        \App\Models\GoodsReceipt::class => \App\Policies\GoodsReceiptPolicy::class,
     ];
 
     /**

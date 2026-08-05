@@ -9,4 +9,5 @@ class InventoryMovementType
     const ADJUSTMENT_OUT = 'adjustment_out';
     const TRANSFER_OUT = 'transfer_out';
     const TRANSFER_IN = 'transfer_in';
+    const USAGE_OUT = 'usage_out';
 }

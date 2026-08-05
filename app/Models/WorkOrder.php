@@ -61,4 +61,9 @@ class WorkOrder extends Model
     {
         return $this->hasMany(WorkOrderSparepartLine::class)->orderBy('sort_order');
     }
+
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class);
+    }
 }

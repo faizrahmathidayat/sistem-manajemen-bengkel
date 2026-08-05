@@ -12,11 +12,7 @@
                 <div class="row g-3">
                     <div class="col-md-3">
                         <label class="form-label">Customer</label>
-                        <select name="customer_id" id="customerSelect" class="form-select @error('customer_id') is-invalid @enderror" required>
-                            @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}" {{ (int) old('customer_id', $workOrder->customer_id) === $customer->id ? 'selected' : '' }}>{{ $customer->name }}</option>
-                            @endforeach
-                        </select>
+                        <select name="customer_id" id="customerSelect" class="form-select @error('customer_id') is-invalid @enderror" required></select>
                         @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
@@ -30,11 +26,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Mekanik</label>
-                        <select name="mechanic_id" id="mechanicSelect" class="form-select @error('mechanic_id') is-invalid @enderror" required>
-                            @foreach ($mechanics as $mechanic)
-                                <option value="{{ $mechanic->id }}" {{ (int) old('mechanic_id', $workOrder->mechanic_id) === $mechanic->id ? 'selected' : '' }}>{{ $mechanic->name }}</option>
-                            @endforeach
-                        </select>
+                        <select name="mechanic_id" id="mechanicSelect" class="form-select @error('mechanic_id') is-invalid @enderror" required></select>
                         @error('mechanic_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
@@ -84,13 +76,41 @@
     @include('work-orders._line_item_scripts', ['serviceCatalogs' => $serviceCatalogs])
 
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
     <script>
     (function () {
         const customerSelect = document.getElementById('customerSelect');
         const vehicleSelect = document.getElementById('vehicleSelect');
+        const mechanicSelect = document.getElementById('mechanicSelect');
+        const branchId = {{ $workOrder->branch_id }};
+        window.currentWorkOrderBranchId = branchId;
 
-        const existingSparepartOptions = @json($sparepartOptionsForEdit);
-        WorkOrderLineItems.setSparepartOptions(existingSparepartOptions);
+        initAjaxSelect(customerSelect, {
+            endpoint: '{{ route('lookup.customers') }}',
+            extraParams: function () { return { branch_id: branchId }; },
+            placeholder: '-- Pilih Customer --',
+        });
+        initAjaxSelect(mechanicSelect, {
+            endpoint: '{{ route('lookup.mechanics') }}',
+            extraParams: function () { return { branch_id: branchId }; },
+            placeholder: '-- Pilih Mekanik --',
+        });
+        preselectAjaxOption(customerSelect, {
+            endpoint: '{{ route('lookup.customers') }}',
+            id: {{ $workOrder->customer_id }},
+            extraParams: function () { return { branch_id: branchId }; },
+        }).then(function () { $(customerSelect).trigger('change'); });
+        preselectAjaxOption(mechanicSelect, {
+            endpoint: '{{ route('lookup.mechanics') }}',
+            id: {{ $workOrder->mechanic_id }},
+            extraParams: function () { return { branch_id: branchId }; },
+        }).then(function () { $(mechanicSelect).trigger('change'); });
 
         const existingServiceLines = @json($existingServiceLines);
         existingServiceLines.forEach(function (line) {
@@ -105,12 +125,10 @@
 
         const existingSparepartLines = @json($existingSparepartLines);
         existingSparepartLines.forEach(function (line) {
-            WorkOrderLineItems.addSparepartLine();
-            const rows = document.querySelectorAll('#sparepartLines .sparepart-line');
-            const row = rows[rows.length - 1];
-            row.querySelector('.sparepart-select').value = line.sparepart_branch_id;
+            const row = WorkOrderLineItems.addSparepartLine(branchId);
             row.querySelector('.sparepart-qty').value = line.qty;
             row.querySelector('.sparepart-unit-price').value = line.unit_price;
+            WorkOrderLineItems.preselectSparepartLine(row, line.sparepart_branch_id, branchId);
         });
 
         customerSelect.addEventListener('change', async function () {

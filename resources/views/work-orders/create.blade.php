@@ -87,6 +87,13 @@
     @include('work-orders._line_item_scripts', ['serviceCatalogs' => \App\Models\ServiceCatalog::where('is_active', true)->orderBy('name')->get()])
 
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
     <script>
     (function () {
         const branchSelect = document.getElementById('branchSelect');
@@ -94,33 +101,46 @@
         const vehicleSelect = document.getElementById('vehicleSelect');
         const mechanicSelect = document.getElementById('mechanicSelect');
         const addSparepartButton = document.getElementById('addSparepartLine');
+        let currentBranchId = branchSelect.value || null;
+        window.currentWorkOrderBranchId = currentBranchId;
 
-        async function handleBranchChange(branchId) {
-            customerSelect.disabled = true;
-            mechanicSelect.disabled = true;
-            addSparepartButton.disabled = true;
-            WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', function (i) { return i.plate_number; });
-            vehicleSelect.disabled = true;
-            if (!branchId) {
-                WorkOrderLineItems.fillSelect(customerSelect, [], '-- Pilih Cabang Dulu --', 'id', function (i) { return i.name; });
-                WorkOrderLineItems.fillSelect(mechanicSelect, [], '-- Pilih Cabang Dulu --', 'id', function (i) { return i.name; });
-                return;
-            }
-            const [customers, mechanics, spareparts] = await Promise.all([
-                WorkOrderLineItems.fetchJson(`/work-orders/lookup/customers/${branchId}`),
-                WorkOrderLineItems.fetchJson(`/work-orders/lookup/mechanics/${branchId}`),
-                WorkOrderLineItems.fetchJson(`/work-orders/lookup/spareparts/${branchId}`),
-            ]);
-            WorkOrderLineItems.fillSelect(customerSelect, customers, '-- Pilih Customer --', 'id', function (i) { return i.name; });
-            customerSelect.disabled = false;
-            WorkOrderLineItems.fillSelect(mechanicSelect, mechanics, '-- Pilih Mekanik --', 'id', function (i) { return i.name; });
-            mechanicSelect.disabled = false;
-            WorkOrderLineItems.setSparepartOptions(spareparts);
-            addSparepartButton.disabled = false;
+        function initPickers() {
+            initAjaxSelect(customerSelect, {
+                endpoint: '{{ route('lookup.customers') }}',
+                extraParams: function () { return { branch_id: currentBranchId }; },
+                placeholder: '-- Pilih Customer --',
+            });
+            initAjaxSelect(mechanicSelect, {
+                endpoint: '{{ route('lookup.mechanics') }}',
+                extraParams: function () { return { branch_id: currentBranchId }; },
+                placeholder: '-- Pilih Mekanik --',
+            });
+        }
+
+        function destroyPickers() {
+            if ($(customerSelect).data('select2')) $(customerSelect).select2('destroy');
+            if ($(mechanicSelect).data('select2')) $(mechanicSelect).select2('destroy');
         }
 
         branchSelect.addEventListener('change', function () {
-            handleBranchChange(this.value);
+            currentBranchId = this.value || null;
+            window.currentWorkOrderBranchId = currentBranchId;
+            destroyPickers();
+            customerSelect.innerHTML = '<option value=""></option>';
+            mechanicSelect.innerHTML = '<option value=""></option>';
+            WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', function (i) { return i.plate_number; });
+            vehicleSelect.disabled = true;
+            if (!currentBranchId) {
+                customerSelect.disabled = true;
+                mechanicSelect.disabled = true;
+                addSparepartButton.disabled = true;
+                initPickers();
+                return;
+            }
+            customerSelect.disabled = false;
+            mechanicSelect.disabled = false;
+            addSparepartButton.disabled = false;
+            initPickers();
         });
 
         customerSelect.addEventListener('change', async function () {
@@ -134,12 +154,14 @@
             vehicleSelect.disabled = false;
         });
 
-        // Validation-error round-trip: replay the jasa/sparepart line rows submitted
-        // before the failed validation, the same way edit.blade.php replays a work
-        // order's persisted lines. These rows only exist in JS-managed DOM state
-        // (added via <template> cloning), so without this the user would have to
-        // retype every line from scratch after any validation error.
-        function replayOldLines() {
+        // Select2 replaces the native <select>'s change semantics with its own
+        // jQuery events; customerSelect's cascade to vehicles must still fire on
+        // a Select2-driven selection, so re-trigger the native listener via jQuery.
+        $(customerSelect).on('select2:select select2:clear', function () {
+            customerSelect.dispatchEvent(new Event('change'));
+        });
+
+        async function replayOldLines() {
             const oldServices = @json(old('services', []));
             oldServices.forEach(function (line) {
                 WorkOrderLineItems.addServiceLine();
@@ -152,29 +174,48 @@
             });
 
             const oldSpareparts = @json(old('spareparts', []));
-            oldSpareparts.forEach(function (line) {
-                WorkOrderLineItems.addSparepartLine();
+            for (const line of oldSpareparts) {
+                WorkOrderLineItems.addSparepartLine(currentBranchId);
                 const rows = document.querySelectorAll('#sparepartLines .sparepart-line');
                 const row = rows[rows.length - 1];
-                if (line.sparepart_branch_id) row.querySelector('.sparepart-select').value = line.sparepart_branch_id;
                 row.querySelector('.sparepart-qty').value = line.qty || '';
                 row.querySelector('.sparepart-unit-price').value = line.unit_price || '';
-            });
+                if (line.sparepart_branch_id) {
+                    await WorkOrderLineItems.preselectSparepartLine(row, line.sparepart_branch_id, currentBranchId);
+                }
+            }
+
+            const oldCustomerId = @json(old('customer_id'));
+            if (oldCustomerId) {
+                await preselectAjaxOption(customerSelect, { endpoint: '{{ route('lookup.customers') }}', id: oldCustomerId, extraParams: function () { return { branch_id: currentBranchId }; } });
+                $(customerSelect).trigger('change');
+            }
+            const oldMechanicId = @json(old('mechanic_id'));
+            if (oldMechanicId) {
+                await preselectAjaxOption(mechanicSelect, { endpoint: '{{ route('lookup.mechanics') }}', id: oldMechanicId, extraParams: function () { return { branch_id: currentBranchId }; } });
+            }
         }
 
-        // Validation-error round-trip: old('branch_id') re-selects the branch option but
-        // does not fire a native `change` event, so the customer/mechanic/sparepart
-        // cascade would otherwise stay empty and disabled. Re-run it once on load.
-        //
-        // The sparepart <select> options are populated dynamically from the branch's
-        // AJAX response (via WorkOrderLineItems.setSparepartOptions inside
-        // handleBranchChange), so line-replay MUST run after that AJAX call resolves —
-        // otherwise replayed sparepart rows would be added with no options to select
-        // from yet. handleBranchChange() is async and returns a promise, so we chain
-        // replayOldLines() onto it here instead of calling it eagerly.
         if (branchSelect.value) {
-            handleBranchChange(branchSelect.value).then(replayOldLines);
+            customerSelect.disabled = false;
+            mechanicSelect.disabled = false;
+            addSparepartButton.disabled = false;
+            initPickers();
+            replayOldLines().then(async function () {
+                const oldCustomerId = @json(old('customer_id'));
+                if (oldCustomerId) {
+                    const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${oldCustomerId}`);
+                    WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', function (i) { return i.plate_number || i.frame_number; });
+                    vehicleSelect.disabled = false;
+                    const oldVehicleId = @json(old('vehicle_id'));
+                    if (oldVehicleId) vehicleSelect.value = oldVehicleId;
+                }
+            });
         } else {
+            customerSelect.disabled = true;
+            mechanicSelect.disabled = true;
+            addSparepartButton.disabled = true;
+            initPickers();
             replayOldLines();
         }
     })();

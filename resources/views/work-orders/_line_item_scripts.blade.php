@@ -48,7 +48,6 @@
 (function () {
     let serviceLineCount = 0;
     let sparepartLineCount = 0;
-    let sparepartOptionsCache = [];
 
     function fillSelect(select, items, placeholder, valueKey, labelFn) {
         select.innerHTML = '<option value="">' + placeholder + '</option>';
@@ -90,7 +89,7 @@
         document.getElementById('serviceLines').appendChild(wrapper);
     }
 
-    function addSparepartLine() {
+    function addSparepartLine(branchId) {
         const template = document.getElementById('sparepartLineTemplate');
         const clone = template.content.cloneNode(true);
         const wrapper = clone.querySelector('.sparepart-line');
@@ -99,43 +98,49 @@
         select.name = `spareparts[${index}][sparepart_branch_id]`;
         wrapper.querySelector('.sparepart-qty').name = `spareparts[${index}][qty]`;
         wrapper.querySelector('.sparepart-unit-price').name = `spareparts[${index}][unit_price]`;
-        fillSelect(select, sparepartOptionsCache, '-- Pilih Sparepart --', 'id', function (item) {
-            return item.code + ' — ' + item.name;
-        });
-        select.addEventListener('change', function () {
-            const selected = this.selectedOptions[0];
-            const availability = wrapper.querySelector('.sparepart-availability');
-            const unitPrice = wrapper.querySelector('.sparepart-unit-price');
-            if (this.value && selected.dataset.item) {
-                const item = JSON.parse(selected.dataset.item);
-                unitPrice.value = item.selling_price;
-                availability.textContent = 'Stok tersedia: ' + item.available_qty;
-            } else {
-                availability.textContent = '';
-            }
-        });
         wrapper.querySelector('.remove-line').addEventListener('click', function () {
+            if ($(select).data('select2')) $(select).select2('destroy');
             wrapper.remove();
         });
         document.getElementById('sparepartLines').appendChild(wrapper);
+
+        initAjaxSelect(select, {
+            endpoint: '{{ route('lookup.spareparts') }}',
+            extraParams: function () { return { branch_id: branchId }; },
+            placeholder: '-- Pilih Sparepart --',
+            onSelect: function (item) {
+                const row = select.closest('.sparepart-line');
+                row.querySelector('.sparepart-unit-price').value = item.selling_price;
+                row.querySelector('.sparepart-availability').textContent = 'Stok tersedia: ' + item.available_qty;
+            },
+        });
+
+        return wrapper;
+    }
+
+    async function preselectSparepartLine(row, sparepartBranchId, branchId) {
+        const select = row.querySelector('.sparepart-select');
+        const item = await preselectAjaxOption(select, {
+            endpoint: '{{ route('lookup.spareparts') }}',
+            id: sparepartBranchId,
+            extraParams: function () { return { branch_id: branchId }; },
+        });
+        if (item) {
+            row.querySelector('.sparepart-unit-price').value = item.selling_price;
+            row.querySelector('.sparepart-availability').textContent = 'Stok tersedia: ' + item.available_qty;
+        }
+        $(select).trigger('change');
     }
 
     document.getElementById('addServiceLine').addEventListener('click', addServiceLine);
-    document.getElementById('addSparepartLine').addEventListener('click', addSparepartLine);
+    document.getElementById('addSparepartLine').addEventListener('click', function () {
+        addSparepartLine(window.currentWorkOrderBranchId || null);
+    });
 
     window.WorkOrderLineItems = {
-        setSparepartOptions: function (items) {
-            sparepartOptionsCache = items;
-            document.querySelectorAll('.sparepart-select').forEach(function (select) {
-                const currentValue = select.value;
-                fillSelect(select, items, '-- Pilih Sparepart --', 'id', function (item) {
-                    return item.code + ' — ' + item.name;
-                });
-                select.value = currentValue;
-            });
-        },
         addServiceLine: addServiceLine,
         addSparepartLine: addSparepartLine,
+        preselectSparepartLine: preselectSparepartLine,
         fetchJson: fetchJson,
         fillSelect: fillSelect,
     };

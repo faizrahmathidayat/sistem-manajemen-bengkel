@@ -6,9 +6,7 @@ use App\Http\Requests\OverrideShortageRequest;
 use App\Http\Requests\StoreWorkOrderRequest;
 use App\Http\Requests\UpdateWorkOrderRequest;
 use App\Models\Branch;
-use App\Models\Customer;
 use App\Models\InventoryReservation;
-use App\Models\Mechanic;
 use App\Models\ServiceCatalog;
 use App\Models\SparepartBranch;
 use App\Models\SparepartBranchStock;
@@ -175,49 +173,11 @@ class WorkOrderController extends Controller
 
         $workOrder->load(['customer', 'vehicle', 'mechanic', 'serviceLines', 'sparepartLines']);
 
-        $customers = Customer::whereHas('customerBranches', function ($query) use ($workOrder) {
-            $query->where('branch_id', $workOrder->branch_id)->where('is_active', true);
-        })->where('is_active', true)->orderBy('name')->get();
-        if ($workOrder->customer && ! $customers->contains('id', $workOrder->customer->id)) {
-            $customers->push($workOrder->customer);
-        }
-
-        $mechanics = Mechanic::whereHas('mechanicBranches', function ($query) use ($workOrder) {
-            $query->where('branch_id', $workOrder->branch_id)->where('is_active', true);
-        })->where('is_active', true)->orderBy('name')->get();
-        if ($workOrder->mechanic && ! $mechanics->contains('id', $workOrder->mechanic->id)) {
-            $mechanics->push($workOrder->mechanic);
-        }
-
-        $sparepartBranches = SparepartBranch::with(['sparepart', 'stock'])
-            ->where('branch_id', $workOrder->branch_id)
-            ->where('is_active', true)
-            ->get();
-        $missingSparepartBranchIds = $workOrder->sparepartLines
-            ->pluck('sparepart_branch_id')
-            ->unique()
-            ->diff($sparepartBranches->pluck('id'));
-        if ($missingSparepartBranchIds->isNotEmpty()) {
-            $sparepartBranches = $sparepartBranches->concat(
-                SparepartBranch::with(['sparepart', 'stock'])->whereIn('id', $missingSparepartBranchIds)->get()
-            );
-        }
-
         $serviceCatalogs = ServiceCatalog::where('is_active', true)->orderBy('name')->get();
         $vehicles = $workOrder->customer->vehicles()->where('is_active', true)->orderBy('plate_number')->get();
         if ($workOrder->vehicle && ! $vehicles->contains('id', $workOrder->vehicle->id)) {
             $vehicles->push($workOrder->vehicle);
         }
-
-        $sparepartOptionsForEdit = $sparepartBranches->map(function ($sb) {
-            return [
-                'id' => $sb->id,
-                'code' => $sb->sparepart->code,
-                'name' => $sb->sparepart->name,
-                'selling_price' => (float) $sb->selling_price,
-                'available_qty' => (float) $sb->stock->available_qty,
-            ];
-        })->values();
 
         $existingServiceLines = $workOrder->serviceLines->map(function ($line) {
             return [
@@ -238,12 +198,8 @@ class WorkOrderController extends Controller
 
         return view('work-orders.edit', compact(
             'workOrder',
-            'customers',
-            'mechanics',
-            'sparepartBranches',
             'serviceCatalogs',
             'vehicles',
-            'sparepartOptionsForEdit',
             'existingServiceLines',
             'existingSparepartLines'
         ));

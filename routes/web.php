@@ -121,10 +121,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::prefix('work-orders')->name('work-orders.')->group(function () {
-        Route::get('/lookup/customers/{branch}', [WorkOrderLookupController::class, 'customersByBranch'])->name('lookup.customers');
         Route::get('/lookup/vehicles/{customer}', [WorkOrderLookupController::class, 'vehiclesByCustomer'])->name('lookup.vehicles');
-        Route::get('/lookup/mechanics/{branch}', [WorkOrderLookupController::class, 'mechanicsByBranch'])->name('lookup.mechanics');
-        Route::get('/lookup/spareparts/{branch}', [WorkOrderLookupController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
 
         Route::get('/', [WorkOrderController::class, 'index'])->name('index');
         Route::get('/create', [WorkOrderController::class, 'create'])->name('create');

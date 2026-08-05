@@ -264,8 +264,13 @@ class WorkOrderManagementTest extends TestCase
 
         $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
 
+        // As of the Select2 AJAX picker conversion (Task 2), the customer_id <select> is no
+        // longer server-rendered with a "push if missing" backfill for the linked customer —
+        // it's an empty <select> populated client-side via preselectAjaxOption(), which is not
+        // observable through a non-JS-executing HTTP test. What remains PHP-testable (and is the
+        // real regression this test guards) is that the edit page still renders successfully
+        // instead of erroring when the linked customer has since gone inactive.
         $response->assertOk();
-        $response->assertSee($scenario['customer']->name);
     }
 
     public function test_update_does_not_silently_reassign_a_now_inactive_customer(): void
@@ -404,6 +409,38 @@ class WorkOrderManagementTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
 
         $response->assertOk();
+    }
+
+    public function test_create_page_loads_select2_and_lookup_js(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/work-orders/create');
+
+        $response->assertOk();
+        $response->assertSee('select2', false);
+        $response->assertSee('select2-ajax-picker.js', false);
+        $response->assertSee('id="customerSelect"', false);
+        $response->assertSee('id="mechanicSelect"', false);
+    }
+
+    public function test_edit_page_loads_select2_and_lookup_js(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.edit');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('select2', false);
+        $response->assertSee('select2-ajax-picker.js', false);
     }
 
     public function test_update_replaces_lines_and_recomputes_totals(): void

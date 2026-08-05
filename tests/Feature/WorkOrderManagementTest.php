@@ -266,11 +266,19 @@ class WorkOrderManagementTest extends TestCase
 
         // As of the Select2 AJAX picker conversion (Task 2), the customer_id <select> is no
         // longer server-rendered with a "push if missing" backfill for the linked customer —
-        // it's an empty <select> populated client-side via preselectAjaxOption(), which is not
-        // observable through a non-JS-executing HTTP test. What remains PHP-testable (and is the
-        // real regression this test guards) is that the edit page still renders successfully
-        // instead of erroring when the linked customer has since gone inactive.
+        // it's an empty <select> populated client-side via preselectAjaxOption(), which fetches
+        // /lookup/customers?ids[]=<id> and injects a matching <option>. A non-JS-executing HTTP
+        // test cannot observe that injected <option>. What it CAN and must still prove is that
+        // the edit page renders successfully (doesn't error) AND that the data the client-side
+        // preselect depends on — the linked customer's id, echoed verbatim into the inline
+        // bootstrap <script> as `preselectAjaxOption(customerSelect, { ..., id: <id>, ... })` —
+        // is present and correct in the raw response. Combined with
+        // LookupControllerTest::test_customers_ids_mode_resolves_an_inactive_customer (which
+        // proves that id, once fetched, resolves to the customer even though it's now inactive),
+        // this is the strongest assertion a Feature test can honestly make about this flow.
         $response->assertOk();
+        $response->assertSee('preselectAjaxOption(customerSelect', false);
+        $response->assertSee('id: ' . $scenario['customer']->id . ',', false);
     }
 
     public function test_update_does_not_silently_reassign_a_now_inactive_customer(): void
@@ -424,6 +432,32 @@ class WorkOrderManagementTest extends TestCase
         $response->assertSee('select2-ajax-picker.js', false);
         $response->assertSee('id="customerSelect"', false);
         $response->assertSee('id="mechanicSelect"', false);
+    }
+
+    public function test_create_form_mechanic_and_customer_replay_both_trigger_select2_change(): void
+    {
+        // Regression guard: after a failed validation round-trip, old('mechanic_id') repopulates
+        // the underlying <select> value via preselectAjaxOption(), but Select2 only re-renders
+        // its visible widget in response to a jQuery 'change' event — without an explicit
+        // $(mechanicSelect).trigger('change') the Mekanik picker would silently keep showing its
+        // placeholder even though the correct value was set underneath. The customer preselect
+        // already had this trigger; the mechanic preselect was missing it. Since Select2's actual
+        // re-render is client-side JS with no PHP-testable surface, the strongest thing a Feature
+        // test can honestly assert is that the compiled page source contains the trigger call
+        // immediately tied to the mechanic preselect, the same way it already does for customer.
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/work-orders/create');
+
+        $response->assertOk();
+        $response->assertSee("preselectAjaxOption(customerSelect, { endpoint: '" . route('lookup.customers') . "', id: oldCustomerId, extraParams: function () { return { branch_id: currentBranchId }; } });", false);
+        $response->assertSee("preselectAjaxOption(mechanicSelect, { endpoint: '" . route('lookup.mechanics') . "', id: oldMechanicId, extraParams: function () { return { branch_id: currentBranchId }; } });", false);
+        // Both of these must appear in the page source: the customer one already did before this
+        // fix, the mechanic one is the regression this test guards against reappearing.
+        $response->assertSee("\$(customerSelect).trigger('change');", false);
+        $response->assertSee("\$(mechanicSelect).trigger('change');", false);
     }
 
     public function test_edit_page_loads_select2_and_lookup_js(): void

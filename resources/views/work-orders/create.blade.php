@@ -193,6 +193,7 @@
             const oldMechanicId = @json(old('mechanic_id'));
             if (oldMechanicId) {
                 await preselectAjaxOption(mechanicSelect, { endpoint: '{{ route('lookup.mechanics') }}', id: oldMechanicId, extraParams: function () { return { branch_id: currentBranchId }; } });
+                $(mechanicSelect).trigger('change');
             }
         }
 

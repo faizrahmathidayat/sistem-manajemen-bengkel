@@ -124,6 +124,34 @@ class LookupControllerTest extends TestCase
         $response->assertJsonFragment(['id' => $customer->id, 'text' => 'Al']);
     }
 
+    public function test_customers_ids_mode_resolves_an_inactive_customer(): void
+    {
+        // Regression coverage: the PKB edit page's Select2 preselect relies on ids[] mode to
+        // resolve the currently-assigned customer even after that customer has since been
+        // deactivated (WorkOrderController::edit() no longer server-side backfills a
+        // full customer list — see Task 2's work). If ids[] mode filtered out inactive
+        // records, the edit page's Customer picker would render blank and the (still
+        // required) field would block saving any further edit to that Work Order.
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso', 'is_active' => false]);
+        $user = $this->userWithPermission('customer.view');
+
+        $response = $this->actingAs($user)->getJson("/lookup/customers?ids[]={$customer->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['id' => $customer->id, 'text' => 'Budi Santoso']);
+    }
+
+    public function test_customers_q_search_excludes_inactive_customers(): void
+    {
+        Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Nonaktif', 'stnk_name' => 'Budi Nonaktif', 'is_active' => false]);
+        $user = $this->userWithPermission('customer.view');
+
+        $response = $this->actingAs($user)->getJson('/lookup/customers?q=Bud');
+
+        $response->assertOk();
+        $response->assertJsonMissing(['text' => 'Budi Nonaktif']);
+    }
+
     // --- mechanics() ---
 
     public function test_mechanics_returns_matches_and_is_forbidden_without_permission(): void
@@ -153,6 +181,30 @@ class LookupControllerTest extends TestCase
         $response->assertOk();
         $response->assertJsonFragment(['text' => 'Agus Setiawan']);
         $response->assertJsonMissing(['text' => 'Agus Wibowo']);
+    }
+
+    public function test_mechanics_ids_mode_resolves_an_inactive_mechanic(): void
+    {
+        // Same regression coverage as test_customers_ids_mode_resolves_an_inactive_customer,
+        // for the Mekanik picker on the PKB edit page.
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'is_active' => false]);
+        $user = $this->userWithPermission('mechanic.view');
+
+        $response = $this->actingAs($user)->getJson("/lookup/mechanics?ids[]={$mechanic->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['id' => $mechanic->id, 'text' => 'Agus Setiawan']);
+    }
+
+    public function test_mechanics_q_search_excludes_inactive_mechanics(): void
+    {
+        Mechanic::create(['name' => 'Agus Nonaktif', 'is_active' => false]);
+        $user = $this->userWithPermission('mechanic.view');
+
+        $response = $this->actingAs($user)->getJson('/lookup/mechanics?q=Agu');
+
+        $response->assertOk();
+        $response->assertJsonMissing(['text' => 'Agus Nonaktif']);
     }
 
     // --- spareparts() ---
@@ -224,5 +276,39 @@ class LookupControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertExactJson([]);
+    }
+
+    public function test_spareparts_ids_mode_resolves_an_inactive_sparepart_branch_config(): void
+    {
+        // Same regression coverage as test_customers_ids_mode_resolves_an_inactive_customer,
+        // for the per-row Sparepart picker on the PKB edit page.
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepart = Sparepart::create(['code' => 'SP-OLI-002', 'name' => 'Oli Gardan']);
+        $sparepartBranch = SparepartBranch::create([
+            'sparepart_id' => $sparepart->id, 'branch_id' => $branch->id,
+            'selling_price' => 45000, 'is_active' => false,
+        ]);
+        $user = $this->userWithBranchPermission('sparepart.view', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/spareparts?ids[]={$sparepartBranch->id}&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['id' => $sparepartBranch->id, 'code' => 'SP-OLI-002']);
+    }
+
+    public function test_spareparts_q_search_excludes_inactive_sparepart_branch_configs(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepart = Sparepart::create(['code' => 'SP-OLI-003', 'name' => 'Oli Nonaktif']);
+        SparepartBranch::create([
+            'sparepart_id' => $sparepart->id, 'branch_id' => $branch->id,
+            'selling_price' => 45000, 'is_active' => false,
+        ]);
+        $user = $this->userWithBranchPermission('sparepart.view', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/spareparts?q=Oli&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertJsonMissing(['code' => 'SP-OLI-003']);
     }
 }

@@ -13,7 +13,7 @@ class LookupController extends Controller
     {
         $this->authorize('customer.view');
 
-        $query = Customer::where('is_active', true);
+        $query = Customer::query();
         $ids = array_map('intval', (array) $request->query('ids', []));
 
         if (! empty($ids)) {
@@ -23,7 +23,8 @@ class LookupController extends Controller
             if ($term === null) {
                 return response()->json([]);
             }
-            $query->where('name', 'like', '%' . addcslashes($term, '%_\\') . '%');
+            $query->where('is_active', true)
+                ->where('name', 'like', '%' . addcslashes($term, '%_\\') . '%');
         }
 
         if ($branchId = $request->query('branch_id')) {
@@ -43,7 +44,7 @@ class LookupController extends Controller
     {
         $this->authorize('mechanic.view');
 
-        $query = Mechanic::where('is_active', true);
+        $query = Mechanic::query();
         $ids = array_map('intval', (array) $request->query('ids', []));
 
         if (! empty($ids)) {
@@ -53,7 +54,8 @@ class LookupController extends Controller
             if ($term === null) {
                 return response()->json([]);
             }
-            $query->where('name', 'like', '%' . addcslashes($term, '%_\\') . '%');
+            $query->where('is_active', true)
+                ->where('name', 'like', '%' . addcslashes($term, '%_\\') . '%');
         }
 
         if ($branchId = $request->query('branch_id')) {
@@ -76,8 +78,7 @@ class LookupController extends Controller
         abort_unless(auth()->user()->hasPermissionToInBranch('sparepart.view', $branchId), 403);
 
         $query = SparepartBranch::with(['sparepart', 'stock'])
-            ->where('branch_id', $branchId)
-            ->where('is_active', true);
+            ->where('branch_id', $branchId);
         $ids = array_map('intval', (array) $request->query('ids', []));
 
         if (! empty($ids)) {
@@ -88,9 +89,10 @@ class LookupController extends Controller
                 return response()->json([]);
             }
             $escaped = addcslashes($term, '%_\\');
-            $query->whereHas('sparepart', function ($inner) use ($escaped) {
-                $inner->where('name', 'like', "%{$escaped}%")->orWhere('code', 'like', "%{$escaped}%");
-            });
+            $query->where('is_active', true)
+                ->whereHas('sparepart', function ($inner) use ($escaped) {
+                    $inner->where('name', 'like', "%{$escaped}%")->orWhere('code', 'like', "%{$escaped}%");
+                });
         }
 
         return response()->json(

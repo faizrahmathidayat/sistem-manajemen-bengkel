@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerBranchAssignmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoodsReceiptController;
+use App\Http\Controllers\LookupController;
 use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\UserBranchAssignmentController;
@@ -112,6 +113,12 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('/stock-card', [StockCardController::class, 'index'])->name('stock-card.index');
+
+    Route::prefix('lookup')->name('lookup.')->group(function () {
+        Route::get('/customers', [LookupController::class, 'customers'])->name('customers');
+        Route::get('/mechanics', [LookupController::class, 'mechanics'])->name('mechanics');
+        Route::get('/spareparts', [LookupController::class, 'spareparts'])->name('spareparts');
+    });
 
     Route::prefix('work-orders')->name('work-orders.')->group(function () {
         Route::get('/lookup/customers/{branch}', [WorkOrderLookupController::class, 'customersByBranch'])->name('lookup.customers');

@@ -255,4 +255,53 @@ class InvoiceControllerTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_post_transitions_invoice_to_posted_and_deducts_stock(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $invoice = (new InvoiceService())->createFromWorkOrder($workOrder);
+        $sparepartBranchId = $workOrder->sparepartLines->first()->sparepart_branch_id;
+        $stockBefore = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchId)->first();
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.post');
+
+        $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/post");
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $this->assertSame(\App\Support\InvoiceStatus::POSTED, $invoice->fresh()->status);
+        $stockAfter = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchId)->first();
+        $this->assertSame((float) $stockBefore->on_hand_qty - 2.0, (float) $stockAfter->on_hand_qty);
+        $this->assertSame(0.0, (float) $stockAfter->reserved_qty);
+        $this->assertDatabaseHas('inventory_movements', [
+            'sparepart_branch_id' => $sparepartBranchId,
+            'movement_type' => 'usage_out',
+            'reference_type' => 'invoice_detail',
+        ]);
+    }
+
+    public function test_post_is_forbidden_when_invoice_already_posted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        (new InvoiceService())->postInvoice($invoice);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.post');
+
+        $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/post");
+
+        $response->assertForbidden();
+    }
+
+    public function test_post_requires_invoice_post_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/post");
+
+        $response->assertForbidden();
+    }
 }

@@ -114,4 +114,17 @@ class InvoiceController extends Controller
 
         return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice berhasil diperbarui.');
     }
+
+    public function post(Invoice $invoice)
+    {
+        $this->authorize('post', $invoice);
+
+        try {
+            (new InvoiceService())->postInvoice($invoice);
+        } catch (DomainException $e) {
+            return redirect()->route('invoices.show', $invoice)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice berhasil diposting.');
+    }
 }

@@ -9,6 +9,13 @@
                     <i class="bi bi-pencil"></i> Ubah
                 </a>
             @endcan
+            @can('post', $invoice)
+                <form method="POST" action="{{ route('invoices.post', $invoice) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-primary btn-sm">Posting</button>
+                </form>
+            @endcan
         </div>
     </div>
 

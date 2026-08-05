@@ -314,5 +314,6 @@ class VehicleManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('select2-ajax-picker.js', false);
+        $response->assertSee("const existingCustomerId = {$vehicle->customer_id};", false);
     }
 }

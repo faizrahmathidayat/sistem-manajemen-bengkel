@@ -49,16 +49,16 @@ This is a deliberate authorization decision, not an oversight: **being able to s
 **Response shape** — every action returns a JSON array of objects shaped for Select2 (`id` + `text` minimum), with extra fields preserved from the current endpoints so the existing "auto-fill other fields on selection" JS keeps working without a second request:
 
 ```text
-customers():  [{ id, text }]                                          // text = customer name
-mechanics():  [{ id, text }]                                          // text = mechanic name
-spareparts(): [{ id, text, code, selling_price, available_qty }]      // text = "{code} — {name}", matches
-                                                                        // the existing "code — name" convention
-                                                                        // already used for sparepart selects
-                                                                        // elsewhere in this app (Dashboard's
-                                                                        // Kartu Stok tab)
+customers():  [{ id, text }]                                                       // text = customer name
+mechanics():  [{ id, text }]                                                       // text = mechanic name
+spareparts(): [{ id, text, sparepart_id, code, selling_price, available_qty }]     // text = "{code} — {name}", matches
+                                                                                     // the existing "code — name" convention
+                                                                                     // already used for sparepart selects
+                                                                                     // elsewhere in this app (Dashboard's
+                                                                                     // Kartu Stok tab)
 ```
 
-`id` for `spareparts()` is the `sparepart_branch_id` (not the bare `sparepart_id`) — matches every existing consumer, since the actual document line always needs to know which branch's stock/price row it's referencing, exactly like today's `sparepartsByBranch()` endpoints.
+`id` for `spareparts()` is the `sparepart_branch_id` — used as Select2's own value/display key, and by 3 of the 4 sparepart-consuming modules (Work Order, Goods Receipt, Stock Adjustment all store `sparepart_branch_id` on their line items, since those documents operate within a single branch). **Stock Transfer is the exception**: `StockTransferLine` stores a bare `sparepart_id` (not `sparepart_branch_id`), because a transfer has separate from/to branches at the document header level — a single `sparepart_branch_id` wouldn't mean "this sparepart" the way it does for a single-branch document. The response therefore also includes a separate `sparepart_id` field (the bare `Sparepart` identity) alongside `id`; Stock Transfer's line-item JS reads `.sparepart_id` from the selected option's data to populate its hidden input, while every other consumer reads `.id` (== `sparepart_branch_id`) as it already does today. Select2 itself still searches/displays/tracks selection by `id` (`sparepart_branch_id`) uniformly across all four consumers — only which field gets written into the submitted form differs, and that's already true today (each module's line-item JS already has its own field-naming logic, this doesn't add new divergence, it just needs to carry one more field through the shared endpoint instead of a module-specific one).
 
 Each action: requires `q` to be at least 3 characters (return `[]` immediately if shorter or absent — defensive on the backend too, not just a frontend gate), searches `name`/`code` with `LIKE '%...%'` (escape wildcards via `addcslashes`, matching the Customer list search fix from Foundation v3), orders by name, caps at 20 results (`->limit(20)`).
 

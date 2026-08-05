@@ -46,15 +46,15 @@
                     <strong>Status</strong>
                     <div>
                         @if ($workOrder->status === \App\Support\WorkOrderStatus::DRAFT)
-                            <span class="status-dot status-active">Draft</span>
+                            <span class="status-dot status-inactive">Draft</span>
                         @elseif ($workOrder->status === \App\Support\WorkOrderStatus::OPEN)
                             <span class="status-dot status-active">Dikonfirmasi</span>
                         @elseif ($workOrder->status === \App\Support\WorkOrderStatus::SHORTAGE)
-                            <span class="status-dot status-inactive">Kurang Stok</span>
+                            <span class="status-dot status-warning">Kurang Stok</span>
                         @elseif ($workOrder->status === \App\Support\WorkOrderStatus::COMPLETED)
                             <span class="status-dot status-active">Selesai</span>
                         @else
-                            <span class="status-dot status-inactive">Dibatalkan</span>
+                            <span class="status-dot status-danger">Dibatalkan</span>
                         @endif
                     </div>
                 </div>

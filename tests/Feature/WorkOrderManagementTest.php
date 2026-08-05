@@ -368,6 +368,24 @@ class WorkOrderManagementTest extends TestCase
         $response->assertDontSee('Dibatalkan');
     }
 
+    public function test_index_shows_selesai_label_for_a_completed_work_order_not_dibatalkan(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response = $this->actingAs($user)->get('/work-orders');
+
+        $response->assertOk();
+        $response->assertSee('Selesai');
+        $response->assertDontSee('Dibatalkan');
+    }
+
     public function test_index_shows_no_access_page_without_any_pkb_view_grant(): void
     {
         $user = User::factory()->create();

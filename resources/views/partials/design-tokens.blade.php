@@ -231,6 +231,8 @@
     }
     .status-dot.status-active { color: var(--color-success); }
     .status-dot.status-inactive { color: var(--color-ink-muted); }
+    .status-dot.status-warning { color: var(--color-warning); }
+    .status-dot.status-danger { color: var(--color-danger); }
 
     /* Stat cards */
     .stat-card {

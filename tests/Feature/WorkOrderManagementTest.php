@@ -1048,4 +1048,71 @@ class WorkOrderManagementTest extends TestCase
         $response->assertDontSee(route('work-orders.overrideShortage', $workOrder), false);
         $response->assertSee('Ditunda menunggu barang datang.');
     }
+
+    public function test_complete_transitions_open_work_order_to_completed(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $this->assertSame(WorkOrderStatus::OPEN, $workOrder->status);
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+
+        $response = $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response->assertRedirect("/work-orders/{$workOrder->id}");
+        $this->assertSame(WorkOrderStatus::COMPLETED, $workOrder->fresh()->status);
+    }
+
+    public function test_complete_transitions_overridden_shortage_work_order_to_completed(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        // on_hand_qty stays at its default 0, so confirm() below produces SHORTAGE.
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $this->assertSame(WorkOrderStatus::SHORTAGE, $workOrder->status);
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/override-shortage", ['reason' => 'Customer setuju tunggu part.']);
+
+        $response = $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response->assertRedirect("/work-orders/{$workOrder->id}");
+        $this->assertSame(WorkOrderStatus::COMPLETED, $workOrder->fresh()->status);
+    }
+
+    public function test_complete_rejected_when_shortage_not_yet_overridden(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $this->assertSame(WorkOrderStatus::SHORTAGE, $workOrder->status);
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+
+        $response = $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response->assertForbidden();
+        $this->assertSame(WorkOrderStatus::SHORTAGE, $workOrder->fresh()->status);
+    }
+
+    public function test_complete_requires_pkb_complete_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+
+        $response = $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response->assertForbidden();
+    }
 }

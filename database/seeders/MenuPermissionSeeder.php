@@ -48,6 +48,7 @@ class MenuPermissionSeeder extends Seeder
                     ['code' => 'pkb.create', 'resource' => 'pkb', 'action' => 'create', 'description' => 'Membuat PKB'],
                     ['code' => 'pkb.edit', 'resource' => 'pkb', 'action' => 'edit', 'description' => 'Mengubah PKB'],
                     ['code' => 'pkb.confirm', 'resource' => 'pkb', 'action' => 'confirm', 'description' => 'Mengonfirmasi PKB'],
+                    ['code' => 'pkb.complete', 'resource' => 'pkb', 'action' => 'complete', 'description' => 'Menandai PKB selesai dikerjakan'],
                     ['code' => 'pkb.cancel', 'resource' => 'pkb', 'action' => 'cancel', 'description' => 'Membatalkan PKB'],
                     ['code' => 'pkb.override_stock_shortage', 'resource' => 'pkb', 'action' => 'override_stock_shortage', 'description' => 'Override kekurangan stok pada PKB'],
                     ['code' => 'pkb.print', 'resource' => 'pkb', 'action' => 'print', 'description' => 'Cetak PKB'],

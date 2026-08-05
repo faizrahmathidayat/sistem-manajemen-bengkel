@@ -11,6 +11,13 @@
                     <button type="submit" class="btn btn-primary btn-sm">Konfirmasi</button>
                 </form>
             @endcan
+            @can('complete', $workOrder)
+                <form method="POST" action="{{ route('work-orders.complete', $workOrder) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-primary btn-sm">Tandai Selesai</button>
+                </form>
+            @endcan
             @can('update', $workOrder)
                 <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-pencil"></i> Ubah
@@ -44,6 +51,8 @@
                             <span class="status-dot status-active">Dikonfirmasi</span>
                         @elseif ($workOrder->status === \App\Support\WorkOrderStatus::SHORTAGE)
                             <span class="status-dot status-inactive">Kurang Stok</span>
+                        @elseif ($workOrder->status === \App\Support\WorkOrderStatus::COMPLETED)
+                            <span class="status-dot status-active">Selesai</span>
                         @else
                             <span class="status-dot status-inactive">Dibatalkan</span>
                         @endif

@@ -31,6 +31,14 @@ class WorkOrderPolicy
             && $user->hasPermissionToInBranch('pkb.confirm', $workOrder->branch_id);
     }
 
+    public function complete(User $user, WorkOrder $workOrder): bool
+    {
+        $eligible = $workOrder->status === WorkOrderStatus::OPEN
+            || ($workOrder->status === WorkOrderStatus::SHORTAGE && ! is_null($workOrder->shortage_overridden_at));
+
+        return $eligible && $user->hasPermissionToInBranch('pkb.complete', $workOrder->branch_id);
+    }
+
     public function overrideShortage(User $user, WorkOrder $workOrder): bool
     {
         return $workOrder->status === WorkOrderStatus::SHORTAGE

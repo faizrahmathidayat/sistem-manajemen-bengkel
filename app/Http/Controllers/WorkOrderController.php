@@ -147,6 +147,35 @@ class WorkOrderController extends Controller
         return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil dikonfirmasi.');
     }
 
+    public function complete(WorkOrder $workOrder)
+    {
+        $this->authorize('complete', $workOrder);
+
+        $notEligible = false;
+
+        DB::transaction(function () use ($workOrder, &$notEligible) {
+            $fresh = WorkOrder::whereKey($workOrder->id)->lockForUpdate()->first();
+
+            $eligible = $fresh->status === WorkOrderStatus::OPEN
+                || ($fresh->status === WorkOrderStatus::SHORTAGE && ! is_null($fresh->shortage_overridden_at));
+
+            if (! $eligible) {
+                $notEligible = true;
+
+                return;
+            }
+
+            $fresh->status = WorkOrderStatus::COMPLETED;
+            $fresh->save();
+        });
+
+        if ($notEligible) {
+            return redirect()->route('work-orders.show', $workOrder)->with('error', 'PKB belum bisa ditandai selesai. Pastikan PKB sudah dikonfirmasi dan kekurangan stok (jika ada) sudah disetujui.');
+        }
+
+        return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil ditandai selesai.');
+    }
+
     public function overrideShortage(OverrideShortageRequest $request, WorkOrder $workOrder)
     {
         $workOrder->update([

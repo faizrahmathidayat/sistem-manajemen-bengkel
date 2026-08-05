@@ -1177,4 +1177,26 @@ class WorkOrderManagementTest extends TestCase
         $response->assertSee($invoice->number);
         $response->assertDontSee('Buat Invoice');
     }
+
+    public function test_show_still_displays_shortage_override_info_after_work_order_is_completed(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        // on_hand_qty stays at its default 0, so confirm() below produces SHORTAGE.
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        // Grant every permission before the first request with this $user (see the caching
+        // comment on the two "show offers/links" tests above).
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.override_stock_shortage');
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/override-shortage", ['reason' => 'Customer setuju tunggu part.']);
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee('Customer setuju tunggu part.');
+        $response->assertSee($user->name);
+    }
 }

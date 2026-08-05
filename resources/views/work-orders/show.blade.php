@@ -107,27 +107,29 @@
         </div>
     </div>
 
-    @if ($workOrder->status === \App\Support\WorkOrderStatus::SHORTAGE)
+    @if ($workOrder->shortage_overridden_at)
         <div class="card mb-3">
             <div class="card-body">
-                @if ($workOrder->shortage_overridden_at)
-                    <p class="mb-0">
-                        <strong>Kekurangan stok disetujui</strong> oleh {{ optional($workOrder->shortageOverriddenBy)->name ?? '-' }}
-                        pada {{ $workOrder->shortage_overridden_at->format('d/m/Y H:i') }}:
-                        {{ $workOrder->shortage_override_reason }}
-                    </p>
-                @else
-                    @can('overrideShortage', $workOrder)
-                        <form method="POST" action="{{ route('work-orders.overrideShortage', $workOrder) }}">
-                            @csrf
-                            @method('PATCH')
-                            <label for="reason" class="form-label"><strong>Override Kekurangan Stok</strong></label>
-                            <textarea name="reason" id="reason" class="form-control @error('reason') is-invalid @enderror" rows="2" required></textarea>
-                            @error('reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            <button type="submit" class="btn btn-outline-warning btn-sm mt-2">Kirim Override</button>
-                        </form>
-                    @endcan
-                @endif
+                <p class="mb-0">
+                    <strong>Kekurangan stok disetujui</strong> oleh {{ optional($workOrder->shortageOverriddenBy)->name ?? '-' }}
+                    pada {{ $workOrder->shortage_overridden_at->format('d/m/Y H:i') }}:
+                    {{ $workOrder->shortage_override_reason }}
+                </p>
+            </div>
+        </div>
+    @elseif ($workOrder->status === \App\Support\WorkOrderStatus::SHORTAGE)
+        <div class="card mb-3">
+            <div class="card-body">
+                @can('overrideShortage', $workOrder)
+                    <form method="POST" action="{{ route('work-orders.overrideShortage', $workOrder) }}">
+                        @csrf
+                        @method('PATCH')
+                        <label for="reason" class="form-label"><strong>Override Kekurangan Stok</strong></label>
+                        <textarea name="reason" id="reason" class="form-control @error('reason') is-invalid @enderror" rows="2" required></textarea>
+                        @error('reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <button type="submit" class="btn btn-outline-warning btn-sm mt-2">Kirim Override</button>
+                    </form>
+                @endcan
             </div>
         </div>
     @endif

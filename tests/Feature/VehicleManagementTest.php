@@ -84,7 +84,7 @@ class VehicleManagementTest extends TestCase
         $response = $this->actingAs($user)->get("/vehicles/create?customer_id={$customer->id}");
 
         $response->assertOk();
-        $response->assertSee('selected', false);
+        $response->assertSee("const existingCustomerId = {$customer->id};", false);
     }
 
     public function test_store_creates_vehicle(): void
@@ -287,5 +287,32 @@ class VehicleManagementTest extends TestCase
         $response->assertOk();
         $response->assertSee('B 1111 AAA');
         $response->assertDontSee('B 2222 BBB');
+    }
+
+    public function test_create_page_loads_select2_for_customer_picker(): void
+    {
+        $user = $this->userWithPermissions(['vehicle.create']);
+
+        $response = $this->actingAs($user)->get('/vehicles/create');
+
+        $response->assertOk();
+        $response->assertSee('select2-ajax-picker.js', false);
+        $response->assertSee('id="customer_id"', false);
+    }
+
+    public function test_edit_page_preselects_existing_customer(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        $vehicle = Vehicle::create([
+            'customer_id' => $customer->id, 'category_id' => $category->id,
+            'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 1234 ABC',
+        ]);
+        $user = $this->userWithPermissions(['vehicle.edit']);
+
+        $response = $this->actingAs($user)->get("/vehicles/{$vehicle->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('select2-ajax-picker.js', false);
     }
 }

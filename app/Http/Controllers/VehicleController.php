@@ -44,13 +44,12 @@ class VehicleController extends Controller
         $this->authorize('vehicle.create');
 
         $vehicle = new Vehicle();
-        $customers = Customer::where('is_active', true)->orderBy('name')->get();
         $categories = VehicleCategory::where('is_active', true)->orderBy('name')->get();
         $brands = collect();
         $types = collect();
         $selectedCustomerId = request()->query('customer_id') ? (int) request()->query('customer_id') : null;
 
-        return view('vehicles.create', compact('vehicle', 'customers', 'categories', 'brands', 'types', 'selectedCustomerId'));
+        return view('vehicles.create', compact('vehicle', 'categories', 'brands', 'types', 'selectedCustomerId'));
     }
 
     public function store(StoreVehicleRequest $request)
@@ -67,13 +66,12 @@ class VehicleController extends Controller
     {
         $this->authorize('vehicle.edit');
 
-        $customers = Customer::where('is_active', true)->orderBy('name')->get();
         $categories = VehicleCategory::where('is_active', true)->orderBy('name')->get();
         $brands = VehicleBrand::where('category_id', $vehicle->category_id)->where('is_active', true)->orderBy('name')->get();
         $types = VehicleType::where('brand_id', $vehicle->brand_id)->where('is_active', true)->orderBy('name')->get();
         $selectedCustomerId = null;
 
-        return view('vehicles.edit', compact('vehicle', 'customers', 'categories', 'brands', 'types', 'selectedCustomerId'));
+        return view('vehicles.edit', compact('vehicle', 'categories', 'brands', 'types', 'selectedCustomerId'));
     }
 
     public function update(UpdateVehicleRequest $request, Vehicle $vehicle)

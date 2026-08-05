@@ -5,14 +5,7 @@
 
 <div class="mb-3">
     <label for="customer_id" class="form-label">Customer</label>
-    <select name="customer_id" id="customer_id" class="form-select @error('customer_id') is-invalid @enderror" required>
-        <option value="">-- Pilih Customer --</option>
-        @foreach ($customers as $customer)
-            <option value="{{ $customer->id }}" {{ (int) old('customer_id', $vehicle->customer_id ?? $selectedCustomerId) === $customer->id ? 'selected' : '' }}>
-                {{ $customer->name }}
-            </option>
-        @endforeach
-    </select>
+    <select name="customer_id" id="customer_id" class="form-select @error('customer_id') is-invalid @enderror" required></select>
     @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
 </div>
 
@@ -80,6 +73,27 @@
 
 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>
 <a href="{{ route('vehicles.index') }}" class="btn btn-outline-secondary">Batal</a>
+
+@push('scripts')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+<script>
+(function () {
+    const customerSelect = document.getElementById('customer_id');
+    initAjaxSelect(customerSelect, {
+        endpoint: '{{ route('lookup.customers') }}',
+        placeholder: '-- Pilih Customer --',
+    });
+    const existingCustomerId = {{ (int) old('customer_id', $vehicle->customer_id ?? $selectedCustomerId ?? 0) }};
+    if (existingCustomerId) {
+        preselectAjaxOption(customerSelect, { endpoint: '{{ route('lookup.customers') }}', id: existingCustomerId })
+            .then(function () { $(customerSelect).trigger('change'); });
+    }
+})();
+</script>
+@endpush
 
 @push('scripts')
 <script>

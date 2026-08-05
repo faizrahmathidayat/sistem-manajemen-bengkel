@@ -79,5 +79,31 @@
         </div>
     </div>
 
+    @if ($invoice->cancelled_at)
+        <div class="card mb-3">
+            <div class="card-body">
+                <p class="mb-0">
+                    <strong>Invoice dibatalkan</strong> oleh {{ optional($invoice->cancelledBy)->name ?? '-' }}
+                    pada {{ $invoice->cancelled_at->format('d/m/Y H:i') }}: {{ $invoice->cancel_reason }}
+                </p>
+            </div>
+        </div>
+    @elseif ($invoice->status === \App\Support\InvoiceStatus::DRAFT)
+        @can('cancel', $invoice)
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="POST" action="{{ route('invoices.cancel', $invoice) }}">
+                        @csrf
+                        @method('PATCH')
+                        <label for="reason" class="form-label"><strong>Batalkan Invoice</strong></label>
+                        <textarea name="reason" id="reason" class="form-control @error('reason') is-invalid @enderror" rows="2" required></textarea>
+                        @error('reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <button type="submit" class="btn btn-outline-danger btn-sm mt-2">Kirim Pembatalan</button>
+                    </form>
+                </div>
+            </div>
+        @endcan
+    @endif
+
     <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
 @endsection

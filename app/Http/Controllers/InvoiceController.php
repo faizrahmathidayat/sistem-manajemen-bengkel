@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CancelInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
@@ -120,5 +121,16 @@ class InvoiceController extends Controller
         }
 
         return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice berhasil diposting.');
+    }
+
+    public function cancel(CancelInvoiceRequest $request, Invoice $invoice)
+    {
+        try {
+            (new InvoiceService())->cancelInvoice($invoice, $request->validated()['reason']);
+        } catch (DomainException $e) {
+            return redirect()->route('invoices.show', $invoice)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice berhasil dibatalkan.');
     }
 }

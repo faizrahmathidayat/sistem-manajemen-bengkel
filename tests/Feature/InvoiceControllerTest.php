@@ -483,4 +483,93 @@ class InvoiceControllerTest extends TestCase
         $response->assertOk();
         $response->assertSee('"work_order_sparepart_line_id":null,"sparepart_branch_id":' . $extraSparepartBranch->id, false);
     }
+
+    public function test_cancel_marks_draft_invoice_as_cancelled_and_releases_reservations(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $sparepartBranchId = $sparepartDetail->sparepart_branch_id;
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.void');
+
+        $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/cancel", ['reason' => 'Customer batal servis.']);
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $invoice->refresh();
+        $this->assertSame(\App\Support\InvoiceStatus::CANCELLED, $invoice->status);
+        $this->assertSame('Customer batal servis.', $invoice->cancel_reason);
+        $this->assertSame($user->id, $invoice->cancelled_by);
+        $this->assertNotNull($invoice->cancelled_at);
+        $stockAfter = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchId)->first();
+        $this->assertSame(0.0, (float) $stockAfter->reserved_qty);
+    }
+
+    public function test_cancel_is_forbidden_once_invoice_is_posted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        (new InvoiceService())->postInvoice($invoice);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.void');
+
+        $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/cancel", ['reason' => 'Coba batalkan setelah posting.']);
+
+        $response->assertForbidden();
+    }
+
+    public function test_cancel_requires_invoice_void_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/cancel", ['reason' => 'Tanpa izin.']);
+
+        $response->assertForbidden();
+    }
+
+    public function test_cancel_requires_a_reason(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.void');
+
+        $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/cancel", []);
+
+        $response->assertSessionHasErrors('reason');
+    }
+
+    public function test_show_offers_cancel_form_for_draft_invoice_with_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.view');
+        $this->grantBranchPermission($user, $branch, 'invoice.void');
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}");
+
+        $response->assertOk();
+        $response->assertSee(route('invoices.cancel', $invoice), false);
+        $response->assertSee('Batalkan Invoice');
+    }
+
+    public function test_show_displays_cancellation_info_after_invoice_is_cancelled(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.view');
+        $this->grantBranchPermission($user, $branch, 'invoice.void');
+        $this->actingAs($user)->patch("/invoices/{$invoice->id}/cancel", ['reason' => 'Customer batal servis.']);
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}");
+
+        $response->assertOk();
+        $response->assertSee('Invoice dibatalkan');
+        $response->assertSee('Customer batal servis.');
+        $response->assertDontSee('Batalkan Invoice');
+    }
 }

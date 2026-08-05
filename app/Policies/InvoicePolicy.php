@@ -32,4 +32,10 @@ class InvoicePolicy
         return $invoice->status === InvoiceStatus::DRAFT
             && $user->hasPermissionToInBranch('invoice.post', $invoice->branch_id);
     }
+
+    public function cancel(User $user, Invoice $invoice): bool
+    {
+        return $invoice->status === InvoiceStatus::DRAFT
+            && $user->hasPermissionToInBranch('invoice.void', $invoice->branch_id);
+    }
 }

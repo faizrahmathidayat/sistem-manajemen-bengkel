@@ -174,8 +174,31 @@ class InvoiceService
         });
     }
 
-    // Shared by updateInvoice() (dropped lines) and cancelInvoice() (Task 3 — all remaining
-    // lines). Locks sparepart_branch_stocks rows in ascending id order, matching every other
+    public function cancelInvoice(Invoice $invoice, string $reason): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $reason) {
+            $fresh = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+
+            if ($fresh->status !== InvoiceStatus::DRAFT) {
+                throw new DomainException('Invoice sudah tidak berstatus draft, tidak bisa dibatalkan.');
+            }
+
+            $lineIds = $fresh->details()->whereNotNull('work_order_sparepart_line_id')->pluck('work_order_sparepart_line_id');
+            $this->releaseReservationsForLines($lineIds);
+
+            $fresh->update([
+                'status' => InvoiceStatus::CANCELLED,
+                'cancel_reason' => $reason,
+                'cancelled_by' => auth()->id(),
+                'cancelled_at' => now(),
+            ]);
+
+            return $fresh;
+        });
+    }
+
+    // Shared by updateInvoice() (dropped lines) and cancelInvoice() (all remaining lines).
+    // Locks sparepart_branch_stocks rows in ascending id order, matching every other
     // reservation-touching path in this codebase, to avoid AB-BA deadlocks. Safe to call with
     // an empty collection.
     protected function releaseReservationsForLines($workOrderSparepartLineIds): void

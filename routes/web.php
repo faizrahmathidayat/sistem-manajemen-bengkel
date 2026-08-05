@@ -181,6 +181,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{invoice}/edit', [InvoiceController::class, 'edit'])->name('edit');
         Route::put('/{invoice}', [InvoiceController::class, 'update'])->name('update');
         Route::patch('/{invoice}/post', [InvoiceController::class, 'post'])->name('post');
+        Route::patch('/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('cancel');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

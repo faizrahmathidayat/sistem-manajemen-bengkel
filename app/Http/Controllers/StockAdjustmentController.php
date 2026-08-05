@@ -6,7 +6,6 @@ use App\Http\Requests\StoreStockAdjustmentRequest;
 use App\Http\Requests\UpdateStockAdjustmentRequest;
 use App\Models\Branch;
 use App\Models\InventoryMovement;
-use App\Models\SparepartBranch;
 use App\Models\SparepartBranchStock;
 use App\Models\StockAdjustment;
 use App\Models\StockAdjustmentLine;
@@ -102,25 +101,6 @@ class StockAdjustmentController extends Controller
         $this->authorize('update', $stockAdjustment);
 
         $stockAdjustment->load('lines');
-        $sparepartBranches = SparepartBranch::with(['sparepart', 'stock'])
-            ->where('branch_id', $stockAdjustment->branch_id)
-            ->where('is_active', true)
-            ->get();
-        $missingIds = $stockAdjustment->lines->pluck('sparepart_branch_id')->unique()->diff($sparepartBranches->pluck('id'));
-        if ($missingIds->isNotEmpty()) {
-            $sparepartBranches = $sparepartBranches->concat(
-                SparepartBranch::with(['sparepart', 'stock'])->whereIn('id', $missingIds)->get()
-            );
-        }
-
-        $sparepartOptions = $sparepartBranches->map(function ($sb) {
-            return [
-                'id' => $sb->id,
-                'code' => $sb->sparepart->code,
-                'name' => $sb->sparepart->name,
-                'on_hand_qty' => (float) $sb->stock->on_hand_qty,
-            ];
-        })->values();
 
         $existingLines = $stockAdjustment->lines->map(function ($line) {
             return [
@@ -130,7 +110,7 @@ class StockAdjustmentController extends Controller
             ];
         })->values();
 
-        return view('stock-adjustments.edit', compact('stockAdjustment', 'sparepartOptions', 'existingLines'));
+        return view('stock-adjustments.edit', compact('stockAdjustment', 'existingLines'));
     }
 
     public function update(UpdateStockAdjustmentRequest $request, StockAdjustment $stockAdjustment)
@@ -367,27 +347,6 @@ class StockAdjustmentController extends Controller
     protected function formatQtyForMessage(float $qty): string
     {
         return rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.');
-    }
-
-    public function sparepartsByBranch(Branch $branch)
-    {
-        abort_unless(auth()->user()->hasPermissionToInBranch('stock_adjustment.create', $branch->id), 403);
-
-        return response()->json(
-            SparepartBranch::with(['sparepart', 'stock'])
-                ->where('branch_id', $branch->id)
-                ->where('is_active', true)
-                ->get()
-                ->map(function (SparepartBranch $sb) {
-                    return [
-                        'id' => $sb->id,
-                        'code' => $sb->sparepart->code,
-                        'name' => $sb->sparepart->name,
-                        'on_hand_qty' => (float) $sb->stock->on_hand_qty,
-                    ];
-                })
-                ->values()
-        );
     }
 
     protected function syncLines(StockAdjustment $stockAdjustment, array $lines): void

@@ -63,19 +63,24 @@
 
     @php($oldLines = old('lines', []))
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
     <script>
     (function () {
         const branchSelect = document.getElementById('branchSelect');
         const addButton = document.getElementById('addStockAdjustmentLine');
+        let currentBranchId = branchSelect.value || null;
+        window.currentStockAdjustmentBranchId = currentBranchId;
 
-        async function handleBranchChange(branchId) {
-            addButton.disabled = true;
-            if (!branchId) {
-                return;
-            }
-            const spareparts = await StockAdjustmentLineItems.fetchJson(`/stock-adjustments/lookup/spareparts/${branchId}`);
-            StockAdjustmentLineItems.setSparepartOptions(spareparts);
-            addButton.disabled = false;
+        function handleBranchChange(branchId) {
+            currentBranchId = branchId || null;
+            window.currentStockAdjustmentBranchId = currentBranchId;
+            addButton.disabled = !currentBranchId;
         }
 
         branchSelect.addEventListener('change', function () {
@@ -88,33 +93,20 @@
         // every line from scratch after any validation error. Built in from the
         // start here — this exact gap was an Important finding in the sibling
         // Goods Receipt module's final review.
-        function replayOldLines() {
+        async function replayOldLines() {
             const oldLines = @json($oldLines);
-            oldLines.forEach(function (line) {
-                StockAdjustmentLineItems.addLine();
-                const rows = document.querySelectorAll('#stockAdjustmentLines .stock-adjustment-line');
-                const row = rows[rows.length - 1];
-                if (line.sparepart_branch_id) {
-                    const select = row.querySelector('.stock-adjustment-sparepart-select');
-                    select.value = line.sparepart_branch_id;
-                    select.dispatchEvent(new Event('change'));
-                }
+            for (const line of oldLines) {
+                const row = StockAdjustmentLineItems.addLine(currentBranchId);
                 row.querySelector('.stock-adjustment-physical-qty').value = line.physical_qty || '';
                 row.querySelector('.stock-adjustment-reason').value = line.reason || '';
-            });
+                if (line.sparepart_branch_id) {
+                    await StockAdjustmentLineItems.preselectLine(row, line.sparepart_branch_id, currentBranchId);
+                }
+            }
         }
 
-        // Validation-error round-trip: old('branch_id') re-selects the branch
-        // option but does not fire a native `change` event, so the sparepart
-        // cascade and add-line button would otherwise stay empty/disabled.
-        // handleBranchChange is async, so replayOldLines is chained onto its
-        // promise rather than called eagerly — replayed rows need the sparepart
-        // options to already be populated before they can select a value.
-        if (branchSelect.value) {
-            handleBranchChange(branchSelect.value).then(replayOldLines);
-        } else {
-            replayOldLines();
-        }
+        handleBranchChange(branchSelect.value);
+        replayOldLines();
     })();
     </script>
     @endpush

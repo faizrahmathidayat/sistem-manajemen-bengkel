@@ -107,6 +107,7 @@ class LookupController extends Controller
                         'code' => $sb->sparepart->code,
                         'selling_price' => (float) $sb->selling_price,
                         'available_qty' => (float) $sb->stock->available_qty,
+                        'on_hand_qty' => (float) $sb->stock->on_hand_qty,
                     ];
                 })
                 ->values()

@@ -24,20 +24,8 @@
 <script>
 (function () {
     let lineCount = 0;
-    let sparepartOptionsCache = [];
 
-    function fillSelect(select, items, placeholder) {
-        select.innerHTML = '<option value="">' + placeholder + '</option>';
-        items.forEach(function (item) {
-            const option = document.createElement('option');
-            option.value = item.id;
-            option.textContent = item.code + ' — ' + item.name;
-            option.dataset.onHandQty = item.on_hand_qty;
-            select.appendChild(option);
-        });
-    }
-
-    function addLine() {
+    function addLine(branchId) {
         const template = document.getElementById('stockAdjustmentLineTemplate');
         const clone = template.content.cloneNode(true);
         const wrapper = clone.querySelector('.stock-adjustment-line');
@@ -46,40 +34,47 @@
         select.name = `lines[${index}][sparepart_branch_id]`;
         wrapper.querySelector('.stock-adjustment-physical-qty').name = `lines[${index}][physical_qty]`;
         wrapper.querySelector('.stock-adjustment-reason').name = `lines[${index}][reason]`;
-        fillSelect(select, sparepartOptionsCache, '-- Pilih Sparepart --');
-
-        select.addEventListener('change', function () {
-            const selectedOption = select.options[select.selectedIndex];
-            wrapper.querySelector('.stock-adjustment-system-qty').value = selectedOption ? (selectedOption.dataset.onHandQty || '0') : '';
-        });
 
         wrapper.querySelector('.remove-stock-adjustment-line').addEventListener('click', function () {
+            if ($(select).data('select2')) $(select).select2('destroy');
             wrapper.remove();
         });
         document.getElementById('stockAdjustmentLines').appendChild(wrapper);
+
+        initAjaxSelect(select, {
+            endpoint: '{{ route('lookup.spareparts') }}',
+            extraParams: function () { return { branch_id: branchId }; },
+            placeholder: '-- Pilih Sparepart --',
+            onSelect: function (item) {
+                wrapper.querySelector('.stock-adjustment-system-qty').value = item.on_hand_qty;
+            },
+        });
+
+        return wrapper;
     }
 
-    document.getElementById('addStockAdjustmentLine').addEventListener('click', addLine);
+    async function preselectLine(row, sparepartBranchId, branchId) {
+        const select = row.querySelector('.stock-adjustment-sparepart-select');
+        const item = await preselectAjaxOption(select, {
+            endpoint: '{{ route('lookup.spareparts') }}',
+            id: sparepartBranchId,
+            extraParams: function () { return { branch_id: branchId }; },
+        });
+        $(select).trigger('change');
+        if (item) {
+            row.querySelector('.stock-adjustment-system-qty').value = item.on_hand_qty;
+        }
+
+        return item;
+    }
+
+    document.getElementById('addStockAdjustmentLine').addEventListener('click', function () {
+        addLine(window.currentStockAdjustmentBranchId || null);
+    });
 
     window.StockAdjustmentLineItems = {
-        setSparepartOptions: function (items) {
-            sparepartOptionsCache = items;
-            document.querySelectorAll('.stock-adjustment-sparepart-select').forEach(function (select) {
-                const currentValue = select.value;
-                fillSelect(select, items, '-- Pilih Sparepart --');
-                select.value = currentValue;
-                const selectedOption = select.options[select.selectedIndex];
-                const row = select.closest('.stock-adjustment-line');
-                if (row && selectedOption && selectedOption.value) {
-                    row.querySelector('.stock-adjustment-system-qty').value = selectedOption.dataset.onHandQty || '0';
-                }
-            });
-        },
         addLine: addLine,
-        fetchJson: async function (url) {
-            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            return response.json();
-        },
+        preselectLine: preselectLine,
     };
 })();
 </script>

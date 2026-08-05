@@ -53,21 +53,24 @@
     @include('stock-adjustments._line_item_scripts')
 
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
     <script>
     (function () {
-        const existingSparepartOptions = @json($sparepartOptions);
-        StockAdjustmentLineItems.setSparepartOptions(existingSparepartOptions);
+        const branchId = {{ $stockAdjustment->branch_id }};
+        window.currentStockAdjustmentBranchId = branchId;
 
         const existingLines = @json($existingLines);
         existingLines.forEach(function (line) {
-            StockAdjustmentLineItems.addLine();
-            const rows = document.querySelectorAll('#stockAdjustmentLines .stock-adjustment-line');
-            const row = rows[rows.length - 1];
-            const select = row.querySelector('.stock-adjustment-sparepart-select');
-            select.value = line.sparepart_branch_id;
-            select.dispatchEvent(new Event('change'));
+            const row = StockAdjustmentLineItems.addLine(branchId);
             row.querySelector('.stock-adjustment-physical-qty').value = line.physical_qty;
             row.querySelector('.stock-adjustment-reason').value = line.reason;
+            StockAdjustmentLineItems.preselectLine(row, line.sparepart_branch_id, branchId);
         });
     })();
     </script>

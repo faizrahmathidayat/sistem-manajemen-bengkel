@@ -236,6 +236,7 @@ class LookupControllerTest extends TestCase
             'code' => 'SP-OLI-001',
             'selling_price' => 45000.0,
             'available_qty' => 0.0,
+            'on_hand_qty' => 0.0,
         ]);
     }
 

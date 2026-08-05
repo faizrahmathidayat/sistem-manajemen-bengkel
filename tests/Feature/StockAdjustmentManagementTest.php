@@ -235,6 +235,18 @@ class StockAdjustmentManagementTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_create_page_loads_select2_for_sparepart_picker(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/stock-adjustments/create');
+
+        $response->assertOk();
+        $response->assertSee('select2-ajax-picker.js', false);
+    }
+
     public function test_create_form_replays_old_lines_after_a_validation_error(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

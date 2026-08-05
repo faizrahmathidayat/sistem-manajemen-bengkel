@@ -258,6 +258,7 @@ class AppShellTest extends TestCase
         // exact text with this sidebar placeholder. Assert against the
         // sidebar placeholder's unique icon class instead.
         $response->assertSee('bi-card-list', false);
+        $response->assertSee(route('stock-card.index'), false);
     }
 
     public function test_sidebar_shows_penerimaan_barang_placeholder_when_user_has_receipt_view_permission_in_a_branch(): void

@@ -39,10 +39,9 @@
             </a>
         </li>
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('stock-card.index') }}" class="nav-link {{ request()->routeIs('stock-card.*') ? 'active' : '' }}">
                 <i class="bi bi-card-list me-2"></i> Kartu Stok
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
         @if ($user->branchesWithPermission('receipt.view')->isNotEmpty())

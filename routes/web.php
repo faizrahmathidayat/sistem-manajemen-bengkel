@@ -14,6 +14,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SparepartBranchController;
 use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\StockCardController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
@@ -109,6 +110,8 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{sparepartBranch}/deactivate', [SparepartBranchController::class, 'deactivate'])->name('deactivate');
         Route::patch('/{sparepartBranch}/activate', [SparepartBranchController::class, 'activate'])->name('activate');
     });
+
+    Route::get('/stock-card', [StockCardController::class, 'index'])->name('stock-card.index');
 
     Route::prefix('work-orders')->name('work-orders.')->group(function () {
         Route::get('/lookup/customers/{branch}', [WorkOrderLookupController::class, 'customersByBranch'])->name('lookup.customers');

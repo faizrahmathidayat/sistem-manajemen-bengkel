@@ -227,6 +227,44 @@ class DashboardTest extends TestCase
         $response->assertJson(['kartuStok' => ['selected' => ['id' => $sparepart->id, 'onHand' => 7.0, 'reserved' => 2.0, 'available' => 5.0]]]);
     }
 
+    public function test_kartu_stok_tab_shows_real_movement_data_instead_of_dummy_rows(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+        $sparepart = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
+        $sparepartBranch = SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 60000]);
+        \App\Models\InventoryMovement::create([
+            'movement_at' => now(), 'branch_id' => $branch->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'movement_type' => \App\Support\InventoryMovementType::RECEIPT, 'qty_in' => 10, 'qty_out' => 0,
+            'balance_after' => 10, 'reference_type' => 'goods_receipt_line', 'reference_id' => 1,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))
+            ->get('/dashboard?branch_ids[]=' . $branch->id . '&sparepart_id=' . $sparepart->id);
+
+        $response->assertOk();
+        // The old dummy fixture's hardcoded reference number must never appear
+        // again now that this tab is wired to real inventory_movements data.
+        $response->assertDontSee('RCV-2026080001');
+        $response->assertSee('Penerimaan');
+    }
+
+    public function test_kartu_stok_tab_shows_empty_history_when_selected_sparepart_has_no_movements(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+        $sparepart = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
+        SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 60000]);
+
+        $response = $this->actingAs(User::find($user->id))
+            ->getJson('/dashboard?branch_ids[]=' . $branch->id . '&sparepart_id=' . $sparepart->id);
+
+        $response->assertOk();
+        $response->assertJson(['kartuStok' => ['mutations' => []]]);
+    }
+
     public function test_dashboard_shows_audit_log_tab_rows(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

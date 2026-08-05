@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\InventoryMovement;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
+use App\Support\InventoryMovementType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -110,6 +112,7 @@ class DashboardController extends Controller
         $resolvedId = $sparepartId ?? optional($spareparts->first())->id;
 
         $selected = ['id' => $resolvedId, 'onHand' => 0.0, 'reserved' => 0.0, 'available' => 0.0];
+        $mutations = [];
 
         if ($resolvedId && ! empty($scopedBranchIds)) {
             $totals = SparepartBranch::where('sparepart_id', $resolvedId)
@@ -122,22 +125,55 @@ class DashboardController extends Controller
             $onHand = (float) ($totals->on_hand ?? 0);
             $reserved = (float) ($totals->reserved ?? 0);
             $selected = ['id' => $resolvedId, 'onHand' => $onHand, 'reserved' => $reserved, 'available' => $onHand - $reserved];
+
+            // This preview shows only the first scoped branch's ledger (a single
+            // running balance can't be meaningfully merged across branches) —
+            // the dedicated /stock-card page always operates on one branch via
+            // its own switcher and has no such ambiguity.
+            $firstBranchSparepartBranch = SparepartBranch::where('sparepart_id', $resolvedId)
+                ->whereIn('branch_id', $scopedBranchIds)
+                ->where('is_active', true)
+                ->first();
+
+            if ($firstBranchSparepartBranch) {
+                $mutations = $this->recentMutationRows($firstBranchSparepartBranch->id);
+            }
         }
 
         return [
             'spareparts' => $spareparts->map(fn ($s) => ['id' => $s->id, 'code' => $s->code, 'name' => $s->name])->all(),
             'selected' => $selected,
-            'mutations' => $this->dummyMutationRows(),
+            'mutations' => $mutations,
         ];
     }
 
-    protected function dummyMutationRows(): array
+    protected function recentMutationRows(int $sparepartBranchId): array
     {
-        return [
-            ['date' => '2026-08-01 09:15', 'type' => 'RECEIPT', 'reference' => 'RCV-2026080001', 'in' => 20, 'out' => 0, 'reserved' => 0, 'balance' => 20],
-            ['date' => '2026-08-01 14:30', 'type' => 'PKB_RESERVATION', 'reference' => 'PKB-2026080001', 'in' => 0, 'out' => 0, 'reserved' => 2, 'balance' => 20],
-            ['date' => '2026-08-02 10:00', 'type' => 'INVOICE', 'reference' => 'INV-2026080001', 'in' => 0, 'out' => 2, 'reserved' => -2, 'balance' => 18],
+        $typeLabels = [
+            InventoryMovementType::RECEIPT => 'Penerimaan',
+            InventoryMovementType::ADJUSTMENT_IN => 'Penyesuaian Masuk',
+            InventoryMovementType::ADJUSTMENT_OUT => 'Penyesuaian Keluar',
+            InventoryMovementType::TRANSFER_IN => 'Transfer Masuk',
+            InventoryMovementType::TRANSFER_OUT => 'Transfer Keluar',
         ];
+
+        return InventoryMovement::where('sparepart_branch_id', $sparepartBranchId)
+            ->orderByDesc('movement_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get()
+            ->map(function (InventoryMovement $movement) use ($typeLabels) {
+                return [
+                    'date' => $movement->movement_at->format('d/m/Y H:i'),
+                    'type' => $typeLabels[$movement->movement_type] ?? $movement->movement_type,
+                    'reference' => "{$movement->reference_type} #{$movement->reference_id}",
+                    'in' => (float) $movement->qty_in > 0 ? number_format($movement->qty_in, 0, ',', '.') : '-',
+                    'out' => (float) $movement->qty_out > 0 ? number_format($movement->qty_out, 0, ',', '.') : '-',
+                    'reserved' => 0,
+                    'balance' => number_format($movement->balance_after, 0, ',', '.'),
+                ];
+            })
+            ->all();
     }
 
     protected function dummyPkbStatus(): array

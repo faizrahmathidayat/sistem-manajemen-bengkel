@@ -26,6 +26,7 @@
                 <div class="col-md-3"><strong>Customer</strong><div>{{ $invoice->customer->name }}</div></div>
                 <div class="col-md-3"><strong>PKB</strong><div>{{ $invoice->workOrder->number }}</div></div>
                 <div class="col-md-3"><strong>Tanggal</strong><div>{{ $invoice->invoice_date->format('d/m/Y') }}</div></div>
+                <div class="col-md-3"><strong>Jatuh Tempo</strong><div>{{ optional($invoice->due_date)->format('d/m/Y') ?? '-' }}</div></div>
                 <div class="col-md-3">
                     <strong>Status</strong>
                     <div>

@@ -31,6 +31,7 @@ class UpdateInvoiceRequest extends FormRequest
         return [
             'discount_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'tax_percent' => ['required', 'numeric', 'min:0'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:' . $this->route('invoice')->invoice_date->toDateString()],
             'notes' => ['nullable', 'string'],
             'services' => ['nullable', 'array'],
             'services.*' => ['array'],

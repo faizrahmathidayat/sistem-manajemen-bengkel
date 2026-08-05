@@ -167,6 +167,7 @@ class InvoiceService
                 'tax_percent' => $taxPercent,
                 'tax_amount' => $taxAmount,
                 'grand_total' => round($taxableBase + $taxAmount, 2),
+                'due_date' => $data['due_date'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
 

@@ -240,6 +240,55 @@ class InvoiceControllerTest extends TestCase
         $this->assertSame('Diskon member', $invoice->notes);
     }
 
+    public function test_update_saves_due_date(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+        $dueDate = $invoice->invoice_date->copy()->addDays(14)->toDateString();
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'due_date' => $dueDate,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => $serviceDetail->description,
+                'qty' => (float) $serviceDetail->qty,
+                'unit_price' => (float) $serviceDetail->unit_price,
+            ]],
+            'spareparts' => [[
+                'work_order_sparepart_line_id' => $sparepartDetail->work_order_sparepart_line_id,
+                'sparepart_branch_id' => $sparepartDetail->sparepart_branch_id,
+                'qty' => (float) $sparepartDetail->qty,
+                'unit_price' => (float) $sparepartDetail->unit_price,
+            ]],
+        ]);
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $invoice->refresh();
+        $this->assertSame($dueDate, $invoice->due_date->toDateString());
+    }
+
+    public function test_update_rejects_due_date_before_invoice_date(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'due_date' => $invoice->invoice_date->copy()->subDay()->toDateString(),
+        ]);
+
+        $response->assertSessionHasErrors('due_date');
+    }
+
     public function test_update_rejects_discount_percent_over_100(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

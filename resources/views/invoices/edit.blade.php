@@ -26,6 +26,13 @@
                             value="{{ old('tax_percent', $invoice->tax_percent) }}" required>
                         @error('tax_percent')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    <div class="col-md-4">
+                        <label for="due_date" class="form-label">Tanggal Jatuh Tempo</label>
+                        <input type="date" name="due_date" id="due_date"
+                            class="form-control @error('due_date') is-invalid @enderror"
+                            value="{{ old('due_date', optional($invoice->due_date)->toDateString()) }}">
+                        @error('due_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                     <div class="col-md-12">
                         <label for="notes" class="form-label">Catatan</label>
                         <textarea name="notes" id="notes" class="form-control @error('notes') is-invalid @enderror" rows="2">{{ old('notes', $invoice->notes) }}</textarea>

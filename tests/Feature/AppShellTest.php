@@ -351,6 +351,21 @@ class AppShellTest extends TestCase
         $response->assertSee('Laporan PKB', false);
     }
 
+    public function test_sidebar_links_directly_to_invoices_when_permitted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'invoice.view', 'resource' => 'invoice', 'action' => 'view', 'description' => 'Melihat invoice']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('invoices.index'), false);
+        $response->assertDontSee('Segera Hadir', false);
+    }
+
     public function test_sidebar_hides_all_new_placeholder_headings_without_any_permission(): void
     {
         $user = User::factory()->create();

@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerBranchAssignmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoodsReceiptController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LookupController;
 use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
@@ -171,6 +172,11 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{stockTransfer}/dispatch', [StockTransferController::class, 'dispatchTransfer'])->name('dispatch');
         Route::patch('/{stockTransfer}/receive', [StockTransferController::class, 'receive'])->name('receive');
         Route::patch('/{stockTransfer}/cancel', [StockTransferController::class, 'cancel'])->name('cancel');
+    });
+
+    Route::prefix('invoices')->name('invoices.')->group(function () {
+        Route::get('/', [InvoiceController::class, 'index'])->name('index');
+        Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

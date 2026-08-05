@@ -450,26 +450,15 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertDontSee(route('goods-receipts.cancel', $goodsReceipt), false);
     }
 
-    public function test_lookup_spareparts_by_branch_returns_only_active_configs_for_that_branch(): void
+    public function test_create_page_loads_select2_for_sparepart_picker(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $sparepartBranch = $this->makeSparepartBranch($branch);
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
 
-        $response = $this->actingAs(User::find($user->id))->getJson("/goods-receipts/lookup/spareparts/{$branch->id}");
+        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
 
         $response->assertOk();
-        $response->assertJsonFragment(['id' => $sparepartBranch->id]);
-    }
-
-    public function test_lookup_spareparts_by_branch_is_forbidden_without_receipt_create_permission(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->getJson("/goods-receipts/lookup/spareparts/{$branch->id}");
-
-        $response->assertForbidden();
+        $response->assertSee('select2-ajax-picker.js', false);
     }
 }

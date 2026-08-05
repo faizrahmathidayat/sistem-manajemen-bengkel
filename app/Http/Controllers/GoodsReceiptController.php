@@ -8,7 +8,6 @@ use App\Models\Branch;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptLine;
 use App\Models\InventoryMovement;
-use App\Models\SparepartBranch;
 use App\Models\SparepartBranchStock;
 use App\Services\DocumentNumberGenerator;
 use App\Support\GoodsReceiptStatus;
@@ -98,24 +97,6 @@ class GoodsReceiptController extends Controller
         $this->authorize('update', $goodsReceipt);
 
         $goodsReceipt->load('lines');
-        $sparepartBranches = SparepartBranch::with(['sparepart', 'stock'])
-            ->where('branch_id', $goodsReceipt->branch_id)
-            ->where('is_active', true)
-            ->get();
-        $missingIds = $goodsReceipt->lines->pluck('sparepart_branch_id')->unique()->diff($sparepartBranches->pluck('id'));
-        if ($missingIds->isNotEmpty()) {
-            $sparepartBranches = $sparepartBranches->concat(
-                SparepartBranch::with(['sparepart', 'stock'])->whereIn('id', $missingIds)->get()
-            );
-        }
-
-        $sparepartOptions = $sparepartBranches->map(function ($sb) {
-            return [
-                'id' => $sb->id,
-                'code' => $sb->sparepart->code,
-                'name' => $sb->sparepart->name,
-            ];
-        })->values();
 
         $existingLines = $goodsReceipt->lines->map(function ($line) {
             return [
@@ -125,7 +106,7 @@ class GoodsReceiptController extends Controller
             ];
         })->values();
 
-        return view('goods-receipts.edit', compact('goodsReceipt', 'sparepartOptions', 'existingLines'));
+        return view('goods-receipts.edit', compact('goodsReceipt', 'existingLines'));
     }
 
     public function update(UpdateGoodsReceiptRequest $request, GoodsReceipt $goodsReceipt)
@@ -206,22 +187,6 @@ class GoodsReceiptController extends Controller
         });
 
         return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil dibatalkan.');
-    }
-
-    public function sparepartsByBranch(Branch $branch)
-    {
-        abort_unless(auth()->user()->hasPermissionToInBranch('receipt.create', $branch->id), 403);
-
-        return response()->json(
-            SparepartBranch::with('sparepart')
-                ->where('branch_id', $branch->id)
-                ->where('is_active', true)
-                ->get()
-                ->map(function (SparepartBranch $sb) {
-                    return ['id' => $sb->id, 'code' => $sb->sparepart->code, 'name' => $sb->sparepart->name];
-                })
-                ->values()
-        );
     }
 
     protected function syncLines(GoodsReceipt $goodsReceipt, array $lines): void

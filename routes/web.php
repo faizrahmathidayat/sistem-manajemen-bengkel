@@ -135,8 +135,6 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {
-        Route::get('/lookup/spareparts/{branch}', [GoodsReceiptController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
-
         Route::get('/', [GoodsReceiptController::class, 'index'])->name('index');
         Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
         Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');

@@ -47,19 +47,24 @@
     @include('goods-receipts._line_item_scripts')
 
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
     <script>
     (function () {
-        const existingSparepartOptions = @json($sparepartOptions);
-        GoodsReceiptLineItems.setSparepartOptions(existingSparepartOptions);
+        const branchId = {{ $goodsReceipt->branch_id }};
+        window.currentGoodsReceiptBranchId = branchId;
 
         const existingLines = @json($existingLines);
         existingLines.forEach(function (line) {
-            GoodsReceiptLineItems.addLine();
-            const rows = document.querySelectorAll('#goodsReceiptLines .goods-receipt-line');
-            const row = rows[rows.length - 1];
-            row.querySelector('.goods-receipt-sparepart-select').value = line.sparepart_branch_id;
+            const row = GoodsReceiptLineItems.addLine(branchId);
             row.querySelector('.goods-receipt-qty').value = line.qty;
             row.querySelector('.goods-receipt-purchase-price').value = line.purchase_price;
+            GoodsReceiptLineItems.preselectLine(row, line.sparepart_branch_id, branchId);
         });
     })();
     </script>

@@ -62,16 +62,24 @@ spareparts(): [{ id, text, sparepart_id, code, selling_price, available_qty }]  
 
 Each action: requires `q` to be at least 3 characters (return `[]` immediately if shorter or absent — defensive on the backend too, not just a frontend gate), searches `name`/`code` with `LIKE '%...%'` (escape wildcards via `addcslashes`, matching the Customer list search fix from Foundation v3), orders by name, caps at 20 results (`->limit(20)`).
 
+**Second query mode — resolve by ID, for pre-selecting an existing value.** Each action also accepts `ids[]` as an alternative to `q`: `GET /lookup/spareparts?ids[]=42&branch_id=3` returns that record's `{id, text, ...}` shape regardless of the 3-character rule (multiple ids may be passed for the sparepart line-item case, one call resolves every existing line at once). This exists specifically to render "already selected" state — a Select2 AJAX picker has no full option list to draw an initial label from, so the only way to show "PKB is being edited and already has Sparepart X selected" (or replay an `old()` value after a failed validation) is to explicitly resolve that one record's display text via this same endpoint before Select2 initializes on that field. Same permission gate as the `q` path — this is still a read lookup, not a new capability.
+
+If both `q` and `ids[]` are present, `ids[]` wins (mutually exclusive in practice — the frontend never sends both in the same request).
+
 ## Frontend: shared JS helper
+
+**Reality check that shapes this section:** the sparepart picker in all four line-item modules (Work Order, Goods Receipt, Stock Adjustment, Stock Transfer) is not a fixed page element — each is added dynamically via `<template>` cloning when the user clicks "+ Tambah ...", and today's auto-fill (unit price, available stock) reads a JSON blob the old `fillSelect()` stashed on `option.dataset.item`, and validation-error replay works today only because the *entire* catalog was already fetched, so setting `select.value = oldId` was enough to show the right text. None of those three things works unmodified with an AJAX-search Select2 (no pre-fetched catalog exists to draw options or text from). The shared helper is designed around all three:
 
 New file `public/js/select2-ajax-picker.js`, one function:
 
 ```js
-function initAjaxSelect(selector, { endpoint, extraParams = {}, placeholder = '-- Cari --' }) {
-    $(selector).select2({
+function initAjaxSelect(el, { endpoint, extraParams = {}, placeholder = '-- Cari --', onSelect = null }) {
+    const $el = $(el);
+    $el.select2({
         placeholder,
         allowClear: true,
         minimumInputLength: 3,
+        width: '100%',
         language: {
             inputTooShort: function () { return 'Ketik minimal 3 huruf...'; },
             searching: function () { return 'Mencari...'; },
@@ -81,19 +89,40 @@ function initAjaxSelect(selector, { endpoint, extraParams = {}, placeholder = '-
             url: endpoint,
             delay: 300,
             data: function (params) {
-                return Object.assign({ q: params.term }, typeof extraParams === 'function' ? extraParams() : extraParams);
+                return Object.assign({ q: params.term }, typeof extraParams === 'function' ? extraParams() : extraParams());
             },
             processResults: function (data) {
                 return { results: data };
             },
         },
     });
+    if (onSelect) {
+        $el.on('select2:select', function (e) {
+            onSelect(e.params.data);
+        });
+    }
+    return $el;
+}
+
+async function preselectAjaxOption(el, { endpoint, id, extraParams = {} }) {
+    const params = new URLSearchParams(Object.assign({ 'ids[]': id }, typeof extraParams === 'function' ? extraParams() : extraParams()));
+    const response = await fetch(`${endpoint}?${params}`, { headers: { Accept: 'application/json' } });
+    const [item] = await response.json();
+    if (!item) return null;
+    const option = new Option(item.text, item.id, true, true);
+    $(el).append(option);
+    return item;
 }
 ```
 
-`extraParams` accepts either a plain object or a function (for `branch_id`, which is only known once the user has picked a branch elsewhere on the same form — the existing PKB/Goods Receipt/etc. forms all already gate the branch-dependent fields behind a branch selection, this preserves that). Each consuming view calls `initAjaxSelect('#customerSelect', { endpoint: '/lookup/customers', extraParams: () => ({ branch_id: currentBranchId }) })` — one line per picker, replacing that picker's current `fetchJson`/`fillSelect` call.
+- `initAjaxSelect(el, {...})`: sets up the AJAX search behavior. `extraParams` is **always a function** (not the plain-object-or-function union an earlier draft of this spec had — a function is required uniformly because `branch_id` is only known after the user picks a branch, and for dynamically-added sparepart-line selects the branch may already be known by the time the row is created; a function covers both cases without a second code path). `onSelect`, when given, is called with the *full* AJAX result object for whatever the user picked — this is how auto-fill (unit price, available stock) is wired: the consuming view passes an `onSelect` that reads `data.selling_price` / `data.available_qty` directly, replacing the old `dataset.item` read.
+- `preselectAjaxOption(el, {...})`: for the "this field already has a value, show it before the user searches" case — edit-page initial state, and create-page validation-error replay. Calls the same lookup endpoint with `ids[]` (per the backend's ID-resolve mode above), builds one real `<option>` with the correct text via the standard `new Option(text, value, true, true)` pattern (the two `true`s mark it default-selected), appends it to the `<select>`, and returns the resolved item so the caller can also drive any dependent auto-fill (e.g. showing a sparepart line's available stock on edit-page load, not just on user interaction). Called **before** `initAjaxSelect()` on the same element, so Select2 picks up the pre-existing selected option as its starting state.
 
-The existing per-module `fillSelect`/`fetchJson` helpers (`WorkOrderLineItems`, `GoodsReceiptLineItems`, `StockAdjustmentLineItems`, `StockTransferLineItems`) are **not** deleted wholesale — each still owns genuinely module-specific logic (line-item add/remove rows, the vehicle-by-customer cascade in PKB, form submission wiring). Only the specific "populate this dropdown with a big fetched list" methods for Customer/Mechanic/Sparepart are replaced by a Select2 initialization call.
+**Dynamic sparepart-line rows**: each module's existing `addSparepartLine()` (or equivalently-named function) already runs once per "+ Tambah Sparepart" click, cloning the `<template>` and appending it to the DOM. The only change to that function is adding one call at the end: `initAjaxSelect(newRow.querySelector('.sparepart-select'), { endpoint: '/lookup/spareparts', extraParams: () => ({ branch_id: currentBranchId }), onSelect: function (item) { /* fill unit price + available qty from item, same fields as today, just sourced from the callback argument instead of dataset.item */ } })`. `currentBranchId` is whatever module-scoped variable already tracks the selected branch (every one of these forms already gates line-item add on a branch being chosen first, so this variable already exists in each view — only its name may differ per module).
+
+**Edit-page initial state and create-page validation replay** both use `preselectAjaxOption()` the same way: for each already-known value (an existing PKB's `customer_id`/`mechanic_id`/each sparepart line's `sparepart_branch_id` on `edit.blade.php`, or `old('customer_id')`/`old('mechanic_id')`/`old('spareparts')[].sparepart_branch_id` on `create.blade.php` after a failed submission), call `preselectAjaxOption()` on that field's `<select>` before `initAjaxSelect()` runs on it. For sparepart lines specifically, this means the existing `replayOldLines()`-style function now does, per line: clone the template, append it, call `preselectAjaxOption()` with the line's `old sparepart_branch_id`, **then** `initAjaxSelect()` — sequential, since `initAjaxSelect()` needs the pre-existing option already in the DOM to recognize it as the starting selection.
+
+The existing per-module `fillSelect`/`fetchJson` helpers (`WorkOrderLineItems`, `GoodsReceiptLineItems`, `StockAdjustmentLineItems`, `StockTransferLineItems`) are **not** deleted wholesale — each still owns genuinely module-specific logic (line-item add/remove rows, the vehicle-by-customer cascade in PKB, form submission wiring, the template-cloning mechanics themselves). Only the specific "populate this dropdown with a big fetched list" methods for Customer/Mechanic/Sparepart are replaced by calls into the two shared functions above.
 
 ## Rollout order
 
@@ -104,10 +133,10 @@ The existing per-module `fillSelect`/`fetchJson` helpers (`WorkOrderLineItems`, 
 
 ## Testing
 
-- `LookupController` feature tests: each action — returns matching results for a 3+ char query, returns empty for <3 chars, respects the `.view` permission gate (403 without it), `spareparts()` 400s without `branch_id`, `customers()`/`mechanics()` branch-filtering works when `branch_id` given and is skipped when absent, response shape matches (`id`/`text` present, sparepart's extra fields present and correctly typed as float).
+- `LookupController` feature tests: each action — returns matching results for a 3+ char query, returns empty for <3 chars, respects the `.view` permission gate (403 without it), `spareparts()` 400s without `branch_id`, `customers()`/`mechanics()` branch-filtering works when `branch_id` given and is skipped when absent, response shape matches (`id`/`text` present, sparepart's extra fields present and correctly typed as float), **and the `ids[]` resolve mode**: returns the matching record(s) regardless of length, multiple `ids[]` in one call resolve all of them, an id outside the caller's branch/permission scope is silently excluded (not a 403 for the whole request — mirrors how the rest of this app treats out-of-scope ids in a list as "filtered", not "forbidden").
 - Per rollout task: the existing tests for that module's create/edit flow (`WorkOrderManagementTest` and friends) must keep passing — this change touches only how the dropdown is populated, not what happens on form submission, so submission-flow tests should need no changes; only tests that specifically asserted on the *old* lookup endpoints' behavior need updating/removing (the old endpoints are being deleted).
-- Manual verification (no JS test harness in this project, consistent with how Chart.js/AJAX filter bars were verified earlier): load each of the 7 touch points, confirm typing 1-2 characters shows "Ketik minimal 3 huruf...", 3+ characters searches and shows results, selecting a sparepart still auto-fills price/available-stock where the form already does that today.
+- Manual verification (no JS test harness in this project, consistent with how Chart.js/AJAX filter bars were verified earlier): load each of the 7 touch points and confirm — typing 1-2 characters shows "Ketik minimal 3 huruf...", 3+ characters searches and shows results, selecting a sparepart still auto-fills price/available-stock where the form already does that today, **opening an existing PKB/Goods Receipt/Stock Adjustment/Stock Transfer for edit shows its already-selected customer/mechanic/sparepart lines with correct display text (not blank, not just an id)**, and **submitting a PKB with a validation error (e.g. missing tanggal) and having it bounce back still shows the previously-picked customer/mechanic/sparepart lines correctly** rather than reverting to empty pickers.
 
 ## Execution
 
-Recommend **`subagent-driven-development` in a worktree** — this plan's blast radius (new backend permission model for lookups, a new frontend dependency, and 7 touch points across 6 different Blade view groups) plus deleting 3+ existing endpoints puts it in the same size class as Foundation v3 and the sparepart-stock migration, both of which used this process. Expect roughly 8-9 tasks: shared `LookupController` + routes + tests, shared JS helper + CDN loading, PKB pilot (all 3 pickers), Vehicle form, Goods Receipt, Stock Adjustment, Stock Transfer, Sparepart "Tambah dari Cabang Lain", full-suite verification.
+Recommend **`subagent-driven-development` in a worktree** — this plan's blast radius (new backend permission model for lookups, a new frontend dependency, a dynamic-row-aware JS pattern with a preselect/replay mechanism, and 7 touch points across 6 different Blade view groups) plus deleting 3+ existing endpoints puts it in the same size class as Foundation v3 and the sparepart-stock migration, both of which used this process — if anything this is denser per-task than either, given the dynamic-row/replay mechanics confirmed during plan research (see the effort-revision discussion this session: user explicitly confirmed proceeding at full scope after this was surfaced). Expect roughly 9-10 tasks: shared `LookupController` (3 actions + `ids[]` resolve mode) + routes + tests, shared JS helper (`initAjaxSelect` + `preselectAjaxOption`) + CDN loading, PKB pilot (all 3 pickers, including edit-page preselect and create-page validation replay for all three), Vehicle form, Goods Receipt, Stock Adjustment, Stock Transfer, Sparepart "Tambah dari Cabang Lain", full-suite verification. The PKB pilot task in particular should not be split further despite its size — it's the one place all the hard parts (dynamic rows, auto-fill, preselect, replay) need to work together before any other module copies the pattern.

@@ -76,6 +76,7 @@ class InvoiceService
                     'item_type' => InvoiceDetailItemType::SPAREPART,
                     'work_order_service_line_id' => null,
                     'work_order_sparepart_line_id' => $line->id,
+                    'sparepart_branch_id' => $line->sparepart_branch_id,
                     'item_code_snapshot' => $line->item_code_snapshot,
                     'description' => $line->item_name_snapshot,
                     'qty' => $line->qty,
@@ -99,19 +100,20 @@ class InvoiceService
             }
 
             $sparepartDetails = $fresh->details()
-                ->whereNotNull('work_order_sparepart_line_id')
+                ->where('item_type', InvoiceDetailItemType::SPAREPART)
                 ->with(['sparepartLine' => function ($query) {
                     $query->with(['reservations' => fn ($rq) => $rq->where('status', 'active')]);
                 }])
                 ->get();
 
-            // Group by sparepart_branch_id (not by line id) and lock/validate in ascending id
-            // order — same convention WorkOrderController::confirm()/cancel() and the other
-            // post() actions use to avoid AB-BA deadlocks against each other on a shared
-            // sparepart. Grouping also makes this correct even if a PKB somehow lists the same
-            // sparepart_branch_id on more than one line (not blocked at the DB level).
+            // Group by sparepart_branch_id (the column, not the PKB line — a free-form line has
+            // no PKB line to derive it from) and lock/validate in ascending id order — same
+            // convention WorkOrderController::confirm()/cancel() and the other post() actions
+            // use to avoid AB-BA deadlocks against each other on a shared sparepart. Grouping
+            // also makes this correct even if a PKB somehow lists the same sparepart_branch_id
+            // on more than one line (not blocked at the DB level).
             $bySparepart = $sparepartDetails
-                ->groupBy(fn (InvoiceDetail $detail) => $detail->sparepartLine->sparepart_branch_id)
+                ->groupBy(fn (InvoiceDetail $detail) => $detail->sparepart_branch_id)
                 ->sortKeys();
 
             // Pass 1: lock every affected stock row and validate the deduction won't violate
@@ -128,8 +130,10 @@ class InvoiceService
                 $lockedStocks[$sparepartBranchId] = $stock;
 
                 $totalQtyOut = (float) $detailsForSparepart->sum('qty');
+                // Free-form lines (no work_order_sparepart_line_id) have no PKB reservation to
+                // release — sparepartLine is null for those, hence the null-safe check.
                 $totalReservedToRelease = (float) $detailsForSparepart->sum(
-                    fn (InvoiceDetail $d) => $d->sparepartLine->reservations->sum('qty')
+                    fn (InvoiceDetail $d) => $d->sparepartLine ? $d->sparepartLine->reservations->sum('qty') : 0
                 );
 
                 $projectedOnHand = (float) $stock->on_hand_qty - $totalQtyOut;
@@ -158,10 +162,12 @@ class InvoiceService
                 $stock = $lockedStocks[$sparepartBranchId];
 
                 foreach ($detailsForSparepart as $detail) {
-                    foreach ($detail->sparepartLine->reservations as $reservation) {
-                        $stock->reserved_qty -= $reservation->qty;
-                        $reservation->status = 'released';
-                        $reservation->save();
+                    if ($detail->sparepartLine) {
+                        foreach ($detail->sparepartLine->reservations as $reservation) {
+                            $stock->reserved_qty -= $reservation->qty;
+                            $reservation->status = 'released';
+                            $reservation->save();
+                        }
                     }
 
                     $stock->on_hand_qty -= $detail->qty;

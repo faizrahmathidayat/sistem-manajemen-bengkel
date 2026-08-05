@@ -17,6 +17,7 @@ class Invoice extends Model
         'discount_percent', 'discount_amount',
         'tax_percent', 'tax_amount',
         'grand_total', 'notes',
+        'cancel_reason', 'cancelled_by', 'cancelled_at',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class Invoice extends Model
         'tax_percent' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'cancelled_at' => 'datetime',
     ];
 
     protected $attributes = [
@@ -47,6 +49,11 @@ class Invoice extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function details()

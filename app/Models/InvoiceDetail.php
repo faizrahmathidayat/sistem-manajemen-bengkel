@@ -12,7 +12,7 @@ class InvoiceDetail extends Model
 
     protected $fillable = [
         'invoice_id', 'item_type',
-        'work_order_service_line_id', 'work_order_sparepart_line_id',
+        'work_order_service_line_id', 'work_order_sparepart_line_id', 'sparepart_branch_id',
         'item_code_snapshot', 'description', 'qty', 'unit_price', 'line_total', 'sort_order',
     ];
 

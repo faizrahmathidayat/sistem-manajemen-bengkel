@@ -200,4 +200,59 @@ class InvoiceControllerTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_update_recalculates_discount_tax_and_grand_total(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        // subtotal_service=50000 (1 x 50000), subtotal_sparepart=120000 (2 x 60000) -> subtotal=170000
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 10,
+            'tax_percent' => 11,
+            'notes' => 'Diskon member',
+        ]);
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $invoice->refresh();
+        $this->assertSame(10.0, (float) $invoice->discount_percent);
+        $this->assertSame(17000.0, (float) $invoice->discount_amount);
+        $this->assertSame(11.0, (float) $invoice->tax_percent);
+        $this->assertSame(16830.0, (float) $invoice->tax_amount);
+        $this->assertSame(169830.0, (float) $invoice->grand_total);
+        $this->assertSame('Diskon member', $invoice->notes);
+    }
+
+    public function test_update_rejects_discount_percent_over_100(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 150,
+            'tax_percent' => 0,
+        ]);
+
+        $response->assertSessionHasErrors('discount_percent');
+    }
+
+    public function test_update_is_forbidden_once_invoice_is_posted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        (new InvoiceService())->postInvoice($invoice);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 5,
+            'tax_percent' => 11,
+        ]);
+
+        $response->assertForbidden();
+    }
 }

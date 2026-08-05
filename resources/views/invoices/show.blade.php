@@ -4,6 +4,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-receipt me-2"></i>{{ $invoice->number }}</h1>
         <div class="d-flex gap-2">
+            @can('update', $invoice)
+                <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-pencil"></i> Ubah
+                </a>
+            @endcan
         </div>
     </div>
 

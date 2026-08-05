@@ -60,20 +60,23 @@
     @include('stock-transfers._line_item_scripts')
 
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
     <script>
     (function () {
-        const existingSparepartOptions = @json($sparepartOptions);
-        StockTransferLineItems.setSparepartOptions(existingSparepartOptions);
+        const fromBranchId = {{ $stockTransfer->from_branch_id }};
+        window.currentStockTransferFromBranchId = fromBranchId;
 
         const existingLines = @json($existingLines);
         existingLines.forEach(function (line) {
-            StockTransferLineItems.addLine();
-            const rows = document.querySelectorAll('#stockTransferLines .stock-transfer-line');
-            const row = rows[rows.length - 1];
-            const select = row.querySelector('.stock-transfer-sparepart-select');
-            select.value = line.sparepart_id;
-            select.dispatchEvent(new Event('change'));
+            const row = StockTransferLineItems.addLine(fromBranchId);
             row.querySelector('.stock-transfer-qty').value = line.qty;
+            StockTransferLineItems.preselectLine(row, line.sparepart_id, fromBranchId);
         });
     })();
     </script>

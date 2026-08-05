@@ -159,8 +159,6 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::prefix('stock-transfers')->name('stock-transfers.')->group(function () {
-        Route::get('/lookup/spareparts/{branch}', [StockTransferController::class, 'sparepartsByBranch'])->name('lookup.spareparts');
-
         Route::get('/', [StockTransferController::class, 'index'])->name('index');
         Route::get('/create', [StockTransferController::class, 'create'])->name('create');
         Route::post('/', [StockTransferController::class, 'store'])->name('store');

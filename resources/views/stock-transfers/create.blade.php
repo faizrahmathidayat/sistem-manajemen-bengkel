@@ -67,19 +67,24 @@
 
     @php($oldLines = old('lines', []))
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
     <script>
     (function () {
         const fromBranchSelect = document.getElementById('fromBranchSelect');
         const addButton = document.getElementById('addStockTransferLine');
+        let currentFromBranchId = fromBranchSelect.value || null;
+        window.currentStockTransferFromBranchId = currentFromBranchId;
 
-        async function handleFromBranchChange(branchId) {
-            addButton.disabled = true;
-            if (!branchId) {
-                return;
-            }
-            const spareparts = await StockTransferLineItems.fetchJson(`/stock-transfers/lookup/spareparts/${branchId}`);
-            StockTransferLineItems.setSparepartOptions(spareparts);
-            addButton.disabled = false;
+        function handleFromBranchChange(branchId) {
+            currentFromBranchId = branchId || null;
+            window.currentStockTransferFromBranchId = currentFromBranchId;
+            addButton.disabled = !currentFromBranchId;
         }
 
         fromBranchSelect.addEventListener('change', function () {
@@ -89,29 +94,19 @@
         // Validation-error round-trip: replay the line rows submitted before the
         // failed validation. Built in from the start — this exact gap was an
         // Important finding in the sibling Goods Receipt module's final review.
-        function replayOldLines() {
+        async function replayOldLines() {
             const oldLines = @json($oldLines);
-            oldLines.forEach(function (line) {
-                StockTransferLineItems.addLine();
-                const rows = document.querySelectorAll('#stockTransferLines .stock-transfer-line');
-                const row = rows[rows.length - 1];
-                if (line.sparepart_id) {
-                    const select = row.querySelector('.stock-transfer-sparepart-select');
-                    select.value = line.sparepart_id;
-                    select.dispatchEvent(new Event('change'));
-                }
+            for (const line of oldLines) {
+                const row = StockTransferLineItems.addLine(currentFromBranchId);
                 row.querySelector('.stock-transfer-qty').value = line.qty || '';
-            });
+                if (line.sparepart_id) {
+                    await StockTransferLineItems.preselectLine(row, line.sparepart_id, currentFromBranchId);
+                }
+            }
         }
 
-        // Validation-error round-trip: old('from_branch_id') re-selects the branch
-        // option but does not fire a native `change` event, so the sparepart
-        // cascade and add-line button would otherwise stay empty/disabled.
-        if (fromBranchSelect.value) {
-            handleFromBranchChange(fromBranchSelect.value).then(replayOldLines);
-        } else {
-            replayOldLines();
-        }
+        handleFromBranchChange(fromBranchSelect.value);
+        replayOldLines();
     })();
     </script>
     @endpush

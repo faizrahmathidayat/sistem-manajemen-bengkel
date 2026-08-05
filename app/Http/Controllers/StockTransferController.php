@@ -6,7 +6,6 @@ use App\Http\Requests\StoreStockTransferRequest;
 use App\Http\Requests\UpdateStockTransferRequest;
 use App\Models\Branch;
 use App\Models\InventoryMovement;
-use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\SparepartBranchStock;
 use App\Models\StockTransfer;
@@ -113,23 +112,11 @@ class StockTransferController extends Controller
         $stockTransfer->load('lines');
         $allBranches = Branch::where('is_active', true)->orderBy('name')->get();
 
-        $spareparts = Sparepart::whereHas('sparepartBranches', function ($query) use ($stockTransfer) {
-            $query->where('branch_id', $stockTransfer->from_branch_id)->where('is_active', true);
-        })->get();
-        $missingIds = $stockTransfer->lines->pluck('sparepart_id')->unique()->diff($spareparts->pluck('id'));
-        if ($missingIds->isNotEmpty()) {
-            $spareparts = $spareparts->concat(Sparepart::whereIn('id', $missingIds)->get());
-        }
-
-        $sparepartOptions = $spareparts->map(function (Sparepart $sparepart) {
-            return ['id' => $sparepart->id, 'code' => $sparepart->code, 'name' => $sparepart->name];
-        })->values();
-
         $existingLines = $stockTransfer->lines->map(function ($line) {
             return ['sparepart_id' => $line->sparepart_id, 'qty' => (float) $line->qty];
         })->values();
 
-        return view('stock-transfers.edit', compact('stockTransfer', 'allBranches', 'sparepartOptions', 'existingLines'));
+        return view('stock-transfers.edit', compact('stockTransfer', 'allBranches', 'existingLines'));
     }
 
     public function update(UpdateStockTransferRequest $request, StockTransfer $stockTransfer)
@@ -439,27 +426,6 @@ class StockTransferController extends Controller
     protected function formatQtyForMessage(float $qty): string
     {
         return rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.');
-    }
-
-    public function sparepartsByBranch(Branch $branch)
-    {
-        abort_unless(auth()->user()->hasPermissionToInBranch('stock_transfer.create', $branch->id), 403);
-
-        return response()->json(
-            SparepartBranch::with('sparepart')
-                ->where('branch_id', $branch->id)
-                ->where('is_active', true)
-                ->get()
-                ->map(function (SparepartBranch $sb) {
-                    return [
-                        'id' => $sb->sparepart->id,
-                        'code' => $sb->sparepart->code,
-                        'name' => $sb->sparepart->name,
-                        'on_hand_qty' => (float) $sb->stock->on_hand_qty,
-                    ];
-                })
-                ->values()
-        );
     }
 
     protected function syncLines(StockTransfer $stockTransfer, array $lines): void

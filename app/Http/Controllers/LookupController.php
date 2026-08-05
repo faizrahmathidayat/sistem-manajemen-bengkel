@@ -82,7 +82,9 @@ class LookupController extends Controller
         $ids = array_map('intval', (array) $request->query('ids', []));
 
         if (! empty($ids)) {
-            $query->whereIn('id', $ids);
+            $query->where(function ($inner) use ($ids) {
+                $inner->whereIn('id', $ids)->orWhereIn('sparepart_id', $ids);
+            });
         } else {
             $term = $this->searchTerm($request);
             if ($term === null) {

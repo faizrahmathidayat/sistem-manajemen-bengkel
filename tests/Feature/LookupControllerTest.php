@@ -297,6 +297,30 @@ class LookupControllerTest extends TestCase
         $response->assertJsonFragment(['id' => $sparepartBranch->id, 'code' => 'SP-OLI-002']);
     }
 
+    public function test_spareparts_ids_mode_also_matches_by_bare_sparepart_id(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+
+        // spareparts.id and sparepart_branches.id are independent auto-increment
+        // counters, but both tend to start at 1 in an isolated test, which would let
+        // whereIn('id', $ids) alone satisfy this assertion by coincidence. Create two
+        // throwaway spareparts (no branch config) first so the target sparepart's id
+        // is guaranteed to differ from the target sparepartBranch's id below, proving
+        // the match happens via the new orWhereIn('sparepart_id', ...) branch.
+        Sparepart::create(['code' => 'SP-DECOY-1', 'name' => 'Decoy 1']);
+        Sparepart::create(['code' => 'SP-DECOY-2', 'name' => 'Decoy 2']);
+
+        $sparepart = Sparepart::create(['code' => 'SP-A', 'name' => 'Sparepart A']);
+        $sparepartBranch = SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 10000]);
+        $this->assertNotSame($sparepart->id, $sparepartBranch->id, 'test setup invariant: ids must differ to validate the fix, not the id column alone');
+        $user = $this->userWithBranchPermission('sparepart.view', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/spareparts?ids[]={$sparepart->id}&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['id' => $sparepartBranch->id, 'sparepart_id' => $sparepart->id]);
+    }
+
     public function test_spareparts_q_search_excludes_inactive_sparepart_branch_configs(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

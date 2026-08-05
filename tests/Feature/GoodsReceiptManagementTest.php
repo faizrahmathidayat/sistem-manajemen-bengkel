@@ -461,4 +461,19 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertOk();
         $response->assertSee('select2-ajax-picker.js', false);
     }
+
+    public function test_edit_page_loads_select2_for_sparepart_picker(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $goodsReceipt = GoodsReceipt::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/goods-receipts/{$goodsReceipt->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('select2-ajax-picker.js', false);
+    }
 }

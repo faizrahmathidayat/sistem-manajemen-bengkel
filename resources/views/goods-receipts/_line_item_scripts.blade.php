@@ -41,9 +41,6 @@
             endpoint: '{{ route('lookup.spareparts') }}',
             extraParams: function () { return { branch_id: branchId }; },
             placeholder: '-- Pilih Sparepart --',
-            onSelect: function (item) {
-                wrapper.querySelector('.goods-receipt-purchase-price').value = item.selling_price;
-            },
         });
 
         return wrapper;
@@ -56,9 +53,6 @@
             id: sparepartBranchId,
             extraParams: function () { return { branch_id: branchId }; },
         });
-        if (item) {
-            row.querySelector('.goods-receipt-purchase-price').value = item.selling_price;
-        }
         $(select).trigger('change');
 
         return item;

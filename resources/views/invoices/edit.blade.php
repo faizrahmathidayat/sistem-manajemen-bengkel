@@ -5,12 +5,12 @@
         <h1 class="h4 mb-0"><i class="bi bi-receipt me-2"></i>Ubah {{ $invoice->number }}</h1>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-body">
-            <p class="text-muted">Subtotal Jasa: {{ number_format($invoice->subtotal_service, 0, ',', '.') }} &middot; Subtotal Sparepart: {{ number_format($invoice->subtotal_sparepart, 0, ',', '.') }}</p>
-            <form method="POST" action="{{ route('invoices.update', $invoice) }}">
-                @csrf
-                @method('PUT')
+    <form method="POST" action="{{ route('invoices.update', $invoice) }}" id="invoiceForm">
+        @csrf
+        @method('PUT')
+
+        <div class="card mb-3">
+            <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label for="discount_percent" class="form-label">Diskon (%)</label>
@@ -32,11 +32,77 @@
                         @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
-                <div class="mt-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
-                    <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-outline-secondary btn-sm">Batal</a>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 class="h6 mb-0">Baris Jasa</h2>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="addInvoiceServiceLine">+ Tambah Jasa</button>
+                </div>
+                <div id="invoiceServiceLines"></div>
+                @error('services')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 class="h6 mb-0">Baris Sparepart</h2>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="addInvoiceSparepartLine">+ Tambah Sparepart</button>
+                </div>
+                <div id="invoiceSparepartLines"></div>
+                @error('spareparts')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> Simpan</button>
+            <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-outline-secondary btn-sm">Batal</a>
+        </div>
+    </form>
+
+    @include('invoices._line_item_scripts')
+
+    @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
+    @endpush
+
+    @push('scripts')
+    <script>
+    (function () {
+        const branchId = {{ $invoice->branch_id }};
+        window.currentInvoiceBranchId = branchId;
+
+        const existingServiceLines = @json($existingServiceLines);
+        existingServiceLines.forEach(function (line) {
+            const locked = !!line.work_order_service_line_id;
+            const row = InvoiceLineItems.addServiceLine(locked);
+            row.querySelector('.service-wo-line-id').value = line.work_order_service_line_id || '';
+            row.querySelector('.service-description').value = line.description;
+            row.querySelector('.service-qty').value = line.qty;
+            row.querySelector('.service-unit-price').value = line.unit_price;
+        });
+
+        const existingSparepartLines = @json($existingSparepartLines);
+        existingSparepartLines.forEach(function (line) {
+            const locked = !!line.work_order_sparepart_line_id;
+            const row = InvoiceLineItems.addSparepartLine(branchId, locked);
+            row.querySelector('.sparepart-wo-line-id').value = line.work_order_sparepart_line_id || '';
+            row.querySelector('.sparepart-qty').value = line.qty;
+            row.querySelector('.sparepart-unit-price').value = line.unit_price;
+            if (locked) {
+                row.querySelector('.sparepart-locked-branch-id').value = line.sparepart_branch_id;
+                row.querySelector('.sparepart-locked-label').value = (line.item_code_snapshot ? line.item_code_snapshot + ' — ' : '') + line.description;
+            } else {
+                InvoiceLineItems.preselectFreeFormSparepartLine(row, line.sparepart_branch_id, branchId);
+            }
+        });
+    })();
+    </script>
+    @endpush
 @endsection

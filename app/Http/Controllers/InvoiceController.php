@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateInvoiceRequest;
 use App\Models\Invoice;
+use App\Models\InvoiceDetail;
 use App\Models\WorkOrder;
 use App\Services\InvoiceService;
-use App\Support\InvoiceStatus;
+use App\Support\InvoiceDetailItemType;
 use DomainException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
@@ -73,43 +73,37 @@ class InvoiceController extends Controller
     {
         $this->authorize('update', $invoice);
 
-        return view('invoices.edit', compact('invoice'));
+        $invoice->load('details');
+
+        $existingServiceLines = $invoice->details->where('item_type', InvoiceDetailItemType::SERVICE)->map(function (InvoiceDetail $detail) {
+            return [
+                'work_order_service_line_id' => $detail->work_order_service_line_id,
+                'description' => $detail->description,
+                'qty' => (float) $detail->qty,
+                'unit_price' => (float) $detail->unit_price,
+            ];
+        })->values();
+
+        $existingSparepartLines = $invoice->details->where('item_type', InvoiceDetailItemType::SPAREPART)->map(function (InvoiceDetail $detail) {
+            return [
+                'work_order_sparepart_line_id' => $detail->work_order_sparepart_line_id,
+                'sparepart_branch_id' => $detail->sparepart_branch_id,
+                'item_code_snapshot' => $detail->item_code_snapshot,
+                'description' => $detail->description,
+                'qty' => (float) $detail->qty,
+                'unit_price' => (float) $detail->unit_price,
+            ];
+        })->values();
+
+        return view('invoices.edit', compact('invoice', 'existingServiceLines', 'existingSparepartLines'));
     }
 
     public function update(UpdateInvoiceRequest $request, Invoice $invoice)
     {
-        $data = $request->validated();
-
-        $noLongerDraft = false;
-
-        DB::transaction(function () use ($data, $invoice, &$noLongerDraft) {
-            $fresh = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
-
-            if ($fresh->status !== InvoiceStatus::DRAFT) {
-                $noLongerDraft = true;
-
-                return;
-            }
-
-            $subtotal = (float) $fresh->subtotal_service + (float) $fresh->subtotal_sparepart;
-            $discountPercent = (float) $data['discount_percent'];
-            $taxPercent = (float) $data['tax_percent'];
-            $discountAmount = round($subtotal * $discountPercent / 100, 2);
-            $taxableBase = $subtotal - $discountAmount;
-            $taxAmount = round($taxableBase * $taxPercent / 100, 2);
-
-            $fresh->update([
-                'discount_percent' => $discountPercent,
-                'discount_amount' => $discountAmount,
-                'tax_percent' => $taxPercent,
-                'tax_amount' => $taxAmount,
-                'grand_total' => round($taxableBase + $taxAmount, 2),
-                'notes' => $data['notes'] ?? null,
-            ]);
-        });
-
-        if ($noLongerDraft) {
-            return redirect()->route('invoices.show', $invoice)->with('error', 'Invoice sudah tidak berstatus draft, tidak bisa diubah lagi.');
+        try {
+            (new InvoiceService())->updateInvoice($invoice, $request->validated());
+        } catch (DomainException $e) {
+            return redirect()->route('invoices.show', $invoice)->with('error', $e->getMessage());
         }
 
         return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice berhasil diperbarui.');

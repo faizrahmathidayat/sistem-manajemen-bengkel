@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\InventoryMovement;
+use App\Models\SparepartBranch;
 use App\Models\SparepartBranchStock;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderSparepartLine;
 use App\Support\InventoryMovementType;
 use App\Support\InvoiceDetailItemType;
 use App\Support\InvoiceStatus;
@@ -88,6 +90,123 @@ class InvoiceService
 
             return $invoice->fresh('details');
         });
+    }
+
+    public function updateInvoice(Invoice $invoice, array $data): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $data) {
+            $fresh = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+
+            if ($fresh->status !== InvoiceStatus::DRAFT) {
+                throw new DomainException('Invoice sudah tidak berstatus draft, tidak bisa diubah lagi.');
+            }
+
+            $beforeLineIds = $fresh->details()
+                ->whereNotNull('work_order_sparepart_line_id')
+                ->pluck('work_order_sparepart_line_id');
+
+            $fresh->details()->delete();
+
+            $sortOrder = 0;
+
+            foreach ($data['services'] ?? [] as $line) {
+                $qty = (float) $line['qty'];
+                $unitPrice = (float) $line['unit_price'];
+                InvoiceDetail::create([
+                    'invoice_id' => $fresh->id,
+                    'item_type' => InvoiceDetailItemType::SERVICE,
+                    'work_order_service_line_id' => $line['work_order_service_line_id'] ?? null,
+                    'work_order_sparepart_line_id' => null,
+                    'sparepart_branch_id' => null,
+                    'item_code_snapshot' => null,
+                    'description' => $line['description'],
+                    'qty' => $qty,
+                    'unit_price' => $unitPrice,
+                    'line_total' => round($qty * $unitPrice, 2),
+                    'sort_order' => $sortOrder++,
+                ]);
+            }
+
+            foreach ($data['spareparts'] ?? [] as $line) {
+                $sparepartBranch = SparepartBranch::with('sparepart')->findOrFail($line['sparepart_branch_id']);
+                $qty = (float) $line['qty'];
+                $unitPrice = (float) $line['unit_price'];
+                InvoiceDetail::create([
+                    'invoice_id' => $fresh->id,
+                    'item_type' => InvoiceDetailItemType::SPAREPART,
+                    'work_order_service_line_id' => null,
+                    'work_order_sparepart_line_id' => $line['work_order_sparepart_line_id'] ?? null,
+                    'sparepart_branch_id' => $sparepartBranch->id,
+                    'item_code_snapshot' => $sparepartBranch->sparepart->code,
+                    'description' => $sparepartBranch->sparepart->name,
+                    'qty' => $qty,
+                    'unit_price' => $unitPrice,
+                    'line_total' => round($qty * $unitPrice, 2),
+                    'sort_order' => $sortOrder++,
+                ]);
+            }
+
+            $afterLineIds = collect($data['spareparts'] ?? [])->pluck('work_order_sparepart_line_id')->filter()->values();
+            $droppedLineIds = $beforeLineIds->diff($afterLineIds)->values();
+            $this->releaseReservationsForLines($droppedLineIds);
+
+            $subtotalService = round((float) $fresh->details()->where('item_type', InvoiceDetailItemType::SERVICE)->sum('line_total'), 2);
+            $subtotalSparepart = round((float) $fresh->details()->where('item_type', InvoiceDetailItemType::SPAREPART)->sum('line_total'), 2);
+            $subtotal = $subtotalService + $subtotalSparepart;
+            $discountPercent = (float) $data['discount_percent'];
+            $taxPercent = (float) $data['tax_percent'];
+            $discountAmount = round($subtotal * $discountPercent / 100, 2);
+            $taxableBase = $subtotal - $discountAmount;
+            $taxAmount = round($taxableBase * $taxPercent / 100, 2);
+
+            $fresh->update([
+                'subtotal_service' => $subtotalService,
+                'subtotal_sparepart' => $subtotalSparepart,
+                'discount_percent' => $discountPercent,
+                'discount_amount' => $discountAmount,
+                'tax_percent' => $taxPercent,
+                'tax_amount' => $taxAmount,
+                'grand_total' => round($taxableBase + $taxAmount, 2),
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            return $fresh->fresh('details');
+        });
+    }
+
+    // Shared by updateInvoice() (dropped lines) and cancelInvoice() (Task 3 — all remaining
+    // lines). Locks sparepart_branch_stocks rows in ascending id order, matching every other
+    // reservation-touching path in this codebase, to avoid AB-BA deadlocks. Safe to call with
+    // an empty collection.
+    protected function releaseReservationsForLines($workOrderSparepartLineIds): void
+    {
+        $ids = collect($workOrderSparepartLineIds)->values();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $lines = WorkOrderSparepartLine::whereIn('id', $ids)
+            ->with(['reservations' => fn ($q) => $q->where('status', 'active')])
+            ->get();
+
+        $bySparepart = $lines->groupBy('sparepart_branch_id')->sortKeys();
+
+        foreach ($bySparepart as $sparepartBranchId => $linesForSparepart) {
+            $stock = SparepartBranchStock::where('sparepart_branch_id', $sparepartBranchId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            foreach ($linesForSparepart as $line) {
+                foreach ($line->reservations as $reservation) {
+                    $stock->reserved_qty -= $reservation->qty;
+                    $reservation->status = 'released';
+                    $reservation->save();
+                }
+            }
+
+            $stock->save();
+        }
     }
 
     public function postInvoice(Invoice $invoice): Invoice

@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\CustomerBranch;
 use App\Models\Invoice;
+use App\Models\InvoiceDetail;
 use App\Models\Mechanic;
 use App\Models\MechanicBranch;
 use App\Models\Permission;
@@ -205,6 +206,8 @@ class InvoiceControllerTest extends TestCase
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
         // subtotal_service=50000 (1 x 50000), subtotal_sparepart=120000 (2 x 60000) -> subtotal=170000
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'invoice.edit');
@@ -213,6 +216,18 @@ class InvoiceControllerTest extends TestCase
             'discount_percent' => 10,
             'tax_percent' => 11,
             'notes' => 'Diskon member',
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => $serviceDetail->description,
+                'qty' => (float) $serviceDetail->qty,
+                'unit_price' => (float) $serviceDetail->unit_price,
+            ]],
+            'spareparts' => [[
+                'work_order_sparepart_line_id' => $sparepartDetail->work_order_sparepart_line_id,
+                'sparepart_branch_id' => $sparepartDetail->sparepart_branch_id,
+                'qty' => (float) $sparepartDetail->qty,
+                'unit_price' => (float) $sparepartDetail->unit_price,
+            ]],
         ]);
 
         $response->assertRedirect("/invoices/{$invoice->id}");
@@ -303,5 +318,169 @@ class InvoiceControllerTest extends TestCase
         $response = $this->actingAs($user)->patch("/invoices/{$invoice->id}/post");
 
         $response->assertForbidden();
+    }
+
+    public function test_update_removing_sparepart_line_releases_pkb_reservation(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $sparepartBranchId = $sparepartDetail->sparepart_branch_id;
+        $stockBefore = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchId)->first();
+        $this->assertSame(2.0, (float) $stockBefore->reserved_qty);
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => $serviceDetail->description,
+                'qty' => (float) $serviceDetail->qty,
+                'unit_price' => (float) $serviceDetail->unit_price,
+            ]],
+            'spareparts' => [],
+        ]);
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $invoice->refresh();
+        $this->assertCount(1, $invoice->details);
+        $this->assertSame(0.0, (float) $invoice->subtotal_sparepart);
+        $stockAfter = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranchId)->first();
+        $this->assertSame(0.0, (float) $stockAfter->reserved_qty);
+        $this->assertDatabaseHas('inventory_reservations', [
+            'sparepart_branch_id' => $sparepartBranchId,
+            'reference_type' => 'work_order_sparepart_line',
+            'status' => 'released',
+        ]);
+    }
+
+    public function test_update_adds_free_form_sparepart_line_not_traced_to_pkb(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+
+        $extraSparepart = Sparepart::create(['code' => 'FLT-01', 'name' => 'Filter Udara']);
+        $extraSparepartBranch = SparepartBranch::create(['sparepart_id' => $extraSparepart->id, 'branch_id' => $branch->id, 'selling_price' => 45000]);
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => $serviceDetail->description,
+                'qty' => (float) $serviceDetail->qty,
+                'unit_price' => (float) $serviceDetail->unit_price,
+            ]],
+            'spareparts' => [
+                [
+                    'work_order_sparepart_line_id' => $sparepartDetail->work_order_sparepart_line_id,
+                    'sparepart_branch_id' => $sparepartDetail->sparepart_branch_id,
+                    'qty' => (float) $sparepartDetail->qty,
+                    'unit_price' => (float) $sparepartDetail->unit_price,
+                ],
+                [
+                    'work_order_sparepart_line_id' => null,
+                    'sparepart_branch_id' => $extraSparepartBranch->id,
+                    'qty' => 1,
+                    'unit_price' => 45000,
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $invoice->refresh();
+        $this->assertCount(3, $invoice->details);
+        $this->assertSame(165000.0, (float) $invoice->subtotal_sparepart);
+        $freeFormDetail = $invoice->details->firstWhere('sparepart_branch_id', $extraSparepartBranch->id);
+        $this->assertNull($freeFormDetail->work_order_sparepart_line_id);
+    }
+
+    public function test_update_rejects_sparepart_from_a_different_branch(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $invoice = $this->makeInvoice($branchA);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+
+        $otherSparepart = Sparepart::create(['code' => 'FLT-02', 'name' => 'Filter Oli']);
+        $otherBranchSparepart = SparepartBranch::create(['sparepart_id' => $otherSparepart->id, 'branch_id' => $branchB->id, 'selling_price' => 30000]);
+
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => $serviceDetail->description,
+                'qty' => (float) $serviceDetail->qty,
+                'unit_price' => (float) $serviceDetail->unit_price,
+            ]],
+            'spareparts' => [[
+                'work_order_sparepart_line_id' => null,
+                'sparepart_branch_id' => $otherBranchSparepart->id,
+                'qty' => 1,
+                'unit_price' => 30000,
+            ]],
+        ]);
+
+        $response->assertSessionHasErrors('spareparts.0.sparepart_branch_id');
+    }
+
+    public function test_edit_page_renders_locked_pkb_lines_with_line_editor_markup(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('select2', false);
+        $response->assertSee('select2-ajax-picker.js', false);
+        $response->assertSee('sparepart-item-locked', false);
+        $response->assertSee('sparepart-item-free', false);
+        $response->assertSee('"work_order_service_line_id":' . $serviceDetail->work_order_service_line_id, false);
+        $response->assertSee('"work_order_sparepart_line_id":' . $sparepartDetail->work_order_sparepart_line_id, false);
+    }
+
+    public function test_edit_page_includes_free_form_line_data_without_a_pkb_trace(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $extraSparepart = Sparepart::create(['code' => 'FLT-01', 'name' => 'Filter Udara']);
+        $extraSparepartBranch = SparepartBranch::create(['sparepart_id' => $extraSparepart->id, 'branch_id' => $branch->id, 'selling_price' => 45000]);
+        InvoiceDetail::create([
+            'invoice_id' => $invoice->id,
+            'item_type' => \App\Support\InvoiceDetailItemType::SPAREPART,
+            'work_order_service_line_id' => null,
+            'work_order_sparepart_line_id' => null,
+            'sparepart_branch_id' => $extraSparepartBranch->id,
+            'description' => 'Filter Udara',
+            'qty' => 1,
+            'unit_price' => 45000,
+            'line_total' => 45000,
+            'sort_order' => 99,
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('"work_order_sparepart_line_id":null,"sparepart_branch_id":' . $extraSparepartBranch->id, false);
     }
 }

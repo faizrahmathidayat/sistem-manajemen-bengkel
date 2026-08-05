@@ -297,7 +297,7 @@ class LookupControllerTest extends TestCase
         $response->assertJsonFragment(['id' => $sparepartBranch->id, 'code' => 'SP-OLI-002']);
     }
 
-    public function test_spareparts_ids_mode_also_matches_by_bare_sparepart_id(): void
+    public function test_spareparts_ids_mode_matches_by_bare_sparepart_id_when_id_field_param_requests_it(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
 
@@ -306,7 +306,7 @@ class LookupControllerTest extends TestCase
         // whereIn('id', $ids) alone satisfy this assertion by coincidence. Create two
         // throwaway spareparts (no branch config) first so the target sparepart's id
         // is guaranteed to differ from the target sparepartBranch's id below, proving
-        // the match happens via the new orWhereIn('sparepart_id', ...) branch.
+        // the match happens via the sparepart_id column, not the id column.
         Sparepart::create(['code' => 'SP-DECOY-1', 'name' => 'Decoy 1']);
         Sparepart::create(['code' => 'SP-DECOY-2', 'name' => 'Decoy 2']);
 
@@ -315,10 +315,33 @@ class LookupControllerTest extends TestCase
         $this->assertNotSame($sparepart->id, $sparepartBranch->id, 'test setup invariant: ids must differ to validate the fix, not the id column alone');
         $user = $this->userWithBranchPermission('sparepart.view', $branch);
 
-        $response = $this->actingAs($user)->getJson("/lookup/spareparts?ids[]={$sparepart->id}&branch_id={$branch->id}");
+        $response = $this->actingAs($user)->getJson("/lookup/spareparts?ids[]={$sparepart->id}&branch_id={$branch->id}&id_field=sparepart_id");
 
         $response->assertOk();
         $response->assertJsonFragment(['id' => $sparepartBranch->id, 'sparepart_id' => $sparepart->id]);
+    }
+
+    public function test_spareparts_ids_mode_does_not_match_by_sparepart_id_without_id_field_param(): void
+    {
+        // Regression guard: a caller resolving by sparepart_branch_id (PKB, Goods Receipt,
+        // Stock Adjustment) must NOT also match an unrelated sparepart whose global id
+        // happens to numerically equal the requested sparepart_branch_id — this exact
+        // collision was caught live during Task 8 verification (a Stock Adjustment line's
+        // sparepart_branch_id coincided with an unrelated sparepart's id, and the edit page
+        // preselected the wrong sparepart because preselectAjaxOption took items[0] from a
+        // response containing both the correct and the spurious match). Requesting by a bare
+        // sparepart_id without id_field=sparepart_id must return nothing, proving the default
+        // mode only matches the id column.
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepart = Sparepart::create(['code' => 'SP-A', 'name' => 'Sparepart A']);
+        $sparepartBranch = SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 10000]);
+        $this->assertNotSame($sparepart->id, $sparepartBranch->id, 'test setup invariant: ids must differ for this assertion to be meaningful');
+        $user = $this->userWithBranchPermission('sparepart.view', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/spareparts?ids[]={$sparepart->id}&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertExactJson([]);
     }
 
     public function test_spareparts_q_search_excludes_inactive_sparepart_branch_configs(): void

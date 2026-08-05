@@ -60,7 +60,7 @@
         const item = await preselectAjaxOption(select, {
             endpoint: '{{ route('lookup.spareparts') }}',
             id: sparepartId,
-            extraParams: function () { return { branch_id: branchId }; },
+            extraParams: function () { return { branch_id: branchId, id_field: 'sparepart_id' }; },
         });
         $(select).trigger('change');
         if (item) {

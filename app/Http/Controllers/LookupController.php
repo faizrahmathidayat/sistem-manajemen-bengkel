@@ -80,11 +80,17 @@ class LookupController extends Controller
         $query = SparepartBranch::with(['sparepart', 'stock'])
             ->where('branch_id', $branchId);
         $ids = array_map('intval', (array) $request->query('ids', []));
+        $idField = $request->query('id_field') === 'sparepart_id' ? 'sparepart_id' : 'id';
 
         if (! empty($ids)) {
-            $query->where(function ($inner) use ($ids) {
-                $inner->whereIn('id', $ids)->orWhereIn('sparepart_id', $ids);
-            });
+            // Most callers resolve by the SparepartBranch primary key (id). Stock Transfer
+            // stores a bare sparepart_id on its lines (it spans two branches, so it can't
+            // reference a single per-branch SparepartBranch row), so it opts into resolving
+            // by sparepart_id via ?id_field=sparepart_id instead. Matching both columns
+            // unconditionally would risk a false match whenever a sparepart_branch_id value
+            // coincidentally equals an unrelated sparepart's id (both are separate
+            // auto-increment counters) — keep the two resolution modes mutually exclusive.
+            $query->whereIn($idField, $ids);
         } else {
             $term = $this->searchTerm($request);
             if ($term === null) {

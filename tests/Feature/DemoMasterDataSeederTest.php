@@ -6,6 +6,9 @@ use App\Models\Customer;
 use App\Models\Mechanic;
 use App\Models\MechanicBranch;
 use App\Models\ServiceCatalog;
+use App\Models\Sparepart;
+use App\Models\SparepartBranch;
+use App\Models\SparepartBranchStock;
 use App\Models\Vehicle;
 use App\Models\VehicleBrand;
 use App\Models\VehicleType;
@@ -88,12 +91,33 @@ class DemoMasterDataSeederTest extends TestCase
         $this->assertDatabaseHas('service_catalogs', ['code' => 'SVC-OVR02', 'default_price' => 1250000]);
     }
 
+    public function test_it_seeds_twelve_spareparts_configured_in_all_three_branches_with_zeroed_stock(): void
+    {
+        $this->seed(DemoMasterDataSeeder::class);
+
+        $this->assertSame(12, Sparepart::count());
+        $this->assertSame(36, SparepartBranch::count()); // 12 spareparts x 3 branches
+
+        $sparepart = Sparepart::where('code', 'SP-OLI-001')->firstOrFail();
+        $this->assertSame(3, SparepartBranch::where('sparepart_id', $sparepart->id)->count());
+
+        $sparepartBranch = SparepartBranch::where('sparepart_id', $sparepart->id)->firstOrFail();
+        $this->assertSame('45000.00', $sparepartBranch->selling_price);
+        $this->assertSame('10.000', $sparepartBranch->minimum_stock);
+
+        $stock = SparepartBranchStock::where('sparepart_branch_id', $sparepartBranch->id)->firstOrFail();
+        $this->assertSame('0.000', $stock->on_hand_qty);
+        $this->assertSame('0.000', $stock->reserved_qty);
+    }
+
     public function test_running_it_twice_does_not_duplicate(): void
     {
         $this->seed(DemoMasterDataSeeder::class);
         $this->seed(DemoMasterDataSeeder::class);
 
         $this->assertSame(3, Customer::count());
+        $this->assertSame(12, Sparepart::count());
+        $this->assertSame(36, SparepartBranch::count());
         $this->assertSame(5, Vehicle::count());
         $this->assertSame(8, Mechanic::count());
         $this->assertSame(10, ServiceCatalog::count());

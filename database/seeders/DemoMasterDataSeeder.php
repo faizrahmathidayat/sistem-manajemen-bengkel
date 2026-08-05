@@ -8,6 +8,8 @@ use App\Models\CustomerBranch;
 use App\Models\Mechanic;
 use App\Models\MechanicBranch;
 use App\Models\ServiceCatalog;
+use App\Models\Sparepart;
+use App\Models\SparepartBranch;
 use App\Models\Vehicle;
 use App\Models\VehicleBrand;
 use App\Models\VehicleCategory;
@@ -32,8 +34,9 @@ class DemoMasterDataSeeder extends Seeder
         $this->seedVehicles($customers, $brands, $types);
         $this->seedMechanics($branches);
         $this->seedServiceCatalogs();
+        $this->seedSpareparts($branches);
 
-        $this->command->info('Demo master data seeded (local/testing only): 3 customers, 5 vehicles, 8 mechanics, 10 service catalogs.');
+        $this->command->info('Demo master data seeded (local/testing only): 3 customers, 5 vehicles, 8 mechanics, 10 service catalogs, 12 spareparts.');
     }
 
     /**
@@ -220,6 +223,49 @@ class DemoMasterDataSeeder extends Seeder
                 ['code' => $definition['code']],
                 $definition + ['is_active' => true]
             );
+        }
+    }
+
+    /**
+     * Configured identically in all 3 branches — SparepartBranch's booted()
+     * hook auto-creates a zeroed SparepartBranchStock row per (sparepart,
+     * branch) pair, matching reality until migration 008's goods receipt
+     * flow gives on_hand_qty a writer (out of scope here — master data only).
+     */
+    protected function seedSpareparts($branches)
+    {
+        $definitions = [
+            ['code' => 'SP-OLI-001', 'name' => 'Oli Mesin Yamalube 800ml', 'rack' => 'A1-01', 'price' => 45000, 'minimum_stock' => 10],
+            ['code' => 'SP-OLI-002', 'name' => 'Oli Mesin AHM MPX2 800ml', 'rack' => 'A1-02', 'price' => 48000, 'minimum_stock' => 10],
+            ['code' => 'SP-KMP-001', 'name' => 'Kampas Rem Depan Universal', 'rack' => 'A2-01', 'price' => 35000, 'minimum_stock' => 8],
+            ['code' => 'SP-KMP-002', 'name' => 'Kampas Rem Belakang Universal', 'rack' => 'A2-02', 'price' => 32000, 'minimum_stock' => 8],
+            ['code' => 'SP-BUS-001', 'name' => 'Busi NGK CPR8EA-9', 'rack' => 'A3-01', 'price' => 25000, 'minimum_stock' => 15],
+            ['code' => 'SP-FIL-001', 'name' => 'Filter Udara Standar', 'rack' => 'A3-02', 'price' => 40000, 'minimum_stock' => 6],
+            ['code' => 'SP-AKI-001', 'name' => 'Aki GS Astra GTZ5S', 'rack' => 'B1-01', 'price' => 185000, 'minimum_stock' => 4],
+            ['code' => 'SP-BAN-001', 'name' => 'Ban Luar FDR 80/90-14', 'rack' => 'B1-02', 'price' => 210000, 'minimum_stock' => 4],
+            ['code' => 'SP-RAN-001', 'name' => 'Rantai Motor 428H', 'rack' => 'B2-01', 'price' => 95000, 'minimum_stock' => 5],
+            ['code' => 'SP-GER-001', 'name' => 'Gear Set (Depan+Belakang)', 'rack' => 'B2-02', 'price' => 120000, 'minimum_stock' => 5],
+            ['code' => 'SP-VBE-001', 'name' => 'V-Belt CVT', 'rack' => 'B3-01', 'price' => 150000, 'minimum_stock' => 5],
+            ['code' => 'SP-LAM-001', 'name' => 'Lampu Depan LED Universal', 'rack' => 'B3-02', 'price' => 65000, 'minimum_stock' => 6],
+        ];
+
+        foreach ($definitions as $definition) {
+            $sparepart = Sparepart::updateOrCreate(
+                ['code' => $definition['code']],
+                ['name' => $definition['name'], 'is_active' => true]
+            );
+
+            foreach ($branches as $branch) {
+                SparepartBranch::firstOrCreate(
+                    ['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id],
+                    [
+                        'rack_number' => $definition['rack'],
+                        'selling_price' => $definition['price'],
+                        'minimum_stock' => $definition['minimum_stock'],
+                        'is_active' => true,
+                    ]
+                );
+            }
         }
     }
 }

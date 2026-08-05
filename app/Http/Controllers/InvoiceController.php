@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\WorkOrder;
+use App\Services\InvoiceService;
+use DomainException;
+use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
@@ -37,6 +41,20 @@ class InvoiceController extends Controller
             ->with('branches', $permittedBranches)
             ->with('selectedBranchIds', $branchIds)
             ->with('search', $search);
+    }
+
+    public function store(Request $request)
+    {
+        $workOrder = WorkOrder::findOrFail($request->input('work_order_id'));
+        $this->authorize('create', [Invoice::class, $workOrder]);
+
+        try {
+            $invoice = (new InvoiceService())->createFromWorkOrder($workOrder);
+        } catch (DomainException $e) {
+            return redirect()->route('work-orders.show', $workOrder)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice draft berhasil dibuat.');
     }
 
     public function show(Invoice $invoice)

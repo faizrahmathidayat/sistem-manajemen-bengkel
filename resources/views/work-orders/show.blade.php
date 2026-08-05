@@ -132,5 +132,27 @@
         </div>
     @endif
 
+    @if ($workOrder->status === \App\Support\WorkOrderStatus::COMPLETED)
+        <div class="card mb-3">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                @if ($workOrder->invoice)
+                    <div>Invoice: <strong>{{ $workOrder->invoice->number }}</strong></div>
+                    <a href="{{ route('invoices.show', $workOrder->invoice) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-receipt"></i> Lihat Invoice
+                    </a>
+                @else
+                    <div>PKB sudah selesai dan siap diinvoice.</div>
+                    @can('create', [\App\Models\Invoice::class, $workOrder])
+                        <form method="POST" action="{{ route('invoices.store') }}">
+                            @csrf
+                            <input type="hidden" name="work_order_id" value="{{ $workOrder->id }}">
+                            <button type="submit" class="btn btn-primary btn-sm">Buat Invoice</button>
+                        </form>
+                    @endcan
+                @endif
+            </div>
+        </div>
+    @endif
+
     <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
 @endsection

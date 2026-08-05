@@ -191,7 +191,7 @@ class WorkOrderController extends Controller
     {
         $this->authorize('view', $workOrder);
 
-        $workOrder->load(['branch', 'customer', 'vehicle', 'mechanic', 'serviceLines', 'sparepartLines.reservations']);
+        $workOrder->load(['branch', 'customer', 'vehicle', 'mechanic', 'serviceLines', 'sparepartLines.reservations', 'invoice']);
 
         return view('work-orders.show', compact('workOrder'));
     }

@@ -145,4 +145,59 @@ class InvoiceControllerTest extends TestCase
         $response->assertOk();
         $response->assertSee('Anda belum memiliki akses invoice');
     }
+
+    public function test_store_creates_draft_invoice_from_completed_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->post('/invoices', ['work_order_id' => $workOrder->id]);
+
+        $invoice = Invoice::latest('id')->first();
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $this->assertSame(\App\Support\InvoiceStatus::DRAFT, $invoice->status);
+        $this->assertSame($workOrder->id, $invoice->work_order_id);
+        $this->assertCount(2, $invoice->details);
+    }
+
+    public function test_store_rejects_work_order_that_is_not_completed(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch, false);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->post('/invoices', ['work_order_id' => $workOrder->id]);
+
+        $response->assertForbidden();
+        $this->assertSame(0, Invoice::count());
+    }
+
+    public function test_store_rejects_when_work_order_already_has_an_invoice(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        (new InvoiceService())->createFromWorkOrder($workOrder);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->post('/invoices', ['work_order_id' => $workOrder->id]);
+
+        $response->assertRedirect(route('work-orders.show', $workOrder));
+        $response->assertSessionHas('error');
+        $this->assertSame(1, Invoice::count());
+    }
+
+    public function test_store_requires_invoice_create_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post('/invoices', ['work_order_id' => $workOrder->id]);
+
+        $response->assertForbidden();
+    }
 }

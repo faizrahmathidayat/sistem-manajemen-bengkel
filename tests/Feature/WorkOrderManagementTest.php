@@ -18,6 +18,7 @@ use App\Models\VehicleBrand;
 use App\Models\VehicleCategory;
 use App\Models\VehicleType;
 use App\Models\WorkOrder;
+use App\Services\InvoiceService;
 use App\Services\UserBranchService;
 use App\Support\WorkOrderStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1114,5 +1115,48 @@ class WorkOrderManagementTest extends TestCase
         $response = $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
 
         $response->assertForbidden();
+    }
+
+    public function test_show_offers_create_invoice_button_when_completed_without_invoice(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        // Grant every permission this user will need before the first authenticated request:
+        // hasPermissionToInBranch() memoizes its result per branch on the $user instance, and
+        // actingAs() reuses that same instance across every call in this test, so a grant made
+        // between two requests would silently miss the cache populated by the earlier one.
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee('Buat Invoice');
+    }
+
+    public function test_show_links_to_existing_invoice_instead_of_create_button(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        // See the comment in test_show_offers_create_invoice_button_when_completed_without_invoice
+        // above: grant both permissions before the first request that uses this $user.
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+        $invoice = (new InvoiceService())->createFromWorkOrder($workOrder->fresh());
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee($invoice->number);
+        $response->assertDontSee('Buat Invoice');
     }
 }

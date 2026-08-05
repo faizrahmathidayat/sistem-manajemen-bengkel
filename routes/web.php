@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [SparepartBranchController::class, 'create'])->name('create');
         Route::post('/', [SparepartBranchController::class, 'store'])->name('store');
         Route::get('/create-existing', [SparepartBranchController::class, 'createExisting'])->name('createExisting');
+        Route::get('/lookup/unconfigured', [SparepartBranchController::class, 'lookupUnconfigured'])->name('lookup.unconfigured');
         Route::post('/existing', [SparepartBranchController::class, 'storeExisting'])->name('storeExisting');
         Route::get('/{sparepartBranch}/edit', [SparepartBranchController::class, 'edit'])->name('edit');
         Route::put('/{sparepartBranch}', [SparepartBranchController::class, 'update'])->name('update');

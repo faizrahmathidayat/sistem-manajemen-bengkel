@@ -9,6 +9,7 @@ use App\Models\Branch;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SparepartBranchController extends Controller
@@ -93,14 +94,38 @@ class SparepartBranchController extends Controller
             abort(403);
         }
 
-        $availableSpareparts = Sparepart::where('is_active', true)
-            ->whereDoesntHave('sparepartBranches', function ($query) use ($branch) {
-                $query->where('branch_id', $branch->id);
+        return view('sparepart-branches.create-existing', compact('branch'));
+    }
+
+    public function lookupUnconfigured(Request $request)
+    {
+        $branchId = (int) $request->query('branch_id');
+        abort_if($branchId <= 0, 400, 'branch_id is required.');
+        abort_unless(auth()->user()->hasPermissionToInBranch('sparepart.create', $branchId), 403);
+
+        $q = $request->query('q');
+        if (! is_string($q) || mb_strlen(trim($q)) < 3) {
+            return response()->json([]);
+        }
+        $escaped = addcslashes(trim($q), '%_\\');
+
+        $spareparts = Sparepart::where('is_active', true)
+            ->whereDoesntHave('sparepartBranches', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
+            })
+            ->where(function ($inner) use ($escaped) {
+                $inner->where('name', 'like', "%{$escaped}%")->orWhere('code', 'like', "%{$escaped}%");
             })
             ->orderBy('name')
+            ->limit(20)
             ->get();
 
-        return view('sparepart-branches.create-existing', compact('availableSpareparts', 'branch'));
+        return response()->json(
+            $spareparts->map(fn (Sparepart $sparepart) => [
+                'id' => $sparepart->id,
+                'text' => $sparepart->code . ' — ' . $sparepart->name,
+            ])->values()
+        );
     }
 
     public function storeExisting(StoreSparepartToBranchRequest $request)

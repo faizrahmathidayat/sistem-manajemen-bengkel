@@ -198,8 +198,11 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->assertSame($branchA->id, $sparepartBranch->branch_id, 'Sparepart must be attached to the branch_id submitted with the form (A), not the session/view-permission fallback branch (B).');
     }
 
-    public function test_create_existing_lists_only_spareparts_not_yet_configured_for_current_branch(): void
+    public function test_create_existing_page_loads_select2_instead_of_a_prefetched_sparepart_list(): void
     {
+        // Superseded by test_lookup_unconfigured_spareparts_excludes_already_configured_ones
+        // for the "excludes configured spareparts" behavior itself — the page no longer
+        // prefetches any sparepart list server-side, so neither name can appear on load.
         $user = User::factory()->create();
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $this->grantBranchPermission($user, $branch, 'sparepart.view');
@@ -212,8 +215,33 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $response = $this->get('/sparepart-branches/create-existing');
 
         $response->assertOk();
-        $response->assertSee('Oli Belum Ada');
+        $response->assertSee('select2-ajax-picker.js', false);
         $response->assertDontSee('Ban Sudah Ada');
+        $response->assertDontSee('Oli Belum Ada');
+    }
+
+    public function test_lookup_unconfigured_spareparts_excludes_already_configured_ones(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $configured = Sparepart::create(['code' => 'SP-CFG', 'name' => 'Sparepart Configured']);
+        SparepartBranch::create(['sparepart_id' => $configured->id, 'branch_id' => $branch->id, 'selling_price' => 10000]);
+        $unconfigured = Sparepart::create(['code' => 'SP-NEW', 'name' => 'Sparepart Baru']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.create');
+
+        $response = $this->actingAs(User::find($user->id))->getJson("/sparepart-branches/lookup/unconfigured?q=Sparepart&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['text' => 'SP-NEW — Sparepart Baru']);
+        $response->assertJsonMissing(['text' => 'SP-CFG — Sparepart Configured']);
+    }
+
+    public function test_lookup_unconfigured_spareparts_is_forbidden_without_sparepart_create_in_that_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+
+        $this->actingAs(User::find($user->id))->getJson("/sparepart-branches/lookup/unconfigured?q=Spa&branch_id={$branch->id}")->assertForbidden();
     }
 
     public function test_store_existing_attaches_sparepart_to_branch_with_new_config_and_stock(): void

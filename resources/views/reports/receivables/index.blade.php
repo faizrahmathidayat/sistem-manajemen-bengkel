@@ -81,6 +81,7 @@
                         <th>Grand Total</th>
                         <th>Sudah Dibayar</th>
                         <th>Sisa Piutang</th>
+                        <th>Jatuh Tempo</th>
                         <th>Umur Piutang</th>
                         <th>Status</th>
                     </tr>
@@ -95,6 +96,7 @@
                             <td>{{ number_format($invoice->grand_total, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->paid_amount, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->outstanding_amount, 0, ',', '.') }}</td>
+                            <td>{{ optional($invoice->due_date)->format('d/m/Y') ?? '-' }}</td>
                             <td>{{ $invoice->aging_label }}</td>
                             <td>
                                 @if ($invoice->status === \App\Support\InvoiceStatus::POSTED)
@@ -108,7 +110,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="p-0">
+                            <td colspan="10" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-minus',
                                     'title' => 'Tidak ada data piutang',

@@ -269,4 +269,22 @@ class ReceivableReportControllerTest extends TestCase
         $response->assertSee('name="date_from"', false);
         $response->assertSee('name="date_to"', false);
     }
+
+    public function test_index_displays_due_date_column(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $withDueDate = $this->makeInvoice($branch, $customer, 100000, now()->toDateString());
+        $withDueDate->update(['due_date' => '2026-09-15']);
+        $withoutDueDate = $this->makeInvoice($branch, $customer, 50000, now()->toDateString());
+        $withoutDueDate->update(['due_date' => null]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'report.receivable.view');
+
+        $response = $this->actingAs($user)->get('/reports/receivables?status=all');
+
+        $response->assertOk();
+        $response->assertSee('Jatuh Tempo');
+        $response->assertSee('15/09/2026');
+    }
 }

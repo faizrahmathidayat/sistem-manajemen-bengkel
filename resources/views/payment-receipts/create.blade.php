@@ -111,6 +111,15 @@
 
         $(customerSelect).select2({ placeholder: '-- Pilih Customer --', width: '100%' });
 
+        // Select2 replaces the native <select>'s change semantics with its own jQuery events —
+        // a Select2-driven selection never fires a native `change` event, so the plain
+        // customerSelect.addEventListener('change', ...) listener below would silently never run.
+        // Re-trigger it explicitly, matching the same pattern already used in
+        // work-orders/create.blade.php for its own Select2-wrapped pickers.
+        $(customerSelect).on('select2:select select2:clear', function () {
+            customerSelect.dispatchEvent(new Event('change'));
+        });
+
         function resetCustomer() {
             customerSelect.innerHTML = '<option value="">-- Pilih Cabang Dulu --</option>';
             $(customerSelect).prop('disabled', true).trigger('change.select2');

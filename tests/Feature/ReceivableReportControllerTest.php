@@ -249,4 +249,24 @@ class ReceivableReportControllerTest extends TestCase
         $response->assertSee($invoiceA->number);
         $response->assertDontSee($invoiceB->number);
     }
+
+    public function test_index_renders_summary_cards_and_filter_form(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $this->makeInvoice($branch, $customer, 100000, now()->toDateString());
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'report.receivable.view');
+
+        $response = $this->actingAs($user)->get('/reports/receivables');
+
+        $response->assertOk();
+        $response->assertSee('Total Tagihan');
+        $response->assertSee('Total Terbayar');
+        $response->assertSee('Total Sisa Piutang');
+        $response->assertSee('Umur Piutang');
+        $response->assertSee('name="customer"', false);
+        $response->assertSee('name="date_from"', false);
+        $response->assertSee('name="date_to"', false);
+    }
 }

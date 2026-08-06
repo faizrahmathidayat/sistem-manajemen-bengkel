@@ -187,6 +187,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::prefix('payment-receipts')->name('payment-receipts.')->group(function () {
+        Route::get('/lookup/customers-by-branch/{branchId}', [PaymentLookupController::class, 'customersByBranch'])->name('lookup.customers-by-branch');
         Route::get('/lookup/outstanding-invoices/{customer}', [PaymentLookupController::class, 'outstandingInvoicesByCustomer'])->name('lookup.outstanding-invoices');
 
         Route::get('/', [PaymentReceiptController::class, 'index'])->name('index');

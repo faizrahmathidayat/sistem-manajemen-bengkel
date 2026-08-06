@@ -366,6 +366,21 @@ class AppShellTest extends TestCase
         $response->assertDontSee('Segera Hadir', false);
     }
 
+    public function test_sidebar_links_directly_to_payment_receipts_when_permitted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'payment.view', 'resource' => 'payment', 'action' => 'view', 'description' => 'Melihat pembayaran']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('payment-receipts.index'), false);
+        $response->assertDontSee('Segera Hadir', false);
+    }
+
     public function test_sidebar_hides_all_new_placeholder_headings_without_any_permission(): void
     {
         $user = User::factory()->create();

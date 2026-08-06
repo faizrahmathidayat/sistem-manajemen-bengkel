@@ -19,10 +19,9 @@
         @endif
         @if ($user->branchesWithPermission('payment.view')->isNotEmpty())
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('payment-receipts.index') }}" class="nav-link {{ request()->routeIs('payment-receipts.*') ? 'active' : '' }}">
                 <i class="bi bi-cash-coin me-2"></i> Penerimaan Pembayaran
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
     </ul>

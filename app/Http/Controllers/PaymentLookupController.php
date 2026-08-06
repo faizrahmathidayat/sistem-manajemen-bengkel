@@ -7,6 +7,22 @@ use App\Support\InvoiceStatus;
 
 class PaymentLookupController extends Controller
 {
+    public function customersByBranch(int $branchId)
+    {
+        abort_unless(auth()->user()->hasPermissionToInBranch('payment.create', $branchId), 403);
+
+        return response()->json(
+            Customer::whereHas('customerBranches', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId)->where('is_active', true);
+            })
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($customer) => ['id' => $customer->id, 'text' => $customer->name])
+                ->values()
+        );
+    }
+
     public function outstandingInvoicesByCustomer(Customer $customer)
     {
         $branchId = (int) request('branch_id');

@@ -10,6 +10,8 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LookupController;
 use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
+use App\Http\Controllers\PaymentLookupController;
+use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
@@ -182,6 +184,16 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{invoice}', [InvoiceController::class, 'update'])->name('update');
         Route::patch('/{invoice}/post', [InvoiceController::class, 'post'])->name('post');
         Route::patch('/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('cancel');
+    });
+
+    Route::prefix('payment-receipts')->name('payment-receipts.')->group(function () {
+        Route::get('/lookup/outstanding-invoices/{customer}', [PaymentLookupController::class, 'outstandingInvoicesByCustomer'])->name('lookup.outstanding-invoices');
+
+        Route::get('/', [PaymentReceiptController::class, 'index'])->name('index');
+        Route::get('/create', [PaymentReceiptController::class, 'create'])->name('create');
+        Route::post('/', [PaymentReceiptController::class, 'store'])->name('store');
+        Route::get('/{paymentReceipt}', [PaymentReceiptController::class, 'show'])->name('show');
+        Route::patch('/{paymentReceipt}/void', [PaymentReceiptController::class, 'void'])->name('void');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

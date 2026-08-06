@@ -68,6 +68,10 @@
             <div class="card-body">
                 <h2 class="h6">Alokasi ke Invoice</h2>
                 <p class="text-muted small" id="invoicesHint">Pilih customer terlebih dahulu untuk melihat invoice yang punya sisa piutang.</p>
+                <div class="text-muted small d-none" id="invoicesLoading">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Memuat invoice...
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm" id="outstandingInvoicesTable" style="display:none">
                         <thead>
@@ -92,22 +96,29 @@
     </form>
 
     @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
     (function () {
         const branchSelect = document.getElementById('branchSelect');
         const customerSelect = document.getElementById('customerSelect');
         const invoicesHint = document.getElementById('invoicesHint');
+        const invoicesLoading = document.getElementById('invoicesLoading');
         const invoicesTable = document.getElementById('outstandingInvoicesTable');
         const invoicesBody = document.getElementById('outstandingInvoicesBody');
         const amountInput = document.getElementById('amountInput');
 
+        $(customerSelect).select2({ placeholder: '-- Pilih Customer --', width: '100%' });
+
         function resetCustomer() {
             customerSelect.innerHTML = '<option value="">-- Pilih Cabang Dulu --</option>';
-            customerSelect.disabled = true;
+            $(customerSelect).prop('disabled', true).trigger('change.select2');
             resetInvoices();
         }
 
         function resetInvoices() {
+            invoicesLoading.classList.add('d-none');
             invoicesTable.style.display = 'none';
             invoicesBody.innerHTML = '';
             invoicesHint.style.display = 'block';
@@ -128,7 +139,7 @@
             resetCustomer();
             if (!branchSelect.value) return;
 
-            customerSelect.disabled = false;
+            $(customerSelect).prop('disabled', false);
             customerSelect.innerHTML = '<option value="">-- Pilih Customer --</option>';
 
             // The shared `/lookup/customers` endpoint requires a 3-character search term
@@ -143,6 +154,7 @@
                         opt.textContent = customer.text;
                         customerSelect.appendChild(opt);
                     });
+                    $(customerSelect).trigger('change.select2');
                 });
         });
 
@@ -150,9 +162,13 @@
             resetInvoices();
             if (!customerSelect.value || !branchSelect.value) return;
 
+            invoicesHint.style.display = 'none';
+            invoicesLoading.classList.remove('d-none');
+
             fetch(`/payment-receipts/lookup/outstanding-invoices/${customerSelect.value}?branch_id=${branchSelect.value}`)
                 .then(r => r.json())
                 .then(function (invoices) {
+                    invoicesLoading.classList.add('d-none');
                     invoicesHint.style.display = invoices.length ? 'none' : 'block';
                     invoicesTable.style.display = invoices.length ? '' : 'none';
                     invoices.forEach(function (invoice, index) {

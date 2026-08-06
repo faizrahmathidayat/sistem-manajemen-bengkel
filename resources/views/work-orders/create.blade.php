@@ -65,6 +65,13 @@
                     <h2 class="h6 mb-0">Baris Jasa</h2>
                     <button type="button" class="btn btn-outline-primary btn-sm" id="addServiceLine">+ Tambah Jasa</button>
                 </div>
+                <div class="row g-2 small text-muted mb-1">
+                    <div class="col-md-3">Katalog Jasa</div>
+                    <div class="col-md-4">Deskripsi</div>
+                    <div class="col-md-2">Qty</div>
+                    <div class="col-md-2">Harga Satuan</div>
+                    <div class="col-md-1"></div>
+                </div>
                 <div id="serviceLines"></div>
                 @error('services')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
             </div>
@@ -75,6 +82,12 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h2 class="h6 mb-0">Baris Sparepart</h2>
                     <button type="button" class="btn btn-outline-primary btn-sm" id="addSparepartLine" disabled>+ Tambah Sparepart</button>
+                </div>
+                <div class="row g-2 small text-muted mb-1">
+                    <div class="col-md-5">Sparepart</div>
+                    <div class="col-md-2">Qty</div>
+                    <div class="col-md-2">Harga Satuan</div>
+                    <div class="col-md-1"></div>
                 </div>
                 <div id="sparepartLines"></div>
             </div>

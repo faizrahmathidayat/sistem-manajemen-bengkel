@@ -83,6 +83,36 @@ class PaymentService
         });
     }
 
+    public function voidPaymentReceipt(PaymentReceipt $receipt, string $reason): PaymentReceipt
+    {
+        return DB::transaction(function () use ($receipt, $reason) {
+            $fresh = PaymentReceipt::whereKey($receipt->id)->lockForUpdate()->first();
+
+            if ($fresh->status !== PaymentReceiptStatus::POSTED) {
+                throw new DomainException('Payment receipt ini sudah tidak berstatus posted, tidak bisa di-void.');
+            }
+
+            $allocations = $fresh->allocations()->orderBy('invoice_id')->get();
+
+            foreach ($allocations as $allocation) {
+                $invoice = Invoice::whereKey($allocation->invoice_id)->lockForUpdate()->first();
+
+                $invoice->paid_amount = max(0, round((float) $invoice->paid_amount - (float) $allocation->allocated_amount, 2));
+                $invoice->status = $this->recomputeInvoiceStatus($invoice);
+                $invoice->save();
+            }
+
+            $fresh->update([
+                'status' => PaymentReceiptStatus::VOID,
+                'void_reason' => $reason,
+                'voided_by' => auth()->id(),
+                'voided_at' => now(),
+            ]);
+
+            return $fresh;
+        });
+    }
+
     protected function recomputeInvoiceStatus(Invoice $invoice): string
     {
         $paid = (float) $invoice->paid_amount;

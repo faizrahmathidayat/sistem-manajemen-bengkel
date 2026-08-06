@@ -184,4 +184,65 @@ class PaymentServiceTest extends TestCase
             ],
         ]);
     }
+
+    public function test_void_reverses_allocations_and_recomputes_invoice_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoiceA = $this->makePostedInvoice($branch, $customer, 100000);
+        $invoiceB = $this->makePostedInvoice($branch, $customer, 200000);
+
+        $service = new PaymentService();
+        $receipt = $service->createPaymentReceipt([
+            'branch_id' => $branch->id,
+            'customer_id' => $customer->id,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'reference_number' => null,
+            'amount' => 250000,
+            'notes' => null,
+            'allocations' => [
+                ['invoice_id' => $invoiceA->id, 'allocated_amount' => 100000],
+                ['invoice_id' => $invoiceB->id, 'allocated_amount' => 150000],
+            ],
+        ]);
+
+        $voided = $service->voidPaymentReceipt($receipt, 'Salah input nominal');
+
+        $this->assertSame(\App\Support\PaymentReceiptStatus::VOID, $voided->status);
+        $this->assertSame('Salah input nominal', $voided->void_reason);
+        $this->assertNotNull($voided->voided_at);
+
+        $invoiceA->refresh();
+        $invoiceB->refresh();
+        $this->assertSame(0.0, (float) $invoiceA->paid_amount);
+        $this->assertSame(InvoiceStatus::POSTED, $invoiceA->status);
+        $this->assertSame(0.0, (float) $invoiceB->paid_amount);
+        $this->assertSame(InvoiceStatus::POSTED, $invoiceB->status);
+    }
+
+    public function test_void_is_rejected_when_receipt_is_already_void(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makePostedInvoice($branch, $customer, 100000);
+
+        $service = new PaymentService();
+        $receipt = $service->createPaymentReceipt([
+            'branch_id' => $branch->id,
+            'customer_id' => $customer->id,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'reference_number' => null,
+            'amount' => 100000,
+            'notes' => null,
+            'allocations' => [
+                ['invoice_id' => $invoice->id, 'allocated_amount' => 100000],
+            ],
+        ]);
+        $service->voidPaymentReceipt($receipt, 'Pertama');
+
+        $this->expectException(DomainException::class);
+        $service->voidPaymentReceipt($receipt->fresh(), 'Kedua');
+    }
 }

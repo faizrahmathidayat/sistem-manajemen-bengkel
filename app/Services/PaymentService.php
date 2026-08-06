@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\PaymentAllocation;
 use App\Models\PaymentReceipt;
+use App\Support\AuditEvent;
 use App\Support\InvoiceStatus;
 use App\Support\PaymentReceiptStatus;
 use DomainException;
@@ -79,6 +80,14 @@ class PaymentService
                 $invoice->save();
             }
 
+            (new AuditLogger())->log(
+                AuditEvent::PAYMENT_RECEIPT_CREATED,
+                (int) $data['branch_id'],
+                $receipt,
+                [],
+                ['amount' => (float) $data['amount'], 'allocations_count' => $allocations->count()]
+            );
+
             return $receipt->fresh('allocations');
         });
     }
@@ -108,6 +117,14 @@ class PaymentService
                 'voided_by' => auth()->id(),
                 'voided_at' => now(),
             ]);
+
+            (new AuditLogger())->log(
+                AuditEvent::PAYMENT_RECEIPT_VOIDED,
+                $fresh->branch_id,
+                $fresh,
+                ['status' => PaymentReceiptStatus::POSTED],
+                ['status' => PaymentReceiptStatus::VOID, 'reason' => $reason]
+            );
 
             return $fresh;
         });

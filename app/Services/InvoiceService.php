@@ -10,6 +10,7 @@ use App\Models\SparepartBranchStock;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderSparepartLine;
 use App\Support\InventoryMovementType;
+use App\Support\AuditEvent;
 use App\Support\InvoiceDetailItemType;
 use App\Support\InvoiceStatus;
 use App\Support\WorkOrderStatus;
@@ -194,6 +195,14 @@ class InvoiceService
                 'cancelled_at' => now(),
             ]);
 
+            (new AuditLogger())->log(
+                AuditEvent::INVOICE_CANCELLED,
+                $fresh->branch_id,
+                $fresh,
+                ['status' => InvoiceStatus::DRAFT],
+                ['status' => InvoiceStatus::CANCELLED, 'reason' => $reason]
+            );
+
             return $fresh;
         });
     }
@@ -333,6 +342,14 @@ class InvoiceService
 
             $fresh->status = InvoiceStatus::POSTED;
             $fresh->save();
+
+            (new AuditLogger())->log(
+                AuditEvent::INVOICE_POSTED,
+                $fresh->branch_id,
+                $fresh,
+                ['status' => InvoiceStatus::DRAFT],
+                ['status' => InvoiceStatus::POSTED]
+            );
 
             return $fresh;
         });

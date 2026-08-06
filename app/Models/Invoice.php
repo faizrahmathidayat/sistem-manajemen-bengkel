@@ -16,7 +16,7 @@ class Invoice extends Model
         'subtotal_service', 'subtotal_sparepart',
         'discount_percent', 'discount_amount',
         'tax_percent', 'tax_amount',
-        'grand_total', 'notes',
+        'grand_total', 'paid_amount', 'notes',
         'cancel_reason', 'cancelled_by', 'cancelled_at',
     ];
 
@@ -30,6 +30,7 @@ class Invoice extends Model
         'tax_percent' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
         'cancelled_at' => 'datetime',
     ];
 
@@ -60,5 +61,15 @@ class Invoice extends Model
     public function details()
     {
         return $this->hasMany(InvoiceDetail::class)->orderBy('sort_order');
+    }
+
+    public function allocations()
+    {
+        return $this->hasMany(PaymentAllocation::class);
+    }
+
+    public function getOutstandingAmountAttribute()
+    {
+        return round((float) $this->grand_total - (float) $this->paid_amount, 2);
     }
 }

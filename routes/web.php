@@ -12,6 +12,7 @@ use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\PaymentLookupController;
 use App\Http\Controllers\PaymentReceiptController;
+use App\Http\Controllers\ReceivableReportController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
@@ -195,6 +196,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [PaymentReceiptController::class, 'store'])->name('store');
         Route::get('/{paymentReceipt}', [PaymentReceiptController::class, 'show'])->name('show');
         Route::patch('/{paymentReceipt}/void', [PaymentReceiptController::class, 'void'])->name('void');
+    });
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/receivables', [ReceivableReportController::class, 'index'])->name('receivables.index');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

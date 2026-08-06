@@ -106,6 +106,18 @@
     <script src="{{ asset('js/select2-ajax-picker.js') }}"></script>
     @endpush
 
+    @php
+        // Laravel 8.75's @json directive naively comma-splits its argument, so any @json()
+        // call whose argument contains an internal comma (e.g. old('x', [])'s default-value
+        // argument) can silently mangle the JSON_HEX_* escaping-flags argument it implicitly
+        // passes through. Compute old-input values as plain PHP variables here and reference
+        // them via bare @json($var) below, never @json(old(...)) directly.
+        $oldServices = old('services', []);
+        $oldSpareparts = old('spareparts', []);
+        $oldCustomerId = old('customer_id');
+        $oldMechanicId = old('mechanic_id');
+        $oldVehicleId = old('vehicle_id');
+    @endphp
     @push('scripts')
     <script>
     (function () {
@@ -175,7 +187,7 @@
         });
 
         async function replayOldLines() {
-            const oldServices = @json(old('services', []));
+            const oldServices = @json($oldServices);
             oldServices.forEach(function (line) {
                 WorkOrderLineItems.addServiceLine();
                 const rows = document.querySelectorAll('#serviceLines .service-line');
@@ -186,7 +198,7 @@
                 row.querySelector('.service-unit-price').value = line.unit_price || '';
             });
 
-            const oldSpareparts = @json(old('spareparts', []));
+            const oldSpareparts = @json($oldSpareparts);
             for (const line of oldSpareparts) {
                 WorkOrderLineItems.addSparepartLine(currentBranchId);
                 const rows = document.querySelectorAll('#sparepartLines .sparepart-line');
@@ -198,12 +210,12 @@
                 }
             }
 
-            const oldCustomerId = @json(old('customer_id'));
+            const oldCustomerId = @json($oldCustomerId);
             if (oldCustomerId) {
                 await preselectAjaxOption(customerSelect, { endpoint: '{{ route('lookup.customers') }}', id: oldCustomerId, extraParams: function () { return { branch_id: currentBranchId }; } });
                 $(customerSelect).trigger('change');
             }
-            const oldMechanicId = @json(old('mechanic_id'));
+            const oldMechanicId = @json($oldMechanicId);
             if (oldMechanicId) {
                 await preselectAjaxOption(mechanicSelect, { endpoint: '{{ route('lookup.mechanics') }}', id: oldMechanicId, extraParams: function () { return { branch_id: currentBranchId }; } });
                 $(mechanicSelect).trigger('change');
@@ -216,12 +228,12 @@
             addSparepartButton.disabled = false;
             initPickers();
             replayOldLines().then(async function () {
-                const oldCustomerId = @json(old('customer_id'));
+                const oldCustomerId = @json($oldCustomerId);
                 if (oldCustomerId) {
                     const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${oldCustomerId}`);
                     WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', function (i) { return i.plate_number || i.frame_number; });
                     vehicleSelect.disabled = false;
-                    const oldVehicleId = @json(old('vehicle_id'));
+                    const oldVehicleId = @json($oldVehicleId);
                     if (oldVehicleId) vehicleSelect.value = oldVehicleId;
                 }
             });

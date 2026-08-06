@@ -31,11 +31,15 @@
                     <strong>Status</strong>
                     <div>
                         @if ($invoice->status === \App\Support\InvoiceStatus::DRAFT)
-                            <span class="status-dot status-active">Draft</span>
+                            <span class="status-dot status-inactive">Draft</span>
                         @elseif ($invoice->status === \App\Support\InvoiceStatus::POSTED)
                             <span class="status-dot status-active">Diposting</span>
+                        @elseif ($invoice->status === \App\Support\InvoiceStatus::PARTIALLY_PAID)
+                            <span class="status-dot status-warning">Dibayar Sebagian</span>
+                        @elseif ($invoice->status === \App\Support\InvoiceStatus::PAID)
+                            <span class="status-dot status-active">Lunas</span>
                         @else
-                            <span class="status-dot status-inactive">Dibatalkan</span>
+                            <span class="status-dot status-danger">Dibatalkan</span>
                         @endif
                     </div>
                 </div>
@@ -76,7 +80,36 @@
                 <div class="col-md-3"><strong>Diskon ({{ number_format($invoice->discount_percent, 2, ',', '.') }}%)</strong><div>{{ number_format($invoice->discount_amount, 0, ',', '.') }}</div></div>
                 <div class="col-md-3"><strong>PPN ({{ number_format($invoice->tax_percent, 2, ',', '.') }}%)</strong><div>{{ number_format($invoice->tax_amount, 0, ',', '.') }}</div></div>
                 <div class="col-md-3"><strong>Grand Total</strong><div>{{ number_format($invoice->grand_total, 0, ',', '.') }}</div></div>
+                <div class="col-md-3"><strong>Sudah Dibayar</strong><div>{{ number_format($invoice->paid_amount, 0, ',', '.') }}</div></div>
+                <div class="col-md-3"><strong>Sisa Piutang</strong><div>{{ number_format($invoice->outstanding_amount, 0, ',', '.') }}</div></div>
             </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h2 class="h6">Riwayat Pembayaran</h2>
+            <table class="table table-sm">
+                <thead><tr><th>No. Pembayaran</th><th>Tanggal</th><th>Nominal Dialokasikan</th><th>Status</th></tr></thead>
+                <tbody>
+                    @forelse ($invoice->allocations()->with('paymentReceipt')->get() as $allocation)
+                        <tr>
+                            <td><a href="{{ route('payment-receipts.show', $allocation->paymentReceipt) }}">{{ $allocation->paymentReceipt->number }}</a></td>
+                            <td>{{ $allocation->paymentReceipt->payment_date->format('d/m/Y') }}</td>
+                            <td>{{ number_format($allocation->allocated_amount, 0, ',', '.') }}</td>
+                            <td>
+                                @if ($allocation->paymentReceipt->status === \App\Support\PaymentReceiptStatus::VOID)
+                                    <span class="status-dot status-danger">Void</span>
+                                @else
+                                    <span class="status-dot status-active">Posted</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="text-muted">Belum ada pembayaran.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 

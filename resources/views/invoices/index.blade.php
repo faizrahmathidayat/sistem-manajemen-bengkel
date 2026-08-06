@@ -37,11 +37,15 @@
                             <td>{{ number_format($invoice->grand_total, 0, ',', '.') }}</td>
                             <td>
                                 @if ($invoice->status === \App\Support\InvoiceStatus::DRAFT)
-                                    <span class="status-dot status-active">Draft</span>
+                                    <span class="status-dot status-inactive">Draft</span>
                                 @elseif ($invoice->status === \App\Support\InvoiceStatus::POSTED)
                                     <span class="status-dot status-active">Diposting</span>
+                                @elseif ($invoice->status === \App\Support\InvoiceStatus::PARTIALLY_PAID)
+                                    <span class="status-dot status-warning">Dibayar Sebagian</span>
+                                @elseif ($invoice->status === \App\Support\InvoiceStatus::PAID)
+                                    <span class="status-dot status-active">Lunas</span>
                                 @else
-                                    <span class="status-dot status-inactive">Dibatalkan</span>
+                                    <span class="status-dot status-danger">Dibatalkan</span>
                                 @endif
                             </td>
                             <td class="text-end">

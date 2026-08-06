@@ -109,6 +109,36 @@ class InvoiceControllerTest extends TestCase
         $response->assertSee('Oli Mesin');
     }
 
+    public function test_show_displays_payment_history_and_outstanding_balance(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        (new InvoiceService())->postInvoice($invoice);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.view');
+        $this->grantBranchPermission($user, $branch, 'payment.create');
+
+        (new \App\Services\PaymentService())->createPaymentReceipt([
+            'branch_id' => $branch->id,
+            'customer_id' => $invoice->customer_id,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'reference_number' => null,
+            'amount' => 50000,
+            'notes' => null,
+            'allocations' => [
+                ['invoice_id' => $invoice->id, 'allocated_amount' => 50000],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}");
+
+        $response->assertOk();
+        $response->assertSee('Riwayat Pembayaran');
+        $invoice->refresh();
+        $response->assertSee(number_format($invoice->outstanding_amount, 0, ',', '.'));
+    }
+
     public function test_show_is_forbidden_without_invoice_view_permission(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

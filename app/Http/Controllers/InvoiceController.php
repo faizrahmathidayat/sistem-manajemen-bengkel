@@ -65,7 +65,7 @@ class InvoiceController extends Controller
     {
         $this->authorize('view', $invoice);
 
-        $invoice->load(['branch', 'customer', 'workOrder', 'details']);
+        $invoice->load(['branch', 'customer', 'workOrder', 'details', 'allocations.paymentReceipt']);
 
         return view('invoices.show', compact('invoice'));
     }

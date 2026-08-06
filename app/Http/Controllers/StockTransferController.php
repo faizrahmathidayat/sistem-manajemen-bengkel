@@ -10,7 +10,9 @@ use App\Models\SparepartBranch;
 use App\Models\SparepartBranchStock;
 use App\Models\StockTransfer;
 use App\Models\StockTransferLine;
+use App\Services\AuditLogger;
 use App\Services\DocumentNumberGenerator;
+use App\Support\AuditEvent;
 use App\Support\InventoryMovementType;
 use App\Support\TransferStatus;
 use Illuminate\Support\Facades\DB;
@@ -281,6 +283,14 @@ class StockTransferController extends Controller
             $fresh->dispatched_by = auth()->id();
             $fresh->dispatched_at = now();
             $fresh->save();
+
+            (new AuditLogger())->log(
+                AuditEvent::STOCK_TRANSFER_DISPATCHED,
+                $fresh->from_branch_id,
+                $fresh,
+                ['status' => TransferStatus::APPROVED],
+                ['status' => TransferStatus::DISPATCHED]
+            );
         });
 
         if ($noLongerApproved) {
@@ -382,6 +392,14 @@ class StockTransferController extends Controller
             $fresh->received_by = auth()->id();
             $fresh->received_at = now();
             $fresh->save();
+
+            (new AuditLogger())->log(
+                AuditEvent::STOCK_TRANSFER_RECEIVED,
+                $fresh->to_branch_id,
+                $fresh,
+                ['status' => TransferStatus::DISPATCHED],
+                ['status' => TransferStatus::RECEIVED]
+            );
         });
 
         if ($noLongerDispatched) {
@@ -414,6 +432,14 @@ class StockTransferController extends Controller
 
             $fresh->status = TransferStatus::CANCELLED;
             $fresh->save();
+
+            (new AuditLogger())->log(
+                AuditEvent::STOCK_TRANSFER_VOIDED,
+                $fresh->from_branch_id,
+                $fresh,
+                [],
+                ['status' => TransferStatus::CANCELLED]
+            );
         });
 
         if ($noLongerCancellable) {

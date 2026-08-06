@@ -11,6 +11,12 @@ use App\Models\Mechanic;
 use App\Models\MechanicBranch;
 use App\Models\Permission;
 use App\Models\ServiceCatalog;
+use App\Models\Sparepart;
+use App\Models\SparepartBranch;
+use App\Models\StockAdjustment;
+use App\Models\StockAdjustmentLine;
+use App\Models\StockTransfer;
+use App\Models\StockTransferLine;
 use App\Models\User;
 use App\Models\UserBranchPermission;
 use App\Models\Vehicle;
@@ -22,6 +28,8 @@ use App\Services\InvoiceService;
 use App\Services\PaymentService;
 use App\Services\UserBranchService;
 use App\Support\AuditEvent;
+use App\Support\StockAdjustmentStatus;
+use App\Support\TransferStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -147,5 +155,99 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertNotNull($log);
         $this->assertSame($receipt->id, $log->auditable_id);
         $this->assertSame('Salah nominal', $log->new_values['reason']);
+    }
+
+    public function test_posting_a_stock_adjustment_logs_stock_adjustment_posted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepart = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
+        $sparepartBranch = SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 60000]);
+        $sparepartBranch->stock()->update(['on_hand_qty' => 10]);
+        $poster = User::factory()->create();
+        $this->grantBranchPermission($poster, $branch, 'stock_adjustment.post');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+        ]);
+        StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'system_qty' => 10, 'physical_qty' => 15, 'adjustment_qty' => 5, 'reason' => 'Ditemukan lebih',
+        ]);
+
+        $this->actingAs($poster)->patch("/stock-adjustments/{$stockAdjustment->id}/post");
+
+        $log = AuditLog::where('event', AuditEvent::STOCK_ADJUSTMENT_POSTED)->first();
+        $this->assertNotNull($log);
+        $this->assertSame(StockAdjustment::class, $log->auditable_type);
+        $this->assertSame($stockAdjustment->id, $log->auditable_id);
+        $this->assertSame($branch->id, $log->branch_id);
+    }
+
+    public function test_dispatching_a_stock_transfer_logs_stock_transfer_dispatched(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepart = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
+        SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $from->id, 'selling_price' => 60000])
+            ->stock()->update(['on_hand_qty' => 20]);
+        SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $to->id, 'selling_price' => 60000]);
+        $dispatcher = User::factory()->create();
+        $this->grantBranchPermission($dispatcher, $from, 'stock_transfer.dispatch');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+        StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $sparepart->id, 'qty' => 8]);
+
+        $this->actingAs($dispatcher)->patch("/stock-transfers/{$stockTransfer->id}/dispatch");
+
+        $log = AuditLog::where('event', AuditEvent::STOCK_TRANSFER_DISPATCHED)->first();
+        $this->assertNotNull($log);
+        $this->assertSame(StockTransfer::class, $log->auditable_type);
+        $this->assertSame($stockTransfer->id, $log->auditable_id);
+        $this->assertSame($from->id, $log->branch_id);
+    }
+
+    public function test_receiving_a_stock_transfer_logs_stock_transfer_received(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepart = Sparepart::create(['code' => 'OLI-01', 'name' => 'Oli Mesin']);
+        SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $from->id, 'selling_price' => 60000]);
+        SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $to->id, 'selling_price' => 60000])
+            ->stock()->update(['on_hand_qty' => 3]);
+        $receiver = User::factory()->create();
+        $this->grantBranchPermission($receiver, $to, 'stock_transfer.receive');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DISPATCHED,
+        ]);
+        StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $sparepart->id, 'qty' => 8]);
+
+        $this->actingAs($receiver)->patch("/stock-transfers/{$stockTransfer->id}/receive");
+
+        $log = AuditLog::where('event', AuditEvent::STOCK_TRANSFER_RECEIVED)->first();
+        $this->assertNotNull($log);
+        $this->assertSame($stockTransfer->id, $log->auditable_id);
+        $this->assertSame($to->id, $log->branch_id);
+    }
+
+    public function test_cancelling_a_stock_transfer_logs_stock_transfer_voided(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $canceller = User::factory()->create();
+        $this->grantBranchPermission($canceller, $from, 'stock_transfer.cancel');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+
+        $this->actingAs($canceller)->patch("/stock-transfers/{$stockTransfer->id}/cancel");
+
+        $log = AuditLog::where('event', AuditEvent::STOCK_TRANSFER_VOIDED)->first();
+        $this->assertNotNull($log);
+        $this->assertSame($stockTransfer->id, $log->auditable_id);
+        $this->assertSame($from->id, $log->branch_id);
     }
 }

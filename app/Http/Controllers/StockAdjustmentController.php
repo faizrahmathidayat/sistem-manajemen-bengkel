@@ -9,7 +9,9 @@ use App\Models\InventoryMovement;
 use App\Models\SparepartBranchStock;
 use App\Models\StockAdjustment;
 use App\Models\StockAdjustmentLine;
+use App\Services\AuditLogger;
 use App\Services\DocumentNumberGenerator;
+use App\Support\AuditEvent;
 use App\Support\InventoryMovementType;
 use App\Support\StockAdjustmentStatus;
 use Illuminate\Support\Facades\DB;
@@ -303,6 +305,14 @@ class StockAdjustmentController extends Controller
 
             $fresh->status = StockAdjustmentStatus::POSTED;
             $fresh->save();
+
+            (new AuditLogger())->log(
+                AuditEvent::STOCK_ADJUSTMENT_POSTED,
+                $fresh->branch_id,
+                $fresh,
+                ['status' => StockAdjustmentStatus::APPROVED],
+                ['status' => StockAdjustmentStatus::POSTED]
+            );
         });
 
         if ($noLongerApproved) {

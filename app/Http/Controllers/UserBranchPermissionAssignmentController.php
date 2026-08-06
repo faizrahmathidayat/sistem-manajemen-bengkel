@@ -6,6 +6,8 @@ use App\Models\Branch;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\UserBranchPermission;
+use App\Services\AuditLogger;
+use App\Support\AuditEvent;
 use Illuminate\Http\Request;
 
 class UserBranchPermissionAssignmentController extends Controller
@@ -27,6 +29,14 @@ class UserBranchPermissionAssignmentController extends Controller
             ['granted_by' => $request->user()->id]
         );
 
+        (new AuditLogger())->log(
+            AuditEvent::USER_BRANCH_PERMISSION_GRANTED,
+            $branch->id,
+            $user,
+            [],
+            ['permission' => $permission->code, 'branch' => $branch->code]
+        );
+
         return response()->json(['message' => 'Permission berhasil diberikan untuk cabang ini.']);
     }
 
@@ -38,6 +48,14 @@ class UserBranchPermissionAssignmentController extends Controller
             ->where('branch_id', $branch->id)
             ->where('permission_id', $permission->id)
             ->delete();
+
+        (new AuditLogger())->log(
+            AuditEvent::USER_BRANCH_PERMISSION_REVOKED,
+            $branch->id,
+            $user,
+            ['permission' => $permission->code, 'branch' => $branch->code],
+            []
+        );
 
         return response()->json(['message' => 'Permission berhasil dicabut dari cabang ini.']);
     }

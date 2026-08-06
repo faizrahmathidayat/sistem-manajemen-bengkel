@@ -250,4 +250,44 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertSame($stockTransfer->id, $log->auditable_id);
         $this->assertSame($from->id, $log->branch_id);
     }
+
+    public function test_granting_a_branch_permission_logs_user_branch_permission_granted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $menu = \App\Models\Menu::create(['code' => 'operasional.invoice', 'name' => 'Invoice', 'sort_order' => 1, 'is_branch_scoped' => true]);
+        $permission = Permission::create(['menu_id' => $menu->id, 'code' => 'invoice.view', 'resource' => 'invoice', 'action' => 'view', 'description' => 'Melihat invoice']);
+        $actor = User::factory()->create();
+        $managePermission = Permission::firstOrCreate(['code' => 'user_permission.manage'], ['resource' => 'user_permission', 'action' => 'manage', 'description' => 'Mengelola permission milik user']);
+        \App\Models\UserPermission::create(['user_id' => $actor->id, 'permission_id' => $managePermission->id]);
+        $targetUser = User::factory()->create();
+        (new UserBranchService())->assign($targetUser, $branch);
+
+        $this->actingAs($actor)->post("/users/{$targetUser->id}/branches/{$branch->id}/permissions/{$permission->id}");
+
+        $log = AuditLog::where('event', AuditEvent::USER_BRANCH_PERMISSION_GRANTED)->first();
+        $this->assertNotNull($log);
+        $this->assertSame(User::class, $log->auditable_type);
+        $this->assertSame($targetUser->id, $log->auditable_id);
+        $this->assertSame($branch->id, $log->branch_id);
+        $this->assertSame('invoice.view', $log->new_values['permission']);
+    }
+
+    public function test_revoking_a_branch_permission_logs_user_branch_permission_revoked(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'invoice.view', 'resource' => 'invoice', 'action' => 'view', 'description' => 'Melihat invoice']);
+        $actor = User::factory()->create();
+        $managePermission = Permission::firstOrCreate(['code' => 'user_permission.manage'], ['resource' => 'user_permission', 'action' => 'manage', 'description' => 'Mengelola permission milik user']);
+        \App\Models\UserPermission::create(['user_id' => $actor->id, 'permission_id' => $managePermission->id]);
+        $targetUser = User::factory()->create();
+        (new UserBranchService())->assign($targetUser, $branch);
+        UserBranchPermission::create(['user_id' => $targetUser->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $this->actingAs($actor)->delete("/users/{$targetUser->id}/branches/{$branch->id}/permissions/{$permission->id}");
+
+        $log = AuditLog::where('event', AuditEvent::USER_BRANCH_PERMISSION_REVOKED)->first();
+        $this->assertNotNull($log);
+        $this->assertSame($targetUser->id, $log->auditable_id);
+        $this->assertSame('invoice.view', $log->old_values['permission']);
+    }
 }

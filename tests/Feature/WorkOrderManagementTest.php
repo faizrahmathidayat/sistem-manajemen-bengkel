@@ -386,6 +386,59 @@ class WorkOrderManagementTest extends TestCase
         $response->assertDontSee('Dibatalkan');
     }
 
+    public function test_index_shows_belum_diinvoice_label_for_a_completed_work_order_without_invoice(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+
+        $response = $this->actingAs($user)->get('/work-orders');
+
+        $response->assertOk();
+        $response->assertSee('Belum Diinvoice');
+        $response->assertDontSee('Sudah Diinvoice');
+    }
+
+    public function test_index_shows_sudah_diinvoice_label_for_a_completed_work_order_with_invoice(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $workOrder = $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.complete');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/complete");
+        (new InvoiceService())->createFromWorkOrder($workOrder->fresh());
+
+        $response = $this->actingAs($user)->get('/work-orders');
+
+        $response->assertOk();
+        $response->assertSee('Sudah Diinvoice');
+        $response->assertDontSee('Belum Diinvoice');
+    }
+
+    public function test_index_does_not_show_invoice_label_for_a_non_completed_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $scenario['sparepartBranch']->id)->update(['on_hand_qty' => 10]);
+        $this->confirmWorkOrder($branch, $scenario);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+
+        $response = $this->actingAs($user)->get('/work-orders');
+
+        $response->assertOk();
+        $response->assertDontSee('Sudah Diinvoice');
+        $response->assertDontSee('Belum Diinvoice');
+    }
+
     public function test_index_shows_no_access_page_without_any_pkb_view_grant(): void
     {
         $user = User::factory()->create();

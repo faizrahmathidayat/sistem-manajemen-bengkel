@@ -35,7 +35,7 @@ class WorkOrderController extends Controller
 
         $search = is_string(request('q')) ? trim(request('q')) : null;
 
-        $workOrders = WorkOrder::with(['branch', 'customer', 'vehicle', 'mechanic'])
+        $workOrders = WorkOrder::with(['branch', 'customer', 'vehicle', 'mechanic', 'invoice'])
             ->whereIn('branch_id', $permittedBranches->pluck('id'))
             ->when($branchIds, fn ($query) => $query->whereIn('branch_id', $branchIds))
             ->when($search, function ($query, $q) {

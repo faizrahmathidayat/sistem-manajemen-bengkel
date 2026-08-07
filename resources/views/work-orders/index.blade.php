@@ -51,6 +51,14 @@
                                 @else
                                     <span class="status-dot status-danger">Dibatalkan</span>
                                 @endif
+                                @if ($workOrder->status === \App\Support\WorkOrderStatus::COMPLETED)
+                                    <br>
+                                    @if ($workOrder->invoice)
+                                        <span class="status-dot status-active mt-1">Sudah Diinvoice</span>
+                                    @else
+                                        <span class="status-dot status-inactive mt-1">Belum Diinvoice</span>
+                                    @endif
+                                @endif
                             </td>
                             <td class="text-end">
                                 <a href="{{ route('work-orders.show', $workOrder) }}" class="btn btn-outline-primary btn-sm">

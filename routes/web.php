@@ -223,6 +223,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoice-pkb-gap/pdf-preview', [InvoicePkbGapReportController::class, 'previewPdf'])->name('invoice-pkb-gap.pdf-preview');
         Route::get('/invoice-pkb-gap/pdf-download', [InvoicePkbGapReportController::class, 'downloadPdf'])->name('invoice-pkb-gap.pdf-download');
         Route::get('/sparepart-stock', [SparepartStockReportController::class, 'index'])->name('sparepart-stock.index');
+        Route::get('/sparepart-stock/export-excel', [SparepartStockReportController::class, 'exportExcel'])->name('sparepart-stock.export-excel');
+        Route::get('/sparepart-stock/pdf-preview', [SparepartStockReportController::class, 'previewPdf'])->name('sparepart-stock.pdf-preview');
+        Route::get('/sparepart-stock/pdf-download', [SparepartStockReportController::class, 'downloadPdf'])->name('sparepart-stock.pdf-download');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

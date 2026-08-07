@@ -394,6 +394,21 @@ class AppShellTest extends TestCase
         $response->assertDontSee('Segera Hadir', false);
     }
 
+    public function test_sidebar_links_directly_to_invoice_report_when_permitted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'report.invoice.view', 'resource' => 'report', 'action' => 'invoice.view', 'description' => 'Melihat laporan invoice']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('reports.invoices.index'), false);
+        $response->assertDontSee('Segera Hadir', false);
+    }
+
     public function test_sidebar_hides_all_new_placeholder_headings_without_any_permission(): void
     {
         $user = User::factory()->create();
@@ -416,5 +431,6 @@ class AppShellTest extends TestCase
         // the placeholder's unique icon class instead.
         $response->assertDontSee('bi-journal-text', false);
         $response->assertDontSee('Laporan PKB', false);
+        $response->assertDontSee('Laporan Invoice', false);
     }
 }

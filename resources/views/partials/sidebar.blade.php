@@ -146,10 +146,9 @@
         @endif
         @if ($user->branchesWithPermission('report.invoice.view')->isNotEmpty())
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('reports.invoices.index') }}" class="nav-link {{ request()->routeIs('reports.invoices.*') ? 'active' : '' }}">
                 <i class="bi bi-file-earmark-text me-2"></i> Laporan Invoice
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
         @if ($user->branchesWithPermission('report.receivable.view')->isNotEmpty())

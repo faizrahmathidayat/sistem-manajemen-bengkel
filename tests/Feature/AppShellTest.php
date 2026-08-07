@@ -321,20 +321,17 @@ class AppShellTest extends TestCase
         // test_sidebar_shows_pkb_placeholder_when_user_has_pkb_view_permission_in_a_branch above).
         $response->assertSee(route('stock-transfers.index'), false);
     }
-    public function test_sidebar_shows_audit_log_placeholder_when_user_has_audit_log_view_permission(): void
+    public function test_sidebar_links_directly_to_audit_log_when_permitted(): void
     {
         $permission = Permission::create(['code' => 'audit_log.view', 'resource' => 'audit_log', 'action' => 'view', 'description' => 'Melihat audit log']);
         $user = User::factory()->create();
         UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
 
-        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+        $response = $this->actingAs($user)->get('/dashboard');
 
         $response->assertOk();
-        // Not a bare assertSee('Audit Log'): the Dashboard's own "Audit Log"
-        // tab button (rendered unconditionally for every user) shares that
-        // exact text with this sidebar placeholder. Assert against the
-        // sidebar placeholder's unique icon class instead.
-        $response->assertSee('bi-journal-text', false);
+        $response->assertSee(route('audit-logs.index'), false);
+        $response->assertDontSee('Segera Hadir', false);
     }
 
     public function test_sidebar_shows_reporting_placeholder_when_user_has_report_pkb_view_permission(): void

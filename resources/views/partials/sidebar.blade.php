@@ -126,10 +126,9 @@
         @endcan
         @can('audit_log.view')
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('audit-logs.index') }}" class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}">
                 <i class="bi bi-journal-text me-2"></i> Audit Log
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endcan
     </ul>

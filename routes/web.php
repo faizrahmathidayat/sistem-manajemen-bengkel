@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CustomerBranchAssignmentController;
@@ -118,6 +119,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('/stock-card', [StockCardController::class, 'index'])->name('stock-card.index');
+
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
     Route::prefix('lookup')->name('lookup.')->group(function () {
         Route::get('/customers', [LookupController::class, 'customers'])->name('customers');

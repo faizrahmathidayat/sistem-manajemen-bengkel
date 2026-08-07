@@ -8,6 +8,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoodsReceiptController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvoicePkbGapReportController;
 use App\Http\Controllers\InvoiceReportController;
 use App\Http\Controllers\LookupController;
 use App\Http\Controllers\MechanicBranchAssignmentController;
@@ -207,6 +208,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/receivables', [ReceivableReportController::class, 'index'])->name('receivables.index');
         Route::get('/pkb', [PkbReportController::class, 'index'])->name('pkb.index');
         Route::get('/invoices', [InvoiceReportController::class, 'index'])->name('invoices.index');
+        Route::get('/invoice-pkb-gap', [InvoicePkbGapReportController::class, 'index'])->name('invoice-pkb-gap.index');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

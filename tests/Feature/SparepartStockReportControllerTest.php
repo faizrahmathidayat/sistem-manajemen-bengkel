@@ -246,6 +246,30 @@ class SparepartStockReportControllerTest extends TestCase
         });
     }
 
+    public function test_index_summary_cards_stay_independent_of_the_active_stock_status_filter(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeSparepartBranch($branch, 'HABIS-1', 'Item Habis', 0, 0, 5, 50000);
+        $this->makeSparepartBranch($branch, 'KRITIS-1', 'Item Kritis', 2, 0, 5, 30000);
+        $this->makeSparepartBranch($branch, 'TERSEDIA-1', 'Item Tersedia', 10, 0, 5, 20000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        // Even though the row listing is narrowed to only "tersedia" rows, the summary cards must
+        // still reflect the FULL branch/search-filtered set (all 3 items, 2 of them kritis) — this
+        // guards against summary computed from an already stock_status-filtered query, which would
+        // wrongly zero out "Total Item Kritis" whenever a specific (non-"semua") status is active.
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock?stock_status=tersedia');
+
+        $response->assertOk();
+        $response->assertViewHas('summary', function ($summary) {
+            return (int) $summary->total_jenis_item === 3
+                && (float) $summary->total_qty_on_hand === 12.0
+                && (int) $summary->total_item_kritis === 2
+                && (float) $summary->total_nilai_inventaris === 260000.0;
+        });
+    }
+
     public function test_index_defaults_to_rekap_mode(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
@@ -288,5 +312,92 @@ class SparepartStockReportControllerTest extends TestCase
 
             return (float) $row->on_hand_qty === 10.0 && (float) $row->reserved_qty === 3.0;
         });
+    }
+
+    public function test_index_renders_filter_form_and_summary_cards(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeSparepartBranch($branch, 'OLI-001', 'Oli Mesin', 10, 0, 5, 50000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock');
+
+        $response->assertOk();
+        $response->assertSee('Total Jenis Item');
+        $response->assertSee('Total Qty On-Hand');
+        $response->assertSee('Total Item Kritis');
+        $response->assertSee('Total Nilai Inventaris');
+        $response->assertSee('name="search"', false);
+        $response->assertSee('<option value="semua" selected>Semua</option>', false);
+        $response->assertSee('<option value="rekap" selected>Rekap</option>', false);
+    }
+
+    public function test_index_rekap_mode_shows_columns_and_status_badges(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeSparepartBranch($branch, 'HABIS-1', 'Item Habis', 0, 0, 5, 10000);
+        $this->makeSparepartBranch($branch, 'KRITIS-1', 'Item Kritis', 2, 0, 5, 10000);
+        $this->makeSparepartBranch($branch, 'TERSEDIA-1', 'Item Tersedia', 10, 0, 5, 10000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock?stock_status=semua');
+
+        $response->assertOk();
+        $response->assertSee('Stok Min');
+        $response->assertSee('Nilai Inventaris');
+        $response->assertSee('>Habis<', false);
+        $response->assertSee('>Kritis<', false);
+        $response->assertSee('>Tersedia<', false);
+    }
+
+    public function test_index_detail_mode_shows_expanded_columns(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        // Distinctive multi-digit amounts — a bare single-digit assertSee (e.g. "7") is unsafe,
+        // it can false-match unrelated digits elsewhere on the page (established project lesson,
+        // see Kartu Stok's own test-fragility fix in bengkel_foundation_decisions memory).
+        $this->makeSparepartBranch($branch, 'OLI-001', 'Oli Mesin', 847, 212, 5, 17000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee('Reserved');
+        $response->assertSee('Available');
+        $response->assertSee('Harga Satuan');
+        $response->assertSee('Nilai Total');
+        // available = 847 - 212 = 635; nilai total = 847 * 17000 = 14.399.000
+        $response->assertSee('635');
+        $response->assertSee('14.399.000');
+    }
+
+    public function test_index_rekap_mode_does_not_show_detail_columns(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeSparepartBranch($branch, 'OLI-001', 'Oli Mesin', 10, 0, 5, 50000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock');
+
+        $response->assertOk();
+        $response->assertDontSee('Reserved');
+        $response->assertDontSee('Available');
+        $response->assertSee('Nilai Inventaris');
+    }
+
+    public function test_index_shows_empty_state_when_no_results_match_filter(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock');
+
+        $response->assertOk();
+        $response->assertSee('Tidak ada sparepart yang cocok dengan filter saat ini.');
     }
 }

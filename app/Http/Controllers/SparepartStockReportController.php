@@ -28,7 +28,11 @@ class SparepartStockReportController extends Controller
 
         $mode = request('mode') === 'detail' ? 'detail' : 'rekap';
 
-        $query = SparepartBranch::query()
+        // Base query — branch scope + branch_ids + search ONLY, deliberately WITHOUT the
+        // stock_status filter. The summary cards (in particular "Total Item Kritis") must stay
+        // independent of whichever stock_status the user has selected, so they are computed from
+        // this base query, before the stock_status filter is layered on for the row listing below.
+        $baseQuery = SparepartBranch::query()
             ->join('sparepart_branch_stocks', 'sparepart_branch_stocks.sparepart_branch_id', '=', 'sparepart_branches.id')
             ->whereIn('sparepart_branches.branch_id', $permittedBranches->pluck('id'))
             ->when($branchIds, fn ($q) => $q->whereIn('sparepart_branches.branch_id', $branchIds))
@@ -38,7 +42,16 @@ class SparepartStockReportController extends Controller
                     $inner->where('code', 'like', "%{$escaped}%")
                         ->orWhere('name', 'like', "%{$escaped}%");
                 });
-            })
+            });
+
+        $summary = (clone $baseQuery)->selectRaw(
+            'COUNT(*) as total_jenis_item, ' .
+            'COALESCE(SUM(sparepart_branch_stocks.on_hand_qty), 0) as total_qty_on_hand, ' .
+            'COALESCE(SUM(CASE WHEN sparepart_branches.minimum_stock > 0 AND (sparepart_branch_stocks.on_hand_qty - sparepart_branch_stocks.reserved_qty) < sparepart_branches.minimum_stock THEN 1 ELSE 0 END), 0) as total_item_kritis, ' .
+            'COALESCE(SUM(sparepart_branch_stocks.on_hand_qty * sparepart_branches.selling_price), 0) as total_nilai_inventaris'
+        )->first();
+
+        $query = (clone $baseQuery)
             ->when($stockStatus === 'habis', fn ($q) => $q->where('sparepart_branch_stocks.on_hand_qty', 0))
             ->when($stockStatus === 'kritis', function ($q) {
                 $q->where('sparepart_branch_stocks.on_hand_qty', '>', 0)
@@ -52,13 +65,6 @@ class SparepartStockReportController extends Controller
                             ->orWhereRaw('(sparepart_branch_stocks.on_hand_qty - sparepart_branch_stocks.reserved_qty) >= sparepart_branches.minimum_stock');
                     });
             });
-
-        $summary = (clone $query)->selectRaw(
-            'COUNT(*) as total_jenis_item, ' .
-            'COALESCE(SUM(sparepart_branch_stocks.on_hand_qty), 0) as total_qty_on_hand, ' .
-            'COALESCE(SUM(CASE WHEN sparepart_branches.minimum_stock > 0 AND (sparepart_branch_stocks.on_hand_qty - sparepart_branch_stocks.reserved_qty) < sparepart_branches.minimum_stock THEN 1 ELSE 0 END), 0) as total_item_kritis, ' .
-            'COALESCE(SUM(sparepart_branch_stocks.on_hand_qty * sparepart_branches.selling_price), 0) as total_nilai_inventaris'
-        )->first();
 
         $sparepartBranches = $query->select('sparepart_branches.*')
             ->addSelect(['sparepart_branch_stocks.on_hand_qty', 'sparepart_branch_stocks.reserved_qty'])

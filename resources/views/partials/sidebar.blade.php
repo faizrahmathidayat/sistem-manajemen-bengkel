@@ -167,10 +167,9 @@
         @endif
         @if ($user->branchesWithPermission('report.sparepart.view')->isNotEmpty())
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('reports.sparepart-stock.index') }}" class="nav-link {{ request()->routeIs('reports.sparepart-stock.*') ? 'active' : '' }}">
                 <i class="bi bi-file-earmark-spreadsheet me-2"></i> Laporan Sparepart
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
     </ul>

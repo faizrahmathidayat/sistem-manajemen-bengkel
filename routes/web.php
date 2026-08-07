@@ -13,6 +13,7 @@ use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\PaymentLookupController;
 use App\Http\Controllers\PaymentReceiptController;
+use App\Http\Controllers\PkbReportController;
 use App\Http\Controllers\ReceivableReportController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
@@ -203,6 +204,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/receivables', [ReceivableReportController::class, 'index'])->name('receivables.index');
+        Route::get('/pkb', [PkbReportController::class, 'index'])->name('pkb.index');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

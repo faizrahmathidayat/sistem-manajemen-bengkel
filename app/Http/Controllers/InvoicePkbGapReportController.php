@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\InvoicePkbGapReportExport;
+use App\Http\Controllers\Concerns\HandlesReportExport;
 use App\Models\Invoice;
-use App\Support\InvoiceDetailItemType;
+use App\Support\InvoicePkbGapComparator;
+use Illuminate\Support\Collection as SupportCollection;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InvoicePkbGapReportController extends Controller
 {
+    use HandlesReportExport;
+
     protected function pkbTotalExpression(): string
     {
         return '(
@@ -25,46 +31,9 @@ class InvoicePkbGapReportController extends Controller
             return view('reports.invoice-pkb-gap.no-access');
         }
 
-        $branchIds = collect(request('branch_ids', []))
-            ->map(fn ($id) => (int) $id)
-            ->intersect($permittedBranches->pluck('id'))
-            ->values()->all();
-
-        $search = is_string(request('search')) ? trim(request('search')) : null;
-
-        $gapStatus = request('gap_status');
-        $gapStatus = in_array($gapStatus, ['ada_selisih', 'invoice_gt_pkb', 'invoice_lt_pkb', 'sesuai', 'semua'], true)
-            ? $gapStatus : 'ada_selisih';
-
-        $dateFrom = $this->parseDate(request('date_from'));
-        $dateTo = $this->parseDate(request('date_to'));
-
-        $mode = request('mode') === 'detail' ? 'detail' : 'rekap';
-
+        $filters = $this->resolveFilters($permittedBranches);
+        $query = $this->buildQuery($filters, $permittedBranches);
         $pkbTotalExpr = $this->pkbTotalExpression();
-
-        $query = Invoice::query()
-            ->whereNotNull('invoices.work_order_id')
-            ->whereIn('invoices.branch_id', $permittedBranches->pluck('id'))
-            ->when($branchIds, fn ($q) => $q->whereIn('invoices.branch_id', $branchIds))
-            ->when($search, function ($q, $term) {
-                $escaped = addcslashes($term, '%_\\');
-                $q->where(function ($inner) use ($escaped) {
-                    $inner->where('invoices.number', 'like', "%{$escaped}%")
-                        ->orWhereHas('customer', function ($c) use ($escaped) {
-                            $c->where('name', 'like', "%{$escaped}%");
-                        })
-                        ->orWhereHas('workOrder', function ($w) use ($escaped) {
-                            $w->where('number', 'like', "%{$escaped}%");
-                        });
-                });
-            })
-            ->when($dateFrom, fn ($q) => $q->whereDate('invoices.invoice_date', '>=', $dateFrom))
-            ->when($dateTo, fn ($q) => $q->whereDate('invoices.invoice_date', '<=', $dateTo))
-            ->when($gapStatus === 'ada_selisih', fn ($q) => $q->whereRaw("invoices.grand_total <> {$pkbTotalExpr}"))
-            ->when($gapStatus === 'invoice_gt_pkb', fn ($q) => $q->whereRaw("invoices.grand_total > {$pkbTotalExpr}"))
-            ->when($gapStatus === 'invoice_lt_pkb', fn ($q) => $q->whereRaw("invoices.grand_total < {$pkbTotalExpr}"))
-            ->when($gapStatus === 'sesuai', fn ($q) => $q->whereRaw("invoices.grand_total = {$pkbTotalExpr}"));
 
         $summary = (clone $query)->selectRaw(
             'COUNT(*) as total_transaksi, ' .
@@ -77,7 +46,7 @@ class InvoicePkbGapReportController extends Controller
             ->selectRaw("{$pkbTotalExpr} as pkb_total")
             ->with(['branch', 'customer', 'workOrder']);
 
-        if ($mode === 'detail') {
+        if ($filters['mode'] === 'detail') {
             $invoicesQuery->with(['details', 'workOrder.serviceLines', 'workOrder.sparepartLines']);
         }
 
@@ -86,9 +55,9 @@ class InvoicePkbGapReportController extends Controller
             ->simplePaginate(15)
             ->withQueryString();
 
-        if ($mode === 'detail') {
+        if ($filters['mode'] === 'detail') {
             $invoices->getCollection()->transform(function (Invoice $invoice) {
-                $invoice->comparisonLines = $this->buildComparisonLines($invoice);
+                $invoice->comparisonLines = InvoicePkbGapComparator::build($invoice);
 
                 return $invoice;
             });
@@ -98,76 +67,137 @@ class InvoicePkbGapReportController extends Controller
             'invoices' => $invoices,
             'summary' => $summary,
             'branches' => $permittedBranches,
-            'selectedBranchIds' => $branchIds,
-            'search' => $search,
-            'gapStatus' => $gapStatus,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'mode' => $mode,
+            'selectedBranchIds' => $filters['branchIds'],
+            'search' => $filters['search'],
+            'gapStatus' => $filters['gapStatus'],
+            'dateFrom' => $filters['dateFrom'],
+            'dateTo' => $filters['dateTo'],
+            'mode' => $filters['mode'],
         ]);
     }
 
-    protected function buildComparisonLines(Invoice $invoice): array
+    public function exportExcel()
     {
-        $workOrder = $invoice->workOrder;
-        $detailsByServiceLineId = $invoice->details->whereNotNull('work_order_service_line_id')->keyBy('work_order_service_line_id');
-        $detailsBySparepartLineId = $invoice->details->whereNotNull('work_order_sparepart_line_id')->keyBy('work_order_sparepart_line_id');
+        $user = auth()->user();
+        $permittedBranches = $user->branchesWithPermission('report.invoice_pkb_gap.view');
+        $this->authorizeExport($permittedBranches);
 
-        $rows = [];
+        $filters = $this->resolveFilters($permittedBranches);
+        $query = $this->buildQuery($filters, $permittedBranches)
+            ->select('invoices.*')
+            ->selectRaw("{$this->pkbTotalExpression()} as pkb_total")
+            ->with(['branch', 'customer', 'workOrder.serviceLines', 'workOrder.sparepartLines', 'details']);
 
-        foreach ($workOrder->serviceLines as $line) {
-            $rows[] = $this->compareLine('Jasa', $line->description, $line, $detailsByServiceLineId->get($line->id));
-        }
-
-        foreach ($workOrder->sparepartLines as $line) {
-            $rows[] = $this->compareLine('Sparepart', $line->item_name_snapshot, $line, $detailsBySparepartLineId->get($line->id));
-        }
-
-        $addedDetails = $invoice->details
-            ->whereNull('work_order_service_line_id')
-            ->whereNull('work_order_sparepart_line_id');
-
-        foreach ($addedDetails as $detail) {
-            $rows[] = [
-                'item_type' => $detail->item_type === InvoiceDetailItemType::SERVICE ? 'Jasa' : 'Sparepart',
-                'item_name' => $detail->description,
-                'pkb_qty' => null,
-                'pkb_price' => null,
-                'invoice_qty' => (float) $detail->qty,
-                'invoice_price' => (float) $detail->unit_price,
-                'category' => 'added',
-            ];
-        }
-
-        return $rows;
+        return Excel::download(
+            new InvoicePkbGapReportExport($query, $filters['mode'], $this->filterSummaryText($filters)),
+            'laporan-gap-invoice-pkb-' . now()->format('Ymd-His') . '.xlsx'
+        );
     }
 
-    protected function compareLine(string $itemType, string $itemName, $pkbLine, $detail): array
+    public function previewPdf()
     {
-        if (! $detail) {
-            return [
-                'item_type' => $itemType,
-                'item_name' => $itemName,
-                'pkb_qty' => (float) $pkbLine->qty,
-                'pkb_price' => (float) $pkbLine->unit_price,
-                'invoice_qty' => null,
-                'invoice_price' => null,
-                'category' => 'removed',
-            ];
+        return $this->renderPdf('inline');
+    }
+
+    public function downloadPdf()
+    {
+        return $this->renderPdf('attachment');
+    }
+
+    protected function renderPdf(string $disposition)
+    {
+        $user = auth()->user();
+        $permittedBranches = $user->branchesWithPermission('report.invoice_pkb_gap.view');
+        $this->authorizeExport($permittedBranches);
+
+        $filters = $this->resolveFilters($permittedBranches);
+        $query = $this->buildQuery($filters, $permittedBranches)
+            ->select('invoices.*')
+            ->selectRaw("{$this->pkbTotalExpression()} as pkb_total")
+            ->with(['branch', 'customer', 'workOrder.serviceLines', 'workOrder.sparepartLines', 'details']);
+
+        $rows = $query->orderByDesc('invoices.invoice_date')->orderByDesc('invoices.id')->limit(1001)->get();
+        [$rows, $truncated] = $this->capRows($rows);
+
+        if ($filters['mode'] === 'detail') {
+            $rows = $rows->map(function (Invoice $invoice) {
+                $invoice->comparisonLines = InvoicePkbGapComparator::build($invoice);
+
+                return $invoice;
+            });
         }
 
-        $unchanged = (float) $pkbLine->qty === (float) $detail->qty
-            && (float) $pkbLine->unit_price === (float) $detail->unit_price;
+        return $this->streamPdf('reports.invoice-pkb-gap.pdf', [
+            'invoices' => $rows,
+            'mode' => $filters['mode'],
+            'truncated' => $truncated,
+            'filterSummary' => $this->filterSummaryText($filters),
+        ], 'laporan-gap-invoice-pkb', $disposition);
+    }
+
+    protected function resolveFilters(SupportCollection $permittedBranches): array
+    {
+        $branchIds = collect(request('branch_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->intersect($permittedBranches->pluck('id'))
+            ->values()->all();
+
+        $search = is_string(request('search')) ? trim(request('search')) : null;
+
+        $gapStatus = request('gap_status');
+        $gapStatus = in_array($gapStatus, ['ada_selisih', 'invoice_gt_pkb', 'invoice_lt_pkb', 'sesuai', 'semua'], true)
+            ? $gapStatus : 'ada_selisih';
 
         return [
-            'item_type' => $itemType,
-            'item_name' => $itemName,
-            'pkb_qty' => (float) $pkbLine->qty,
-            'pkb_price' => (float) $pkbLine->unit_price,
-            'invoice_qty' => (float) $detail->qty,
-            'invoice_price' => (float) $detail->unit_price,
-            'category' => $unchanged ? 'sesuai' : 'changed',
+            'branchIds' => $branchIds,
+            'search' => $search,
+            'gapStatus' => $gapStatus,
+            'dateFrom' => $this->parseDate(request('date_from')),
+            'dateTo' => $this->parseDate(request('date_to')),
+            'mode' => request('mode') === 'detail' ? 'detail' : 'rekap',
         ];
+    }
+
+    protected function buildQuery(array $filters, SupportCollection $permittedBranches)
+    {
+        $pkbTotalExpr = $this->pkbTotalExpression();
+
+        return Invoice::query()
+            ->whereNotNull('invoices.work_order_id')
+            ->whereIn('invoices.branch_id', $permittedBranches->pluck('id'))
+            ->when($filters['branchIds'], fn ($q) => $q->whereIn('invoices.branch_id', $filters['branchIds']))
+            ->when($filters['search'], function ($q, $term) {
+                $escaped = addcslashes($term, '%_\\');
+                $q->where(function ($inner) use ($escaped) {
+                    $inner->where('invoices.number', 'like', "%{$escaped}%")
+                        ->orWhereHas('customer', function ($c) use ($escaped) {
+                            $c->where('name', 'like', "%{$escaped}%");
+                        })
+                        ->orWhereHas('workOrder', function ($w) use ($escaped) {
+                            $w->where('number', 'like', "%{$escaped}%");
+                        });
+                });
+            })
+            ->when($filters['dateFrom'], fn ($q) => $q->whereDate('invoices.invoice_date', '>=', $filters['dateFrom']))
+            ->when($filters['dateTo'], fn ($q) => $q->whereDate('invoices.invoice_date', '<=', $filters['dateTo']))
+            ->when($filters['gapStatus'] === 'ada_selisih', fn ($q) => $q->whereRaw("invoices.grand_total <> {$pkbTotalExpr}"))
+            ->when($filters['gapStatus'] === 'invoice_gt_pkb', fn ($q) => $q->whereRaw("invoices.grand_total > {$pkbTotalExpr}"))
+            ->when($filters['gapStatus'] === 'invoice_lt_pkb', fn ($q) => $q->whereRaw("invoices.grand_total < {$pkbTotalExpr}"))
+            ->when($filters['gapStatus'] === 'sesuai', fn ($q) => $q->whereRaw("invoices.grand_total = {$pkbTotalExpr}"));
+    }
+
+    protected function filterSummaryText(array $filters): string
+    {
+        $branchLabel = empty($filters['branchIds']) ? 'Semua Cabang' : implode(', ', $filters['branchIds']);
+        $gapLabels = ['ada_selisih' => 'Ada Selisih', 'invoice_gt_pkb' => 'Invoice > PKB', 'invoice_lt_pkb' => 'Invoice < PKB', 'sesuai' => 'Sesuai', 'semua' => 'Semua'];
+        $gapLabel = $gapLabels[$filters['gapStatus']] ?? $filters['gapStatus'];
+        $dateLabel = ($filters['dateFrom'] || $filters['dateTo'])
+            ? ($filters['dateFrom'] ?? '...') . ' – ' . ($filters['dateTo'] ?? '...')
+            : 'Semua Tanggal';
+        $searchLabel = $filters['search'] ? " · Cari: {$filters['search']}" : '';
+        $modeLabel = $filters['mode'] === 'detail' ? 'Detail' : 'Rekap';
+
+        return "Cabang: {$branchLabel} · Status Selisih: {$gapLabel} · Tanggal: {$dateLabel}{$searchLabel} · Tampilan: {$modeLabel}";
     }
 
     protected function parseDate(?string $value): ?string

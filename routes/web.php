@@ -207,6 +207,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/receivables', [ReceivableReportController::class, 'index'])->name('receivables.index');
+        Route::get('/receivables/export-excel', [ReceivableReportController::class, 'exportExcel'])->name('receivables.export-excel');
+        Route::get('/receivables/pdf-preview', [ReceivableReportController::class, 'previewPdf'])->name('receivables.pdf-preview');
+        Route::get('/receivables/pdf-download', [ReceivableReportController::class, 'downloadPdf'])->name('receivables.pdf-download');
         Route::get('/pkb', [PkbReportController::class, 'index'])->name('pkb.index');
         Route::get('/invoices', [InvoiceReportController::class, 'index'])->name('invoices.index');
         Route::get('/invoice-pkb-gap', [InvoicePkbGapReportController::class, 'index'])->name('invoice-pkb-gap.index');

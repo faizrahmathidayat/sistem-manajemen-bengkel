@@ -16,6 +16,19 @@
                     <button type="submit" class="btn btn-primary btn-sm">Posting</button>
                 </form>
             @endcan
+            @can('print', $invoice)
+                <a href="{{ route('invoices.print', $invoice) }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-printer"></i> Cetak Invoice
+                </a>
+            @endcan
+            @can('sendEmail', $invoice)
+                <form method="POST" action="{{ route('invoices.send-email', $invoice) }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-envelope"></i> Kirim Email
+                    </button>
+                </form>
+            @endcan
         </div>
     </div>
 

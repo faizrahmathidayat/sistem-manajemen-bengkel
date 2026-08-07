@@ -4,13 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CancelInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
+use App\Mail\InvoicePostedMail;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\WorkOrder;
 use App\Services\InvoiceService;
 use App\Support\InvoiceDetailItemType;
+use App\Support\InvoicePdfBuilder;
 use DomainException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class InvoiceController extends Controller
 {
@@ -132,5 +135,28 @@ class InvoiceController extends Controller
         }
 
         return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice berhasil dibatalkan.');
+    }
+
+    public function printPdf(Invoice $invoice)
+    {
+        $this->authorize('print', $invoice);
+
+        return InvoicePdfBuilder::build($invoice)->stream(InvoicePdfBuilder::filename($invoice));
+    }
+
+    public function sendEmail(Invoice $invoice)
+    {
+        $this->authorize('sendEmail', $invoice);
+
+        $email = $invoice->customer->email;
+        if (! $email) {
+            return redirect()->route('invoices.show', $invoice)
+                ->with('error', 'Customer belum memiliki alamat email. Tidak dapat mengirim invoice.');
+        }
+
+        Mail::to($email)->queue(new InvoicePostedMail($invoice));
+
+        return redirect()->route('invoices.show', $invoice)
+            ->with('status', "Invoice sedang dikirim ke {$email} (diproses di antrean).");
     }
 }

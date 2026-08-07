@@ -38,4 +38,16 @@ class InvoicePolicy
         return $invoice->status === InvoiceStatus::DRAFT
             && $user->hasPermissionToInBranch('invoice.void', $invoice->branch_id);
     }
+
+    public function print(User $user, Invoice $invoice): bool
+    {
+        return in_array($invoice->status, [InvoiceStatus::POSTED, InvoiceStatus::PARTIALLY_PAID, InvoiceStatus::PAID], true)
+            && $user->hasPermissionToInBranch('invoice.print', $invoice->branch_id);
+    }
+
+    public function sendEmail(User $user, Invoice $invoice): bool
+    {
+        return in_array($invoice->status, [InvoiceStatus::POSTED, InvoiceStatus::PARTIALLY_PAID, InvoiceStatus::PAID], true)
+            && $user->hasPermissionToInBranch('invoice.email', $invoice->branch_id);
+    }
 }

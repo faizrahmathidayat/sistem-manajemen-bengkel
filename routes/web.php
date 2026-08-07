@@ -192,6 +192,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{invoice}', [InvoiceController::class, 'update'])->name('update');
         Route::patch('/{invoice}/post', [InvoiceController::class, 'post'])->name('post');
         Route::patch('/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('cancel');
+        Route::get('/{invoice}/print', [InvoiceController::class, 'printPdf'])->name('print');
+        Route::post('/{invoice}/send-email', [InvoiceController::class, 'sendEmail'])->name('send-email');
     });
 
     Route::prefix('payment-receipts')->name('payment-receipts.')->group(function () {

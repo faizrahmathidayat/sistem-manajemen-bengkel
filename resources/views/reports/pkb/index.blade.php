@@ -1,8 +1,13 @@
 @extends('layouts.app')
 @section('title', 'Laporan PKB')
 @section('content')
-    <div class="mb-4">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
         <h1 class="h4 mb-0"><i class="bi bi-file-earmark-bar-graph me-2"></i>Laporan PKB</h1>
+        @include('partials.report-export-buttons', [
+            'excelRoute' => 'reports.pkb.export-excel',
+            'pdfPreviewRoute' => 'reports.pkb.pdf-preview',
+            'pdfDownloadRoute' => 'reports.pkb.pdf-download',
+        ])
     </div>
 
     <div class="card mb-3">

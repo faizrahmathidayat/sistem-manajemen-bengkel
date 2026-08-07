@@ -8,6 +8,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoodsReceiptController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvoiceReportController;
 use App\Http\Controllers\LookupController;
 use App\Http\Controllers\MechanicBranchAssignmentController;
 use App\Http\Controllers\MechanicController;
@@ -205,6 +206,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/receivables', [ReceivableReportController::class, 'index'])->name('receivables.index');
         Route::get('/pkb', [PkbReportController::class, 'index'])->name('pkb.index');
+        Route::get('/invoices', [InvoiceReportController::class, 'index'])->name('invoices.index');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

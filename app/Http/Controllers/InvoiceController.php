@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateInvoiceRequest;
 use App\Mail\InvoicePostedMail;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\ServiceCatalog;
 use App\Models\WorkOrder;
 use App\Services\InvoiceService;
 use App\Support\InvoiceDetailItemType;
@@ -99,7 +100,9 @@ class InvoiceController extends Controller
             ];
         })->values();
 
-        return view('invoices.edit', compact('invoice', 'existingServiceLines', 'existingSparepartLines'));
+        $serviceCatalogs = ServiceCatalog::where('is_active', true)->orderBy('name')->get();
+
+        return view('invoices.edit', compact('invoice', 'existingServiceLines', 'existingSparepartLines', 'serviceCatalogs'));
     }
 
     public function update(UpdateInvoiceRequest $request, Invoice $invoice)

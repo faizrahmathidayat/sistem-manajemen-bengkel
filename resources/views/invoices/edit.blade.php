@@ -49,6 +49,7 @@
                     <button type="button" class="btn btn-outline-primary btn-sm" id="addInvoiceServiceLine">+ Tambah Jasa</button>
                 </div>
                 <div class="row g-2 small text-muted mb-1">
+                    <div class="col-md-3">Master Jasa</div>
                     <div class="col-md-4">Deskripsi</div>
                     <div class="col-md-2">Qty</div>
                     <div class="col-md-2">Harga Satuan</div>

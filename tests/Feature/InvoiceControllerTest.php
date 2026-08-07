@@ -536,6 +536,20 @@ class InvoiceControllerTest extends TestCase
         $response->assertSee('"work_order_sparepart_line_id":' . $sparepartDetail->work_order_sparepart_line_id, false);
     }
 
+    public function test_edit_page_offers_service_catalog_master_data_for_baris_jasa(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('service-catalog-select', false);
+        $response->assertSee('Ganti Oli');
+    }
+
     public function test_edit_page_includes_free_form_line_data_without_a_pkb_trace(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

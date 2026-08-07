@@ -1,5 +1,13 @@
 <template id="invoiceServiceLineTemplate">
     <div class="row g-2 align-items-start mb-2 service-line">
+        <div class="col-md-3 service-item-free">
+            <select class="form-select service-catalog-select">
+                <option value="">-- Manual --</option>
+                @foreach ($serviceCatalogs as $catalog)
+                    <option value="{{ $catalog->id }}" data-price="{{ $catalog->default_price }}" data-name="{{ $catalog->name }}">{{ $catalog->name }}</option>
+                @endforeach
+            </select>
+        </div>
         <div class="col-md-4">
             <input type="text" class="form-control service-description" placeholder="Deskripsi jasa">
         </div>
@@ -63,6 +71,15 @@
         if (locked) {
             description.readOnly = true;
             description.classList.add('bg-light');
+            wrapper.querySelector('.service-item-free').classList.add('d-none');
+        } else {
+            wrapper.querySelector('.service-catalog-select').addEventListener('change', function () {
+                const selected = this.selectedOptions[0];
+                if (this.value) {
+                    description.value = selected.dataset.name || '';
+                    wrapper.querySelector('.service-unit-price').value = selected.dataset.price || 0;
+                }
+            });
         }
 
         wrapper.querySelector('.remove-line').addEventListener('click', function () {

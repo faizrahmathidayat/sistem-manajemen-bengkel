@@ -251,4 +251,65 @@ class PkbReportControllerTest extends TestCase
         $response->assertSee('60.000');
         $response->assertSee('160.000');
     }
+
+    public function test_index_renders_summary_cards_and_filter_form(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED, 100000, 60000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertSee('Total PKB');
+        $response->assertSee('Total Nilai PKB');
+        $response->assertSee('Total PKB Selesai');
+        $response->assertSee('name="mechanic"', false);
+        $response->assertSee('name="date_from"', false);
+        $response->assertSee('name="date_to"', false);
+    }
+
+    public function test_index_shows_customer_vehicle_and_mechanic_columns(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch, 'Agus Setiawan');
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertSee('Budi Santoso');
+        $response->assertSee($scenario['vehicle']->plate_number);
+        $response->assertSee('Agus Setiawan');
+    }
+
+    public function test_index_shows_status_badge(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertSee('Selesai');
+    }
+
+    public function test_index_shows_empty_state_when_no_results_match_filter(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertSee('Tidak ada PKB yang cocok dengan filter saat ini.');
+    }
 }

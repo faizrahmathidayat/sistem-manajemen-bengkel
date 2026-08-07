@@ -139,10 +139,9 @@
     <ul class="nav flex-column mb-3">
         @if ($user->branchesWithPermission('report.pkb.view')->isNotEmpty())
         <li class="nav-item">
-            <span class="nav-link nav-link-disabled">
+            <a href="{{ route('reports.pkb.index') }}" class="nav-link {{ request()->routeIs('reports.pkb.*') ? 'active' : '' }}">
                 <i class="bi bi-file-earmark-bar-graph me-2"></i> Laporan PKB
-                <span class="badge-soon">Segera Hadir</span>
-            </span>
+            </a>
         </li>
         @endif
         @if ($user->branchesWithPermission('report.invoice.view')->isNotEmpty())

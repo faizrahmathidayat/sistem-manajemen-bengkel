@@ -334,7 +334,7 @@ class AppShellTest extends TestCase
         $response->assertDontSee('Segera Hadir', false);
     }
 
-    public function test_sidebar_shows_reporting_placeholder_when_user_has_report_pkb_view_permission(): void
+    public function test_sidebar_links_directly_to_pkb_report_when_permitted(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $permission = Permission::create(['code' => 'report.pkb.view', 'resource' => 'report', 'action' => 'pkb.view', 'description' => 'Melihat laporan PKB']);
@@ -345,7 +345,8 @@ class AppShellTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('Laporan PKB', false);
+        $response->assertSee(route('reports.pkb.index'), false);
+        $response->assertDontSee('Segera Hadir', false);
     }
 
     public function test_sidebar_links_directly_to_invoices_when_permitted(): void

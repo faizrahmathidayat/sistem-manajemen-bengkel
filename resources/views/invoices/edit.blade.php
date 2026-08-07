@@ -49,8 +49,7 @@
                     <button type="button" class="btn btn-outline-primary btn-sm" id="addInvoiceServiceLine">+ Tambah Jasa</button>
                 </div>
                 <div class="row g-2 small text-muted mb-1">
-                    <div class="col-md-3">Master Jasa</div>
-                    <div class="col-md-4">Deskripsi</div>
+                    <div class="col-md-7">Jasa</div>
                     <div class="col-md-2">Qty</div>
                     <div class="col-md-2">Harga Satuan</div>
                     <div class="col-md-1"></div>
@@ -107,7 +106,7 @@
             // added via "+ Tambah Jasa", where there is nothing to preselect yet.
             const row = InvoiceLineItems.addServiceLine(true);
             row.querySelector('.service-wo-line-id').value = line.work_order_service_line_id || '';
-            row.querySelector('.service-description').value = line.description;
+            row.querySelector('.service-locked-description').value = line.description;
             row.querySelector('.service-qty').value = line.qty;
             row.querySelector('.service-unit-price').value = line.unit_price;
         });

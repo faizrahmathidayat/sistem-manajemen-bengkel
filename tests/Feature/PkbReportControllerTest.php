@@ -393,4 +393,84 @@ class PkbReportControllerTest extends TestCase
                 && (float) $sparepartLine->line_total === 60000.0;
         });
     }
+
+    public function test_index_renders_tampilan_filter_with_rekap_selected_by_default(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertSee('name="mode"', false);
+        $response->assertSee('<option value="rekap" selected>Rekap</option>', false);
+    }
+
+    public function test_index_detail_mode_shows_line_item_columns_and_rows(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED, 100000, 60000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee('Tipe Item');
+        $response->assertSee('Nama Item/Jasa');
+        $response->assertSee('Subtotal Line');
+        $response->assertSee('Jasa');
+        $response->assertSee('Sparepart');
+        $response->assertSee('Ganti Oli');
+        $response->assertSee('Oli Mesin');
+        $response->assertSee('100.000');
+        $response->assertSee('60.000');
+    }
+
+    public function test_index_rekap_mode_does_not_show_detail_columns(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED, 100000, 60000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertDontSee('Tipe Item');
+        $response->assertDontSee('Nama Item/Jasa');
+        $response->assertSee('Subtotal Jasa');
+        $response->assertSee('Subtotal Sparepart');
+    }
+
+    public function test_index_detail_mode_shows_placeholder_row_for_work_order_with_no_lines(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $draft = $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::DRAFT, 0, 0);
+        $draft->serviceLines()->delete();
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee($draft->number);
+        $response->assertSee('—');
+    }
+
+    public function test_index_detail_mode_shows_empty_state_when_no_results_match_filter(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee('Tidak ada PKB yang cocok dengan filter saat ini.');
+    }
 }

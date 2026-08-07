@@ -35,6 +35,13 @@
                     <label class="form-label small">Sampai</label>
                     <input type="date" name="date_to" value="{{ $dateTo }}" class="form-control form-control-sm">
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Tampilan</label>
+                    <select name="mode" class="form-select form-select-sm">
+                        <option value="rekap" {{ $mode === 'rekap' ? 'selected' : '' }}>Rekap</option>
+                        <option value="detail" {{ $mode === 'detail' ? 'selected' : '' }}>Detail</option>
+                    </select>
+                </div>
                 <div class="col-12">
                     <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Terapkan Filter</button>
                 </div>
@@ -74,6 +81,96 @@
 
     <div class="card">
         <div class="table-responsive">
+        @if ($mode === 'detail')
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>No. PKB</th>
+                        <th>Tanggal</th>
+                        <th>Customer &amp; Kendaraan</th>
+                        <th>Tipe Item</th>
+                        <th>Nama Item/Jasa</th>
+                        <th>Qty</th>
+                        <th>Harga Satuan</th>
+                        <th>Subtotal Line</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($workOrders as $workOrder)
+                        @php
+                            switch ($workOrder->status) {
+                                case \App\Support\WorkOrderStatus::DRAFT:
+                                    $statusBadge = '<span class="status-dot status-inactive">Draft</span>';
+                                    break;
+                                case \App\Support\WorkOrderStatus::OPEN:
+                                    $statusBadge = '<span class="status-dot status-active">Dikonfirmasi</span>';
+                                    break;
+                                case \App\Support\WorkOrderStatus::SHORTAGE:
+                                    $statusBadge = '<span class="status-dot status-warning">Kurang Stok</span>';
+                                    break;
+                                case \App\Support\WorkOrderStatus::COMPLETED:
+                                    $statusBadge = '<span class="status-dot status-active">Selesai</span>';
+                                    break;
+                                default:
+                                    $statusBadge = '<span class="status-dot status-danger">Dibatalkan</span>';
+                            }
+                            $lines = $workOrder->serviceLines->map(function ($line) {
+                                return ['type' => 'Jasa', 'name' => $line->description, 'qty' => $line->qty, 'price' => $line->unit_price, 'total' => $line->line_total];
+                            })->concat($workOrder->sparepartLines->map(function ($line) {
+                                return ['type' => 'Sparepart', 'name' => $line->item_name_snapshot, 'qty' => $line->qty, 'price' => $line->unit_price, 'total' => $line->line_total];
+                            }));
+                        @endphp
+                        @if ($lines->isEmpty())
+                            <tr>
+                                <td><a href="{{ route('work-orders.show', $workOrder) }}"><code>{{ $workOrder->number }}</code></a></td>
+                                <td>{{ $workOrder->work_order_date->format('d/m/Y') }}</td>
+                                <td>
+                                    {{ $workOrder->customer->name }}<br>
+                                    <span class="text-muted small">{{ $workOrder->vehicle->plate_number }}</span>
+                                </td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>{!! $statusBadge !!}</td>
+                            </tr>
+                        @else
+                            @foreach ($lines as $line)
+                                <tr>
+                                    <td><a href="{{ route('work-orders.show', $workOrder) }}"><code>{{ $workOrder->number }}</code></a></td>
+                                    <td>{{ $workOrder->work_order_date->format('d/m/Y') }}</td>
+                                    <td>
+                                        {{ $workOrder->customer->name }}<br>
+                                        <span class="text-muted small">{{ $workOrder->vehicle->plate_number }}</span>
+                                    </td>
+                                    <td>{{ $line['type'] }}</td>
+                                    <td>{{ $line['name'] }}</td>
+                                    <td>{{ number_format($line['qty'], 0, ',', '.') }}</td>
+                                    <td>{{ number_format($line['price'], 0, ',', '.') }}</td>
+                                    <td>{{ number_format($line['total'], 0, ',', '.') }}</td>
+                                    <td>{!! $statusBadge !!}</td>
+                                </tr>
+                            @endforeach
+                        @endif
+                    @empty
+                        <tr>
+                            <td colspan="9" class="p-0">
+                                @include('partials.empty-state', [
+                                    'icon' => 'bi-file-earmark-bar-graph',
+                                    'title' => 'Belum ada data PKB',
+                                    'description' => 'Tidak ada PKB yang cocok dengan filter saat ini.',
+                                    'ctaVisible' => false,
+                                    'ctaRoute' => '',
+                                    'ctaLabel' => '',
+                                ])
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        @else
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
@@ -132,6 +229,7 @@
                     @endforelse
                 </tbody>
             </table>
+        @endif
         </div>
     </div>
 

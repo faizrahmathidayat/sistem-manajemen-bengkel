@@ -30,6 +30,11 @@
                     <button type="submit" class="btn btn-outline-danger btn-sm">Batalkan</button>
                 </form>
             @endcan
+            @can('print', $workOrder)
+                <a href="{{ route('work-orders.print', $workOrder) }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-printer"></i> Cetak PKB
+                </a>
+            @endcan
         </div>
     </div>
 

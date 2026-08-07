@@ -45,4 +45,9 @@ class WorkOrderPolicy
             && is_null($workOrder->shortage_overridden_at)
             && $user->hasPermissionToInBranch('pkb.override_stock_shortage', $workOrder->branch_id);
     }
+
+    public function print(User $user, WorkOrder $workOrder): bool
+    {
+        return $user->hasPermissionToInBranch('pkb.print', $workOrder->branch_id);
+    }
 }

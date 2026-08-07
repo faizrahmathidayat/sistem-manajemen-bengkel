@@ -15,6 +15,7 @@ use App\Models\WorkOrderServiceLine;
 use App\Models\WorkOrderSparepartLine;
 use App\Services\DocumentNumberGenerator;
 use App\Support\WorkOrderStatus;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 
 class WorkOrderController extends Controller
@@ -337,6 +338,17 @@ class WorkOrderController extends Controller
         }
 
         return redirect()->route('work-orders.show', $workOrder)->with('status', 'PKB berhasil dibatalkan.');
+    }
+
+    public function printPdf(WorkOrder $workOrder)
+    {
+        $this->authorize('print', $workOrder);
+
+        $workOrder->load(['branch', 'customer', 'vehicle.brand', 'vehicle.type', 'mechanic', 'serviceLines', 'sparepartLines.reservations']);
+
+        $pdf = Pdf::loadView('work-orders.print-pdf', ['workOrder' => $workOrder])->setPaper('a4', 'portrait');
+
+        return $pdf->stream('pkb-' . $workOrder->number . '.pdf');
     }
 
     protected function syncServiceLines(WorkOrder $workOrder, array $lines): void

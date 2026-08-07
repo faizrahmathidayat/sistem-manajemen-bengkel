@@ -145,6 +145,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{workOrder}/confirm', [WorkOrderController::class, 'confirm'])->name('confirm');
         Route::patch('/{workOrder}/complete', [WorkOrderController::class, 'complete'])->name('complete');
         Route::patch('/{workOrder}/override-shortage', [WorkOrderController::class, 'overrideShortage'])->name('overrideShortage');
+        Route::get('/{workOrder}/print', [WorkOrderController::class, 'printPdf'])->name('print');
     });
 
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {

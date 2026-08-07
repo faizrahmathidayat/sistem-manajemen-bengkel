@@ -20,6 +20,7 @@ use App\Models\VehicleCategory;
 use App\Models\VehicleType;
 use App\Models\WorkOrder;
 use App\Services\InvoiceService;
+use App\Services\PaymentService;
 use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -126,6 +127,43 @@ class InvoicePrintEmailTest extends TestCase
         $this->assertStringContainsString($invoice->number, $content);
         $this->assertStringContainsString('Budi Santoso', $content);
         $this->assertStringContainsString("B 1234 {$branch->code}", $content);
+    }
+
+    public function test_print_payment_history_only_includes_posted_receipts(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makePostedInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.print');
+
+        $paymentService = new PaymentService();
+        $postedReceipt = $paymentService->createPaymentReceipt([
+            'branch_id' => $branch->id,
+            'customer_id' => $invoice->customer_id,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'reference_number' => null,
+            'amount' => 30000,
+            'notes' => null,
+            'allocations' => [['invoice_id' => $invoice->id, 'allocated_amount' => 30000]],
+        ]);
+        $voidedReceipt = $paymentService->createPaymentReceipt([
+            'branch_id' => $branch->id,
+            'customer_id' => $invoice->customer_id,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'reference_number' => null,
+            'amount' => 20000,
+            'notes' => null,
+            'allocations' => [['invoice_id' => $invoice->id, 'allocated_amount' => 20000]],
+        ]);
+        $paymentService->voidPaymentReceipt($voidedReceipt, 'Kesalahan input.');
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}/print");
+
+        $content = $this->extractPdfText($response->getContent());
+        $this->assertStringContainsString($postedReceipt->number, $content);
+        $this->assertStringNotContainsString($voidedReceipt->number, $content);
     }
 
     public function test_print_is_forbidden_for_draft_invoice(): void

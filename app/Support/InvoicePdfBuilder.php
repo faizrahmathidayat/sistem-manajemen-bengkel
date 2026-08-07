@@ -11,8 +11,12 @@ class InvoicePdfBuilder
     public static function build(Invoice $invoice): DomPdf
     {
         $invoice->loadMissing([
-            'branch', 'customer', 'workOrder.vehicle.brand', 'workOrder.vehicle.type',
-            'details', 'allocations.paymentReceipt',
+            'branch', 'customer', 'workOrder.vehicle.brand', 'workOrder.vehicle.type', 'details',
+            'allocations' => function ($query) {
+                $query->whereHas('paymentReceipt', function ($query) {
+                    $query->where('status', PaymentReceiptStatus::POSTED);
+                })->with('paymentReceipt');
+            },
         ]);
 
         return Pdf::loadView('invoices.print-pdf', ['invoice' => $invoice])->setPaper('a4', 'portrait');

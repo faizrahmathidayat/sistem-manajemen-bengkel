@@ -100,8 +100,12 @@
 
         const existingServiceLines = @json($existingServiceLines);
         existingServiceLines.forEach(function (line) {
-            const locked = !!line.work_order_service_line_id;
-            const row = InvoiceLineItems.addServiceLine(locked);
+            // Existing lines always render read-only, regardless of PKB trace: the Master Jasa
+            // dropdown has no reliable way to preselect a catalog entry for an already-saved line
+            // (invoice_details doesn't store service_catalog_id), so showing it unselected next to
+            // a filled-in description is misleading. It only makes sense for genuinely new lines
+            // added via "+ Tambah Jasa", where there is nothing to preselect yet.
+            const row = InvoiceLineItems.addServiceLine(true);
             row.querySelector('.service-wo-line-id').value = line.work_order_service_line_id || '';
             row.querySelector('.service-description').value = line.description;
             row.querySelector('.service-qty').value = line.qty;

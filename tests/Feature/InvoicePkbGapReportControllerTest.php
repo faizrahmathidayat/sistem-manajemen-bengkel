@@ -502,4 +502,128 @@ class InvoicePkbGapReportControllerTest extends TestCase
                 && $added['pkb_qty'] === null;
         });
     }
+
+    public function test_index_renders_filter_form_and_summary_cards(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $this->makeGapPair($branch, $customer, 100000, 0, now()->toDateString(), [
+            'discount_percent' => 0, 'tax_percent' => 10,
+            'services' => [['description' => 'Ganti Oli', 'qty' => 1, 'unit_price' => 100000]],
+            'spareparts' => [],
+        ]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice_pkb_gap.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoice-pkb-gap');
+
+        $response->assertOk();
+        $response->assertSee('Total Transaksi Terhubung');
+        $response->assertSee('Total Nilai PKB');
+        $response->assertSee('Total Nilai Invoice');
+        $response->assertSee('Total Varian Netto');
+        $response->assertSee('name="search"', false);
+        $response->assertSee('name="date_from"', false);
+        $response->assertSee('name="date_to"', false);
+        $response->assertSee('<option value="ada_selisih" selected>Ada Selisih</option>', false);
+        $response->assertSee('<option value="rekap" selected>Rekap</option>', false);
+    }
+
+    public function test_index_rekap_mode_shows_gap_columns_and_status_badge(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $this->makeGapPair($branch, $customer, 100000, 0, now()->toDateString(), [
+            'discount_percent' => 0, 'tax_percent' => 10,
+            'services' => [['description' => 'Ganti Oli', 'qty' => 1, 'unit_price' => 100000]],
+            'spareparts' => [],
+        ]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice_pkb_gap.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoice-pkb-gap');
+
+        $response->assertOk();
+        $response->assertSee('Total PKB');
+        $response->assertSee('Total Invoice');
+        $response->assertSee('Selisih');
+        $response->assertSee('100.000');
+        $response->assertSee('110.000');
+        $response->assertSee('Invoice &gt; PKB', false);
+    }
+
+    public function test_index_detail_mode_shows_line_comparison_columns_and_categories(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $pair = $this->makeGapPair($branch, $customer, 100000, 60000, now()->toDateString(), null, false);
+        $serviceDetail = $pair['invoice']->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $editor = User::factory()->create();
+        $this->grantBranchPermission($editor, $branch, 'invoice.edit');
+        $this->actingAs($editor)->put("/invoices/{$pair['invoice']->id}", [
+            'discount_percent' => 0, 'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => 'Ganti Oli', 'qty' => 1, 'unit_price' => 120000,
+            ]],
+            'spareparts' => [],
+        ]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice_pkb_gap.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoice-pkb-gap?mode=detail&gap_status=semua');
+
+        $response->assertOk();
+        $response->assertSee('Nama Item');
+        $response->assertSee('Qty PKB');
+        $response->assertSee('Qty Invoice');
+        $response->assertSee('Ganti Oli');
+        $response->assertSee('Oli Mesin');
+        $response->assertSee('Berubah');
+        $response->assertSee('Dihapus');
+    }
+
+    public function test_index_rekap_mode_does_not_show_detail_columns(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $this->makeGapPair($branch, $customer, 100000, 0, now()->toDateString(), [
+            'discount_percent' => 0, 'tax_percent' => 10,
+            'services' => [['description' => 'Ganti Oli', 'qty' => 1, 'unit_price' => 100000]],
+            'spareparts' => [],
+        ]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice_pkb_gap.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoice-pkb-gap');
+
+        $response->assertOk();
+        $response->assertDontSee('Qty PKB');
+        $response->assertDontSee('Qty Invoice');
+        $response->assertSee('Total PKB');
+    }
+
+    public function test_index_shows_empty_state_when_no_results_match_filter(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice_pkb_gap.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoice-pkb-gap');
+
+        $response->assertOk();
+        $response->assertSee('Tidak ada transaksi yang cocok dengan filter saat ini.');
+    }
+
+    public function test_index_detail_mode_shows_empty_state_when_no_results_match_filter(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice_pkb_gap.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoice-pkb-gap?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee('Tidak ada transaksi yang cocok dengan filter saat ini.');
+    }
 }

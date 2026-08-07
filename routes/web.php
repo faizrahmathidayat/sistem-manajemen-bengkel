@@ -215,6 +215,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pkb/pdf-preview', [PkbReportController::class, 'previewPdf'])->name('pkb.pdf-preview');
         Route::get('/pkb/pdf-download', [PkbReportController::class, 'downloadPdf'])->name('pkb.pdf-download');
         Route::get('/invoices', [InvoiceReportController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/export-excel', [InvoiceReportController::class, 'exportExcel'])->name('invoices.export-excel');
+        Route::get('/invoices/pdf-preview', [InvoiceReportController::class, 'previewPdf'])->name('invoices.pdf-preview');
+        Route::get('/invoices/pdf-download', [InvoiceReportController::class, 'downloadPdf'])->name('invoices.pdf-download');
         Route::get('/invoice-pkb-gap', [InvoicePkbGapReportController::class, 'index'])->name('invoice-pkb-gap.index');
         Route::get('/sparepart-stock', [SparepartStockReportController::class, 'index'])->name('sparepart-stock.index');
     });

@@ -312,4 +312,85 @@ class PkbReportControllerTest extends TestCase
         $response->assertOk();
         $response->assertSee('Tidak ada PKB yang cocok dengan filter saat ini.');
     }
+
+    public function test_index_defaults_to_rekap_mode_and_does_not_eager_load_line_collections(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED, 100000, 60000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertViewHas('mode', 'rekap');
+        $response->assertViewHas('workOrders', function ($workOrders) {
+            $workOrder = $workOrders->first();
+
+            return $workOrder->relationLoaded('serviceLines') === false
+                && $workOrder->relationLoaded('sparepartLines') === false
+                && array_key_exists('subtotal_service', $workOrder->getAttributes())
+                && array_key_exists('subtotal_sparepart', $workOrder->getAttributes());
+        });
+    }
+
+    public function test_index_detail_mode_eager_loads_line_collections_and_skips_subtotal_sums(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED, 100000, 60000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb?mode=detail');
+
+        $response->assertOk();
+        $response->assertViewHas('mode', 'detail');
+        $response->assertViewHas('workOrders', function ($workOrders) {
+            $workOrder = $workOrders->first();
+
+            return $workOrder->relationLoaded('serviceLines') === true
+                && $workOrder->relationLoaded('sparepartLines') === true
+                && ! array_key_exists('subtotal_service', $workOrder->getAttributes())
+                && ! array_key_exists('subtotal_sparepart', $workOrder->getAttributes());
+        });
+    }
+
+    public function test_index_invalid_mode_value_falls_back_to_rekap(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb?mode=bogus');
+
+        $response->assertOk();
+        $response->assertViewHas('mode', 'rekap');
+    }
+
+    public function test_index_detail_mode_loaded_lines_carry_expected_snapshot_fields(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED, 100000, 60000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb?mode=detail');
+
+        $response->assertOk();
+        $response->assertViewHas('workOrders', function ($workOrders) {
+            $workOrder = $workOrders->first();
+            $serviceLine = $workOrder->serviceLines->first();
+            $sparepartLine = $workOrder->sparepartLines->first();
+
+            return $serviceLine->description === 'Ganti Oli'
+                && (float) $serviceLine->line_total === 100000.0
+                && $sparepartLine->item_name_snapshot === 'Oli Mesin'
+                && (float) $sparepartLine->line_total === 60000.0;
+        });
+    }
 }

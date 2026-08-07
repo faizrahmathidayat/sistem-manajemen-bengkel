@@ -35,6 +35,8 @@ class PkbReportController extends Controller
         $dateFrom = $this->parseDate(request('date_from'));
         $dateTo = $this->parseDate(request('date_to'));
 
+        $mode = request('mode') === 'detail' ? 'detail' : 'rekap';
+
         $query = WorkOrder::query()
             ->whereIn('branch_id', $permittedBranches->pluck('id'))
             ->when($branchIds, fn ($q) => $q->whereIn('branch_id', $branchIds))
@@ -58,10 +60,16 @@ class PkbReportController extends Controller
             [WorkOrderStatus::COMPLETED]
         )->first();
 
-        $workOrders = $query->with(['branch', 'customer', 'vehicle', 'mechanic'])
-            ->withSum('serviceLines as subtotal_service', 'line_total')
-            ->withSum('sparepartLines as subtotal_sparepart', 'line_total')
-            ->orderByDesc('work_order_date')
+        $workOrders = $query->with(['branch', 'customer', 'vehicle', 'mechanic']);
+
+        if ($mode === 'detail') {
+            $workOrders->with(['serviceLines', 'sparepartLines']);
+        } else {
+            $workOrders->withSum('serviceLines as subtotal_service', 'line_total')
+                ->withSum('sparepartLines as subtotal_sparepart', 'line_total');
+        }
+
+        $workOrders = $workOrders->orderByDesc('work_order_date')
             ->orderByDesc('id')
             ->simplePaginate(15)
             ->withQueryString();
@@ -75,6 +83,7 @@ class PkbReportController extends Controller
             'status' => $status,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
+            'mode' => $mode,
         ]);
     }
 

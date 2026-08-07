@@ -22,15 +22,15 @@ class AddSparepartBranchIdToInvoiceDetailsTable extends Migration
             WHERE invoice_details.item_type = "sparepart"
         ');
 
-        DB::statement('ALTER TABLE invoice_details DROP CHECK ck_invoice_details_single_source');
+        DB::statement('ALTER TABLE invoice_details DROP CONSTRAINT ck_invoice_details_single_source');
         DB::statement('ALTER TABLE invoice_details ADD CONSTRAINT ck_invoice_details_not_both_sources CHECK (NOT (work_order_service_line_id IS NOT NULL AND work_order_sparepart_line_id IS NOT NULL))');
         DB::statement("ALTER TABLE invoice_details ADD CONSTRAINT ck_invoice_details_sparepart_requires_branch CHECK (item_type <> 'sparepart' OR sparepart_branch_id IS NOT NULL)");
     }
 
     public function down()
     {
-        DB::statement('ALTER TABLE invoice_details DROP CHECK ck_invoice_details_sparepart_requires_branch');
-        DB::statement('ALTER TABLE invoice_details DROP CHECK ck_invoice_details_not_both_sources');
+        DB::statement('ALTER TABLE invoice_details DROP CONSTRAINT ck_invoice_details_sparepart_requires_branch');
+        DB::statement('ALTER TABLE invoice_details DROP CONSTRAINT ck_invoice_details_not_both_sources');
         DB::statement('ALTER TABLE invoice_details ADD CONSTRAINT ck_invoice_details_single_source CHECK ((work_order_service_line_id IS NOT NULL AND work_order_sparepart_line_id IS NULL) OR (work_order_service_line_id IS NULL AND work_order_sparepart_line_id IS NOT NULL))');
 
         Schema::table('invoice_details', function (Blueprint $table) {

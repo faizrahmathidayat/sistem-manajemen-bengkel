@@ -22,6 +22,7 @@ use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SparepartBranchController;
+use App\Http\Controllers\SparepartStockReportController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockCardController;
 use App\Http\Controllers\StockTransferController;
@@ -209,6 +210,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pkb', [PkbReportController::class, 'index'])->name('pkb.index');
         Route::get('/invoices', [InvoiceReportController::class, 'index'])->name('invoices.index');
         Route::get('/invoice-pkb-gap', [InvoicePkbGapReportController::class, 'index'])->name('invoice-pkb-gap.index');
+        Route::get('/sparepart-stock', [SparepartStockReportController::class, 'index'])->name('sparepart-stock.index');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

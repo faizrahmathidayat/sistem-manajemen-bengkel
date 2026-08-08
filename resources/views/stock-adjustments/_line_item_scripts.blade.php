@@ -9,10 +9,10 @@
             <input type="number" step="0.001" class="form-control stock-adjustment-system-qty" readonly tabindex="-1">
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.001" min="0" class="form-control stock-adjustment-physical-qty">
+            <input type="number" step="0.001" min="0" required class="form-control stock-adjustment-physical-qty">
         </div>
         <div class="col-md-3">
-            <input type="text" class="form-control stock-adjustment-reason" placeholder="Alasan baris ini">
+            <input type="text" required class="form-control stock-adjustment-reason" placeholder="Alasan baris ini">
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-stock-adjustment-line">&times;</button>

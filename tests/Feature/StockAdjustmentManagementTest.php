@@ -235,6 +235,55 @@ class StockAdjustmentManagementTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_create_form_marks_physical_qty_and_line_reason_required(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/stock-adjustments/create');
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        preg_match('/<input[^>]*stock-adjustment-physical-qty[^>]*>/', $content, $qtyMatch);
+        $this->assertNotEmpty($qtyMatch, 'Input qty fisik baris penyesuaian tidak ditemukan.');
+        $this->assertStringContainsString('required', $qtyMatch[0]);
+
+        preg_match('/<input[^>]*stock-adjustment-reason[^>]*>/', $content, $reasonMatch);
+        $this->assertNotEmpty($reasonMatch, 'Input alasan baris penyesuaian tidak ditemukan.');
+        $this->assertStringContainsString('required', $reasonMatch[0]);
+    }
+
+    public function test_edit_form_marks_physical_qty_and_line_reason_required(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::DRAFT,
+        ]);
+        \App\Models\StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'system_qty' => 10, 'physical_qty' => 15, 'adjustment_qty' => 5, 'reason' => 'Ditemukan lebih',
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/stock-adjustments/{$stockAdjustment->id}/edit");
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        preg_match('/<input[^>]*stock-adjustment-physical-qty[^>]*>/', $content, $qtyMatch);
+        $this->assertNotEmpty($qtyMatch, 'Input qty fisik baris penyesuaian tidak ditemukan.');
+        $this->assertStringContainsString('required', $qtyMatch[0]);
+
+        preg_match('/<input[^>]*stock-adjustment-reason[^>]*>/', $content, $reasonMatch);
+        $this->assertNotEmpty($reasonMatch, 'Input alasan baris penyesuaian tidak ditemukan.');
+        $this->assertStringContainsString('required', $reasonMatch[0]);
+    }
+
     public function test_create_page_loads_select2_for_sparepart_picker(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

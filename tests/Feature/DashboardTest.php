@@ -163,16 +163,33 @@ class DashboardTest extends TestCase
         ]);
     }
 
-    public function test_dashboard_shows_pkb_invoice_tab_rows(): void
+    public function test_dashboard_shows_real_pkb_invoice_tab_rows_and_not_the_old_dummy_fixture(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $user = User::factory()->create();
-        (new UserBranchService())->assign($user, $branch, true);
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
 
-        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+        $customer = \App\Models\Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        \App\Models\CustomerBranch::create(['customer_id' => $customer->id, 'branch_id' => $branch->id]);
+        $category = \App\Models\VehicleCategory::create(['name' => 'Mobil']);
+        $brand = \App\Models\VehicleBrand::create(['category_id' => $category->id, 'name' => 'Toyota']);
+        $type = \App\Models\VehicleType::create(['brand_id' => $brand->id, 'name' => 'Avanza']);
+        $vehicle = \App\Models\Vehicle::create(['customer_id' => $customer->id, 'category_id' => $category->id, 'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 1234 JKT']);
+        $mechanic = \App\Models\Mechanic::create(['name' => 'Agus Setiawan']);
+        \App\Models\MechanicBranch::create(['mechanic_id' => $mechanic->id, 'branch_id' => $branch->id]);
+        \App\Models\WorkOrder::create([
+            'number' => 'PKB-REAL-1', 'branch_id' => $branch->id, 'customer_id' => $customer->id,
+            'vehicle_id' => $vehicle->id, 'mechanic_id' => $mechanic->id,
+            'work_order_date' => now()->toDateString(), 'status' => \App\Support\WorkOrderStatus::OPEN,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard?branch_ids[]=' . $branch->id);
 
         $response->assertOk();
-        $response->assertSee('PKB-2026080001', false);
+        // The old dummy fixture's hardcoded PKB number must never appear again now
+        // that this tab is wired to real WorkOrder/Invoice data.
+        $response->assertDontSee('PKB-2026080001');
+        $response->assertSee('PKB-REAL-1');
     }
 
     public function test_kartu_stok_tab_lists_only_spareparts_in_selected_branches(): void
@@ -265,16 +282,33 @@ class DashboardTest extends TestCase
         $response->assertJson(['kartuStok' => ['mutations' => []]]);
     }
 
-    public function test_dashboard_shows_audit_log_tab_rows(): void
+    public function test_dashboard_shows_real_audit_log_tab_rows_and_not_the_old_dummy_fixture(): void
     {
+        // Uses getJson() rather than get(): the Blade partial for this tab still
+        // expects the old dummy row shape (permission/impact) until Task 3 updates
+        // it to the new one (event/eventLabel/severity) — asserting on the JSON
+        // payload here verifies the controller's real data without coupling this
+        // test to that not-yet-updated view.
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $user = User::factory()->create();
         (new UserBranchService())->assign($user, $branch, true);
+        $permission = Permission::firstOrCreate(
+            ['code' => 'audit_log.view'],
+            ['resource' => 'audit_log', 'action' => 'view', 'description' => 'audit_log.view']
+        );
+        \App\Models\UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
+        \App\Models\AuditLog::create(['branch_id' => $branch->id, 'event' => \App\Support\AuditEvent::INVOICE_POSTED]);
 
-        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+        $response = $this->actingAs(User::find($user->id))->getJson('/dashboard?branch_ids[]=' . $branch->id);
 
         $response->assertOk();
-        $response->assertSee('sparepart.create', false);
+        $response->assertJson(['canViewAuditLog' => true]);
+        $rows = $response->json('auditLogRows');
+        $this->assertCount(1, $rows);
+        // The old dummy fixture's hardcoded permission-code field must never appear
+        // again now that this tab is wired to real AuditLog data.
+        $this->assertArrayNotHasKey('permission', $rows[0]);
+        $this->assertSame('invoice.posted', $rows[0]['event']);
     }
 
     public function test_dashboard_page_includes_loading_overlay_markup(): void

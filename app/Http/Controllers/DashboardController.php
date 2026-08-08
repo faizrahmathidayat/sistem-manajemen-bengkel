@@ -26,8 +26,14 @@ class DashboardController extends Controller
 
         $selectedBranchIds = $this->resolveSelectedBranchIds($request, $user, $allowedBranches);
         $sparepartId = filter_var($request->input('sparepart_id'), FILTER_VALIDATE_INT) ?: null;
+        $pkbInvoiceFilters = [
+            'q' => is_string($request->input('pkb_invoice_q')) ? trim($request->input('pkb_invoice_q')) : null,
+            'status' => $request->input('pkb_invoice_status') ?: null,
+            'dateFrom' => $this->parseDate($request->input('pkb_invoice_date_from')),
+            'dateTo' => $this->parseDate($request->input('pkb_invoice_date_to')),
+        ];
 
-        $payload = $this->buildPayload($user, $selectedBranchIds, $sparepartId);
+        $payload = $this->buildPayload($user, $selectedBranchIds, $sparepartId, $pkbInvoiceFilters);
 
         if ($request->wantsJson()) {
             return response()->json($payload);
@@ -36,7 +42,17 @@ class DashboardController extends Controller
         return view('dashboard.index', array_merge($payload, [
             'allowedBranches' => $allowedBranches,
             'selectedBranchIds' => $selectedBranchIds,
+            'pkbInvoiceFilters' => $pkbInvoiceFilters,
         ]));
+    }
+
+    protected function parseDate(?string $value): ?string
+    {
+        if (! is_string($value) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return null;
+        }
+
+        return $value;
     }
 
     protected function resolveSelectedBranchIds(Request $request, User $user, Collection $allowedBranches): array
@@ -263,30 +279,153 @@ class DashboardController extends Controller
             ->all();
     }
 
-    protected function dummyPkbInvoiceRows(): array
+    protected function computePkbInvoiceRows(array $pkbScopedBranchIds, array $invoiceScopedBranchIds, array $filters): array
     {
-        return [
-            ['number' => 'PKB-2026080001', 'customer' => 'Budi Santoso', 'plate' => 'B 1234 ABC', 'branch' => 'Cabang Jakarta', 'status' => 'OPEN'],
-            ['number' => 'PKB-2026080002', 'customer' => 'Siti Aminah', 'plate' => 'B 5678 XYZ', 'branch' => 'Cabang Jakarta', 'status' => 'SHORTAGE'],
-            ['number' => 'INV-2026080001', 'customer' => 'Andi Wijaya', 'plate' => 'D 4321 DEF', 'branch' => 'Cabang Bandung', 'status' => 'POSTED'],
-            ['number' => 'PKB-2026080003', 'customer' => 'Dewi Lestari', 'plate' => 'B 9999 GHI', 'branch' => 'Cabang Jakarta', 'status' => 'COMPLETED'],
-        ];
+        [$type, $status] = $this->splitTypeStatus($filters['status'] ?? null);
+
+        $pkbRows = collect();
+        if (! empty($pkbScopedBranchIds) && $type !== 'invoice') {
+            $pkbRows = WorkOrder::whereIn('branch_id', $pkbScopedBranchIds)
+                ->with(['customer', 'vehicle', 'branch'])
+                ->when($status && $type === 'pkb', fn ($q) => $q->where('status', $status))
+                ->when($filters['q'] ?? null, function ($q, $term) {
+                    $escaped = addcslashes($term, '%_\\');
+                    $q->where(function ($inner) use ($escaped) {
+                        $inner->where('number', 'like', "%{$escaped}%")
+                            ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$escaped}%"))
+                            ->orWhereHas('vehicle', fn ($v) => $v->where('plate_number', 'like', "%{$escaped}%"));
+                    });
+                })
+                ->when($filters['dateFrom'] ?? null, fn ($q, $d) => $q->whereDate('work_order_date', '>=', $d))
+                ->when($filters['dateTo'] ?? null, fn ($q, $d) => $q->whereDate('work_order_date', '<=', $d))
+                ->orderByDesc('work_order_date')->orderByDesc('id')
+                ->limit(15)
+                ->get()
+                ->map(fn (WorkOrder $wo) => [
+                    'type' => 'pkb',
+                    'typeLabel' => 'PKB',
+                    'number' => $wo->number,
+                    'customer' => optional($wo->customer)->name ?? '-',
+                    'plate' => optional($wo->vehicle)->plate_number ?? '-',
+                    'branch' => optional($wo->branch)->name ?? '-',
+                    'status' => $wo->status,
+                    'statusLabel' => $this->workOrderStatusLabel($wo->status),
+                    'date' => $wo->work_order_date->toDateString(),
+                    'url' => route('work-orders.show', $wo),
+                ]);
+        }
+
+        $invoiceRows = collect();
+        if (! empty($invoiceScopedBranchIds) && $type !== 'pkb') {
+            $invoiceRows = Invoice::whereIn('branch_id', $invoiceScopedBranchIds)
+                ->with(['customer', 'branch', 'workOrder.vehicle'])
+                ->when($status && $type === 'invoice', fn ($q) => $q->where('status', $status))
+                ->when($filters['q'] ?? null, function ($q, $term) {
+                    $escaped = addcslashes($term, '%_\\');
+                    $q->where(function ($inner) use ($escaped) {
+                        $inner->where('number', 'like', "%{$escaped}%")
+                            ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$escaped}%"))
+                            ->orWhereHas('workOrder.vehicle', fn ($v) => $v->where('plate_number', 'like', "%{$escaped}%"));
+                    });
+                })
+                ->when($filters['dateFrom'] ?? null, fn ($q, $d) => $q->whereDate('invoice_date', '>=', $d))
+                ->when($filters['dateTo'] ?? null, fn ($q, $d) => $q->whereDate('invoice_date', '<=', $d))
+                ->orderByDesc('invoice_date')->orderByDesc('id')
+                ->limit(15)
+                ->get()
+                ->map(fn (Invoice $invoice) => [
+                    'type' => 'invoice',
+                    'typeLabel' => 'Invoice',
+                    'number' => $invoice->number,
+                    'customer' => optional($invoice->customer)->name ?? '-',
+                    'plate' => optional(optional($invoice->workOrder)->vehicle)->plate_number ?? '-',
+                    'branch' => optional($invoice->branch)->name ?? '-',
+                    'status' => $invoice->status,
+                    'statusLabel' => $this->invoiceStatusLabel($invoice->status),
+                    'date' => $invoice->invoice_date->toDateString(),
+                    'url' => route('invoices.show', $invoice),
+                ]);
+        }
+
+        return $pkbRows->concat($invoiceRows)
+            ->sortByDesc('date')
+            ->take(15)
+            ->values()
+            ->all();
     }
 
-    protected function dummyAuditLogRows(): array
+    protected function splitTypeStatus(?string $value): array
     {
-        return [
-            ['timestamp' => '2026-08-02 10:12', 'user' => 'faiz_rahmat', 'permission' => 'sparepart.create', 'description' => 'Menambahkan sparepart BAN-01 ke Cabang Jakarta', 'impact' => 'LOW'],
-            ['timestamp' => '2026-08-02 09:48', 'user' => 'romi_ramdani', 'permission' => 'pkb.create', 'description' => 'Membuat PKB baru untuk B 1234 ABC', 'impact' => 'MEDIUM'],
-            ['timestamp' => '2026-08-01 16:30', 'user' => 'faiz_rahmat', 'permission' => 'user_permission.manage', 'description' => 'Mengubah permission user romi_ramdani', 'impact' => 'HIGH'],
-        ];
+        if (! $value || ! str_contains($value, ':')) {
+            return [null, null];
+        }
+
+        [$type, $status] = explode(':', $value, 2);
+
+        return in_array($type, ['pkb', 'invoice'], true) ? [$type, $status] : [null, null];
     }
 
-    protected function buildPayload(User $user, array $selectedBranchIds, ?int $sparepartId = null): array
+    protected function workOrderStatusLabel(string $status): string
+    {
+        return [
+            WorkOrderStatus::DRAFT => 'Draft',
+            WorkOrderStatus::OPEN => 'Dikonfirmasi',
+            WorkOrderStatus::SHORTAGE => 'Kurang Stok',
+            WorkOrderStatus::COMPLETED => 'Selesai',
+            WorkOrderStatus::CANCELLED => 'Dibatalkan',
+        ][$status] ?? $status;
+    }
+
+    protected function invoiceStatusLabel(string $status): string
+    {
+        return [
+            InvoiceStatus::DRAFT => 'Draft',
+            InvoiceStatus::POSTED => 'Diposting',
+            InvoiceStatus::PARTIALLY_PAID => 'Dibayar Sebagian',
+            InvoiceStatus::PAID => 'Lunas',
+            InvoiceStatus::CANCELLED => 'Dibatalkan',
+        ][$status] ?? $status;
+    }
+
+    protected function computeAuditLogRows(array $selectedBranchIds): array
+    {
+        if (empty($selectedBranchIds)) {
+            return [];
+        }
+
+        return AuditLog::with('user')
+            ->whereIn('branch_id', $selectedBranchIds)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(15)
+            ->get()
+            ->map(fn (AuditLog $log) => [
+                'timestamp' => $log->created_at->format('d/m/Y H:i'),
+                'user' => optional($log->user)->name ?? 'Sistem',
+                'event' => $log->event,
+                'eventLabel' => AuditEvent::LABELS[$log->event] ?? $log->event,
+                'description' => $this->describeAuditLog($log),
+                'severity' => AuditEvent::SEVERITIES[$log->event] ?? 'LOW',
+            ])
+            ->all();
+    }
+
+    protected function describeAuditLog(AuditLog $log): string
+    {
+        $label = AuditEvent::LABELS[$log->event] ?? $log->event;
+        $reference = $log->auditable_type && $log->auditable_id
+            ? " ({$log->auditable_type} #{$log->auditable_id})"
+            : '';
+
+        return $label . $reference;
+    }
+
+    protected function buildPayload(User $user, array $selectedBranchIds, ?int $sparepartId, array $pkbInvoiceFilters): array
     {
         $stockScopedIds = $this->scopedBranchIdsFor($user, $selectedBranchIds, 'sparepart.view');
         $pkbScopedIds = $this->scopedBranchIdsFor($user, $selectedBranchIds, 'pkb.view');
         $invoiceScopedIds = $this->scopedBranchIdsFor($user, $selectedBranchIds, 'invoice.view');
+        $canViewAuditLog = $user->hasPermissionTo('audit_log.view');
 
         return [
             'selectedBranchIds' => $selectedBranchIds,
@@ -296,8 +435,9 @@ class DashboardController extends Controller
             'receivables' => $this->computeReceivablesSummary($invoiceScopedIds),
             'chartTrend' => $this->computeWeeklyTrend($pkbScopedIds, $invoiceScopedIds),
             'chartReceivables' => $this->computeReceivablesAging($invoiceScopedIds),
-            'pkbInvoiceRows' => $this->dummyPkbInvoiceRows(),
-            'auditLogRows' => $this->dummyAuditLogRows(),
+            'pkbInvoiceRows' => $this->computePkbInvoiceRows($pkbScopedIds, $invoiceScopedIds, $pkbInvoiceFilters),
+            'canViewAuditLog' => $canViewAuditLog,
+            'auditLogRows' => $canViewAuditLog ? $this->computeAuditLogRows($selectedBranchIds) : [],
             'kartuStok' => $this->computeKartuStok($stockScopedIds, $sparepartId),
         ];
     }

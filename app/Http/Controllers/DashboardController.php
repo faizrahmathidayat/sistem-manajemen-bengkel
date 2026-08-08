@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Branch;
+use App\Models\Invoice;
 use App\Models\InventoryMovement;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
+use App\Models\WorkOrder;
+use App\Support\AuditEvent;
 use App\Support\InventoryMovementType;
+use App\Support\InvoiceStatus;
+use App\Support\WorkOrderStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -61,9 +67,9 @@ class DashboardController extends Controller
         return $allowedBranches->isNotEmpty() ? [$allowedBranches->first()->id] : [];
     }
 
-    protected function scopedBranchIds(User $user, array $selectedBranchIds): array
+    protected function scopedBranchIdsFor(User $user, array $selectedBranchIds, string $permissionCode): array
     {
-        $permittedBranchIds = $user->branchesWithPermission('sparepart.view')->pluck('id')->all();
+        $permittedBranchIds = $user->branchesWithPermission($permissionCode)->pluck('id')->all();
 
         return array_values(array_intersect($selectedBranchIds, $permittedBranchIds));
     }
@@ -98,6 +104,87 @@ class DashboardController extends Controller
             ->join('sparepart_branch_stocks', 'sparepart_branch_stocks.sparepart_branch_id', '=', 'sparepart_branches.id')
             ->whereRaw('(sparepart_branch_stocks.on_hand_qty - sparepart_branch_stocks.reserved_qty) < sparepart_branches.minimum_stock')
             ->count();
+    }
+
+    protected function computePkbStatusToday(array $scopedBranchIds): array
+    {
+        $defaults = ['draft' => 0, 'open' => 0, 'shortage' => 0, 'completed' => 0];
+        if (empty($scopedBranchIds)) {
+            return $defaults;
+        }
+
+        $counts = WorkOrder::whereIn('branch_id', $scopedBranchIds)
+            ->whereDate('work_order_date', now()->toDateString())
+            ->whereIn('status', [WorkOrderStatus::DRAFT, WorkOrderStatus::OPEN, WorkOrderStatus::SHORTAGE, WorkOrderStatus::COMPLETED])
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return [
+            'draft' => (int) ($counts[WorkOrderStatus::DRAFT] ?? 0),
+            'open' => (int) ($counts[WorkOrderStatus::OPEN] ?? 0),
+            'shortage' => (int) ($counts[WorkOrderStatus::SHORTAGE] ?? 0),
+            'completed' => (int) ($counts[WorkOrderStatus::COMPLETED] ?? 0),
+        ];
+    }
+
+    protected function computeReceivablesSummary(array $scopedBranchIds): array
+    {
+        if (empty($scopedBranchIds)) {
+            return ['revenue' => 0.0, 'unpaid' => 0.0];
+        }
+
+        $revenue = Invoice::whereIn('branch_id', $scopedBranchIds)
+            ->whereIn('status', [InvoiceStatus::POSTED, InvoiceStatus::PARTIALLY_PAID, InvoiceStatus::PAID])
+            ->sum('grand_total');
+
+        $unpaid = Invoice::whereIn('branch_id', $scopedBranchIds)
+            ->whereIn('status', [InvoiceStatus::POSTED, InvoiceStatus::PARTIALLY_PAID])
+            ->selectRaw('COALESCE(SUM(grand_total - paid_amount), 0) as total')
+            ->value('total');
+
+        return ['revenue' => (float) $revenue, 'unpaid' => (float) $unpaid];
+    }
+
+    protected function computeWeeklyTrend(array $pkbScopedBranchIds, array $invoiceScopedBranchIds): array
+    {
+        $weekStarts = collect(range(7, 0))->map(fn ($i) => now()->subWeeks($i)->startOfWeek());
+        $labels = $weekStarts->map(fn ($d) => $d->translatedFormat('d M'))->all();
+
+        $pkbCounts = empty($pkbScopedBranchIds) ? collect() : WorkOrder::whereIn('branch_id', $pkbScopedBranchIds)
+            ->where('created_at', '>=', $weekStarts->first())
+            ->selectRaw('YEARWEEK(created_at, 3) as yw, COUNT(*) as total')
+            ->groupBy('yw')->pluck('total', 'yw');
+
+        $invoiceCounts = empty($invoiceScopedBranchIds) ? collect() : AuditLog::whereIn('branch_id', $invoiceScopedBranchIds)
+            ->where('event', AuditEvent::INVOICE_POSTED)
+            ->where('created_at', '>=', $weekStarts->first())
+            ->selectRaw('YEARWEEK(created_at, 3) as yw, COUNT(*) as total')
+            ->groupBy('yw')->pluck('total', 'yw');
+
+        $pkb = $weekStarts->map(fn ($d) => (int) ($pkbCounts[(int) $d->format('oW')] ?? 0))->all();
+        $invoice = $weekStarts->map(fn ($d) => (int) ($invoiceCounts[(int) $d->format('oW')] ?? 0))->all();
+
+        return ['labels' => $labels, 'pkb' => $pkb, 'invoice' => $invoice];
+    }
+
+    protected function computeReceivablesAging(array $scopedBranchIds): array
+    {
+        $labels = ['Belum Jatuh Tempo', '1-30 Hari', '31-60 Hari', '>60 Hari'];
+        if (empty($scopedBranchIds)) {
+            return ['labels' => $labels, 'values' => [0, 0, 0, 0]];
+        }
+
+        $row = Invoice::whereIn('branch_id', $scopedBranchIds)
+            ->whereIn('status', [InvoiceStatus::POSTED, InvoiceStatus::PARTIALLY_PAID])
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(due_date, invoice_date)) < 0 THEN grand_total - paid_amount ELSE 0 END), 0) as not_due,
+                COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(due_date, invoice_date)) BETWEEN 0 AND 30 THEN grand_total - paid_amount ELSE 0 END), 0) as d1_30,
+                COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(due_date, invoice_date)) BETWEEN 31 AND 60 THEN grand_total - paid_amount ELSE 0 END), 0) as d31_60,
+                COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), COALESCE(due_date, invoice_date)) > 60 THEN grand_total - paid_amount ELSE 0 END), 0) as d60_plus
+            ")->first();
+
+        return ['labels' => $labels, 'values' => [(float) $row->not_due, (float) $row->d1_30, (float) $row->d31_60, (float) $row->d60_plus]];
     }
 
     protected function computeKartuStok(array $scopedBranchIds, ?int $sparepartId): array
@@ -176,33 +263,6 @@ class DashboardController extends Controller
             ->all();
     }
 
-    protected function dummyPkbStatus(): array
-    {
-        return ['open' => 8, 'shortage' => 2, 'completed' => 15];
-    }
-
-    protected function dummyReceivables(): array
-    {
-        return ['revenue' => 42500000, 'unpaid' => 7300000];
-    }
-
-    protected function dummyChartTrend(): array
-    {
-        return [
-            'labels' => ['Pekan 1', 'Pekan 2', 'Pekan 3', 'Pekan 4', 'Pekan 5', 'Pekan 6'],
-            'pkb' => [12, 15, 9, 18, 14, 20],
-            'invoice' => [10, 13, 8, 16, 12, 17],
-        ];
-    }
-
-    protected function dummyChartReceivables(): array
-    {
-        return [
-            'labels' => ['Belum Jatuh Tempo', '1-30 Hari', '31-60 Hari', '>60 Hari'],
-            'values' => [4200000, 1800000, 900000, 400000],
-        ];
-    }
-
     protected function dummyPkbInvoiceRows(): array
     {
         return [
@@ -224,19 +284,21 @@ class DashboardController extends Controller
 
     protected function buildPayload(User $user, array $selectedBranchIds, ?int $sparepartId = null): array
     {
-        $scopedBranchIds = $this->scopedBranchIds($user, $selectedBranchIds);
+        $stockScopedIds = $this->scopedBranchIdsFor($user, $selectedBranchIds, 'sparepart.view');
+        $pkbScopedIds = $this->scopedBranchIdsFor($user, $selectedBranchIds, 'pkb.view');
+        $invoiceScopedIds = $this->scopedBranchIdsFor($user, $selectedBranchIds, 'invoice.view');
 
         return [
             'selectedBranchIds' => $selectedBranchIds,
-            'stockOverview' => $this->computeStockOverview($scopedBranchIds),
-            'criticalStockCount' => $this->computeCriticalStockCount($scopedBranchIds),
-            'pkbStatus' => $this->dummyPkbStatus(),
-            'receivables' => $this->dummyReceivables(),
-            'chartTrend' => $this->dummyChartTrend(),
-            'chartReceivables' => $this->dummyChartReceivables(),
+            'stockOverview' => $this->computeStockOverview($stockScopedIds),
+            'criticalStockCount' => $this->computeCriticalStockCount($stockScopedIds),
+            'pkbStatus' => $this->computePkbStatusToday($pkbScopedIds),
+            'receivables' => $this->computeReceivablesSummary($invoiceScopedIds),
+            'chartTrend' => $this->computeWeeklyTrend($pkbScopedIds, $invoiceScopedIds),
+            'chartReceivables' => $this->computeReceivablesAging($invoiceScopedIds),
             'pkbInvoiceRows' => $this->dummyPkbInvoiceRows(),
             'auditLogRows' => $this->dummyAuditLogRows(),
-            'kartuStok' => $this->computeKartuStok($scopedBranchIds, $sparepartId),
+            'kartuStok' => $this->computeKartuStok($stockScopedIds, $sparepartId),
         ];
     }
 }

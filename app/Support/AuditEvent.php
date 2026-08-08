@@ -27,4 +27,17 @@ class AuditEvent
         self::USER_BRANCH_PERMISSION_GRANTED => 'Permission Cabang Diberikan',
         self::USER_BRANCH_PERMISSION_REVOKED => 'Permission Cabang Dicabut',
     ];
+
+    const SEVERITIES = [
+        self::INVOICE_POSTED => 'LOW',
+        self::INVOICE_CANCELLED => 'MEDIUM',
+        self::PAYMENT_RECEIPT_CREATED => 'LOW',
+        self::PAYMENT_RECEIPT_VOIDED => 'MEDIUM',
+        self::STOCK_ADJUSTMENT_POSTED => 'MEDIUM',
+        self::STOCK_TRANSFER_DISPATCHED => 'LOW',
+        self::STOCK_TRANSFER_RECEIVED => 'LOW',
+        self::STOCK_TRANSFER_VOIDED => 'MEDIUM',
+        self::USER_BRANCH_PERMISSION_GRANTED => 'HIGH',
+        self::USER_BRANCH_PERMISSION_REVOKED => 'HIGH',
+    ];
 }

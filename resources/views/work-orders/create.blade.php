@@ -153,7 +153,7 @@
             destroyPickers();
             customerSelect.innerHTML = '<option value=""></option>';
             mechanicSelect.innerHTML = '<option value=""></option>';
-            WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', function (i) { return i.plate_number; });
+            WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', WorkOrderLineItems.vehicleLabel);
             vehicleSelect.disabled = true;
             if (!currentBranchId) {
                 customerSelect.disabled = true;
@@ -170,12 +170,12 @@
 
         customerSelect.addEventListener('change', async function () {
             if (!this.value) {
-                WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', function (i) { return i.plate_number; });
+                WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', WorkOrderLineItems.vehicleLabel);
                 vehicleSelect.disabled = true;
                 return;
             }
             const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${this.value}`);
-            WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', function (i) { return i.plate_number || i.frame_number; });
+            WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
             vehicleSelect.disabled = false;
         });
 
@@ -231,7 +231,7 @@
                 const oldCustomerId = @json($oldCustomerId);
                 if (oldCustomerId) {
                     const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${oldCustomerId}`);
-                    WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', function (i) { return i.plate_number || i.frame_number; });
+                    WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
                     vehicleSelect.disabled = false;
                     const oldVehicleId = @json($oldVehicleId);
                     if (oldVehicleId) vehicleSelect.value = oldVehicleId;

@@ -19,7 +19,11 @@
                         <label class="form-label">Kendaraan</label>
                         <select name="vehicle_id" id="vehicleSelect" class="form-select @error('vehicle_id') is-invalid @enderror" required>
                             @foreach ($vehicles as $vehicle)
-                                <option value="{{ $vehicle->id }}" {{ (int) old('vehicle_id', $workOrder->vehicle_id) === $vehicle->id ? 'selected' : '' }}>{{ $vehicle->plate_number ?? $vehicle->frame_number }}</option>
+                                @php
+                                    $vehicleBrandType = trim(($vehicle->brand->name ?? '') . ' ' . ($vehicle->type->name ?? ''));
+                                    $vehicleLabel = $vehicleBrandType !== '' ? $vehicleBrandType . ' - ' . ($vehicle->plate_number ?? $vehicle->frame_number) : ($vehicle->plate_number ?? $vehicle->frame_number);
+                                @endphp
+                                <option value="{{ $vehicle->id }}" {{ (int) old('vehicle_id', $workOrder->vehicle_id) === $vehicle->id ? 'selected' : '' }}>{{ $vehicleLabel }}</option>
                             @endforeach
                         </select>
                         @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -146,11 +150,11 @@
 
         customerSelect.addEventListener('change', async function () {
             if (!this.value) {
-                WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Kendaraan --', 'id', function (i) { return i.plate_number; });
+                WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
                 return;
             }
             const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${this.value}`);
-            WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', function (i) { return i.plate_number || i.frame_number; });
+            WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
         });
     })();
     </script>

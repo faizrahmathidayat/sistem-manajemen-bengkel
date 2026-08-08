@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Vehicle;
 
 class WorkOrderLookupController extends Controller
 {
@@ -15,8 +16,18 @@ class WorkOrderLookupController extends Controller
         $customerBranchIds = $customer->branches->pluck('id');
         abort_unless($userBranchIds->intersect($customerBranchIds)->isNotEmpty(), 403);
 
-        return response()->json(
-            $customer->vehicles()->where('is_active', true)->orderBy('plate_number')->get(['id', 'plate_number', 'frame_number'])
-        );
+        $vehicles = $customer->vehicles()->where('is_active', true)
+            ->with(['brand:id,name', 'type:id,name'])
+            ->orderBy('plate_number')
+            ->get(['id', 'plate_number', 'frame_number', 'brand_id', 'type_id'])
+            ->map(fn (Vehicle $vehicle) => [
+                'id' => $vehicle->id,
+                'plate_number' => $vehicle->plate_number,
+                'frame_number' => $vehicle->frame_number,
+                'brand_name' => optional($vehicle->brand)->name,
+                'type_name' => optional($vehicle->type)->name,
+            ]);
+
+        return response()->json($vehicles);
     }
 }

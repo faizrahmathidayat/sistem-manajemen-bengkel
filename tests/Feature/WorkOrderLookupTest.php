@@ -56,6 +56,24 @@ class WorkOrderLookupTest extends TestCase
         $response->assertJsonMissing(['plate_number' => 'B 9999 ZZZ']);
     }
 
+    public function test_vehicles_by_customer_includes_brand_and_type_names(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        CustomerBranch::create(['customer_id' => $customer->id, 'branch_id' => $branch->id]);
+        $category = VehicleCategory::create(['name' => 'Motor']);
+        $brand = VehicleBrand::create(['category_id' => $category->id, 'name' => 'Honda']);
+        $type = VehicleType::create(['brand_id' => $brand->id, 'name' => 'Beat']);
+        Vehicle::create(['customer_id' => $customer->id, 'category_id' => $category->id, 'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 001 CCC']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+
+        $response = $this->actingAs($user)->getJson("/work-orders/lookup/vehicles/{$customer->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['plate_number' => 'B 001 CCC', 'brand_name' => 'Honda', 'type_name' => 'Beat']);
+    }
+
     public function test_vehicles_by_customer_allows_a_user_with_only_pkb_edit_in_a_shared_branch(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

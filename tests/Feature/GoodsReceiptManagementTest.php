@@ -269,6 +269,63 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_create_form_shows_line_column_headers_and_marks_qty_and_price_required(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        $response->assertSee('<div class="col-md-5">Sparepart</div>', false);
+        $response->assertSee('<div class="col-md-3">Qty</div>', false);
+        $response->assertSee('<div class="col-md-3">Harga Satuan</div>', false);
+
+        preg_match('/<input[^>]*goods-receipt-qty[^>]*>/', $content, $qtyMatch);
+        $this->assertNotEmpty($qtyMatch, 'Input qty baris sparepart tidak ditemukan.');
+        $this->assertStringContainsString('required', $qtyMatch[0]);
+
+        preg_match('/<input[^>]*goods-receipt-purchase-price[^>]*>/', $content, $priceMatch);
+        $this->assertNotEmpty($priceMatch, 'Input harga satuan baris sparepart tidak ditemukan.');
+        $this->assertStringContainsString('required', $priceMatch[0]);
+    }
+
+    public function test_edit_form_shows_line_column_headers_and_marks_qty_and_price_required(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $goodsReceipt = \App\Models\GoodsReceipt::create([
+            'number' => 'GR-TEST-1', 'branch_id' => $branch->id, 'receipt_date' => now()->toDateString(),
+            'status' => GoodsReceiptStatus::DRAFT,
+        ]);
+        \App\Models\GoodsReceiptLine::create([
+            'goods_receipt_id' => $goodsReceipt->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'qty' => 5, 'purchase_price' => 1000, 'line_total' => 5000, 'sort_order' => 0,
+        ]);
+
+        $response = $this->actingAs(User::find($user->id))->get("/goods-receipts/{$goodsReceipt->id}/edit");
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        $response->assertSee('<div class="col-md-5">Sparepart</div>', false);
+        $response->assertSee('<div class="col-md-3">Qty</div>', false);
+        $response->assertSee('<div class="col-md-3">Harga Satuan</div>', false);
+
+        preg_match('/<input[^>]*goods-receipt-qty[^>]*>/', $content, $qtyMatch);
+        $this->assertNotEmpty($qtyMatch, 'Input qty baris sparepart tidak ditemukan.');
+        $this->assertStringContainsString('required', $qtyMatch[0]);
+
+        preg_match('/<input[^>]*goods-receipt-purchase-price[^>]*>/', $content, $priceMatch);
+        $this->assertNotEmpty($priceMatch, 'Input harga satuan baris sparepart tidak ditemukan.');
+        $this->assertStringContainsString('required', $priceMatch[0]);
+    }
+
     public function test_create_form_replays_old_lines_after_a_validation_error(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

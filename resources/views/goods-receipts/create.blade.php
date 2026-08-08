@@ -44,6 +44,12 @@
                     <h2 class="h6 mb-0">Baris Sparepart</h2>
                     <button type="button" class="btn btn-outline-primary btn-sm" id="addGoodsReceiptLine" disabled>+ Tambah Sparepart</button>
                 </div>
+                <div class="row g-2 small text-muted mb-1">
+                    <div class="col-md-5">Sparepart</div>
+                    <div class="col-md-3">Qty</div>
+                    <div class="col-md-3">Harga Satuan</div>
+                    <div class="col-md-1"></div>
+                </div>
                 <div id="goodsReceiptLines"></div>
                 @error('lines')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
             </div>

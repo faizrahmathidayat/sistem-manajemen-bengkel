@@ -6,10 +6,10 @@
             </select>
         </div>
         <div class="col-md-3">
-            <input type="number" step="0.001" min="0.001" class="form-control goods-receipt-qty" value="1">
+            <input type="number" step="0.001" min="0.001" required class="form-control goods-receipt-qty" value="1">
         </div>
         <div class="col-md-3">
-            <input type="number" step="0.01" min="0" class="form-control goods-receipt-purchase-price">
+            <input type="number" step="0.01" min="0" required class="form-control goods-receipt-purchase-price">
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-goods-receipt-line">&times;</button>

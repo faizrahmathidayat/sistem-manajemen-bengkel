@@ -9,19 +9,27 @@
             <option>Semua Jenis Event</option>
         </select>
     </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{{ route('audit-logs.index') }}" class="btn btn-outline-secondary btn-sm">Lihat Semua Audit Log</a>
+    </div>
 </div>
 <ul class="list-group list-group-flush" id="auditLogFeed">
-    @foreach ($auditLogRows as $row)
+    @forelse ($auditLogRows as $row)
+        @php
+            $severityClass = ['LOW' => 'status-active', 'MEDIUM' => 'status-warning', 'HIGH' => 'status-inactive'][$row['severity']] ?? 'status-active';
+        @endphp
         <li class="list-group-item px-0">
             <div class="d-flex justify-content-between">
                 <span class="fw-semibold">{{ $row['user'] }}</span>
                 <span class="small" style="color: var(--color-ink-muted);">{{ $row['timestamp'] }}</span>
             </div>
             <div class="small mb-1">
-                <code>{{ $row['permission'] }}</code>
+                <code>{{ $row['event'] }}</code>
             </div>
             <div>{{ $row['description'] }}</div>
-            <span class="status-dot {{ $row['impact'] === 'HIGH' ? 'status-inactive' : 'status-active' }}">{{ $row['impact'] }}</span>
+            <span class="status-dot {{ $severityClass }}">{{ $row['severity'] }}</span>
         </li>
-    @endforeach
+    @empty
+        <li class="list-group-item px-0 text-muted text-center py-3">Belum ada aktivitas untuk cabang terpilih.</li>
+    @endforelse
 </ul>

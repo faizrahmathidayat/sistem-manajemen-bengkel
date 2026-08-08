@@ -33,10 +33,12 @@ class StockAdjustmentController extends Controller
             ->values()->all();
 
         $search = is_string(request('q')) ? trim(request('q')) : null;
+        $status = request('status') ?: null;
 
         $stockAdjustments = StockAdjustment::with('branch')
             ->whereIn('branch_id', $permittedBranches->pluck('id'))
             ->when($branchIds, fn ($query) => $query->whereIn('branch_id', $branchIds))
+            ->when($status, fn ($query, $s) => $query->where('status', $s))
             ->when($search, function ($query, $q) {
                 $escaped = '%' . addcslashes($q, '%_\\') . '%';
                 $query->where(function ($query) use ($escaped) {
@@ -52,7 +54,8 @@ class StockAdjustmentController extends Controller
         return view('stock-adjustments.index', compact('stockAdjustments'))
             ->with('branches', $permittedBranches)
             ->with('selectedBranchIds', $branchIds)
-            ->with('search', $search);
+            ->with('search', $search)
+            ->with('selectedStatus', $status);
     }
 
     public function create()

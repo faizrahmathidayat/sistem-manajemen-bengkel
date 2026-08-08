@@ -36,6 +36,7 @@ class StockTransferController extends Controller
             ->values()->all();
 
         $search = is_string(request('q')) ? trim(request('q')) : null;
+        $status = request('status') ?: null;
 
         $stockTransfers = StockTransfer::with(['fromBranch', 'toBranch'])
             ->where(function ($query) use ($permittedBranchIds) {
@@ -48,6 +49,7 @@ class StockTransferController extends Controller
                         ->orWhereIn('to_branch_id', $branchIds);
                 });
             })
+            ->when($status, fn ($query, $s) => $query->where('status', $s))
             ->when($search, function ($query, $q) {
                 $query->where('number', 'like', '%' . addcslashes($q, '%_\\') . '%');
             })
@@ -59,7 +61,8 @@ class StockTransferController extends Controller
         return view('stock-transfers.index', compact('stockTransfers'))
             ->with('branches', $permittedBranches)
             ->with('selectedBranchIds', $branchIds)
-            ->with('search', $search);
+            ->with('search', $search)
+            ->with('selectedStatus', $status);
     }
 
     public function create()

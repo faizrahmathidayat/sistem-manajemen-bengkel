@@ -334,6 +334,30 @@ class WorkOrderManagementTest extends TestCase
         $response->assertDontSee($workOrderB->number);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $draft = WorkOrder::create([
+            'number' => 'PKB-DRAFT-TEST', 'branch_id' => $branch->id, 'customer_id' => $scenario['customer']->id,
+            'vehicle_id' => $scenario['vehicle']->id, 'mechanic_id' => $scenario['mechanic']->id,
+            'work_order_date' => now()->toDateString(), 'status' => WorkOrderStatus::DRAFT,
+        ]);
+        $open = WorkOrder::create([
+            'number' => 'PKB-OPEN-TEST', 'branch_id' => $branch->id, 'customer_id' => $scenario['customer']->id,
+            'vehicle_id' => $scenario['vehicle']->id, 'mechanic_id' => $scenario['mechanic']->id,
+            'work_order_date' => now()->toDateString(), 'status' => WorkOrderStatus::OPEN,
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+
+        $response = $this->actingAs($user)->get('/work-orders?status=' . WorkOrderStatus::OPEN);
+
+        $response->assertOk();
+        $response->assertSee($open->number);
+        $response->assertDontSee($draft->number);
+    }
+
     public function test_index_shows_dikonfirmasi_label_for_an_open_work_order_not_dibatalkan(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
@@ -348,7 +372,11 @@ class WorkOrderManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Dikonfirmasi');
-        $response->assertDontSee('Dibatalkan');
+        // Not a bare assertDontSee('Dibatalkan'): the list-filter-bar's own status
+        // dropdown (added for the status filter feature) always renders a "Dibatalkan"
+        // option regardless of what data exists. Assert against the status badge's
+        // unique markup instead.
+        $response->assertDontSee('status-danger">Dibatalkan', false);
     }
 
     public function test_index_shows_kurang_stok_label_for_a_shortage_work_order_not_dibatalkan(): void
@@ -365,7 +393,11 @@ class WorkOrderManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Kurang Stok');
-        $response->assertDontSee('Dibatalkan');
+        // Not a bare assertDontSee('Dibatalkan'): the list-filter-bar's own status
+        // dropdown (added for the status filter feature) always renders a "Dibatalkan"
+        // option regardless of what data exists. Assert against the status badge's
+        // unique markup instead.
+        $response->assertDontSee('status-danger">Dibatalkan', false);
     }
 
     public function test_index_shows_selesai_label_for_a_completed_work_order_not_dibatalkan(): void
@@ -383,7 +415,11 @@ class WorkOrderManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Selesai');
-        $response->assertDontSee('Dibatalkan');
+        // Not a bare assertDontSee('Dibatalkan'): the list-filter-bar's own status
+        // dropdown (added for the status filter feature) always renders a "Dibatalkan"
+        // option regardless of what data exists. Assert against the status badge's
+        // unique markup instead.
+        $response->assertDontSee('status-danger">Dibatalkan', false);
     }
 
     public function test_index_shows_belum_diinvoice_label_for_a_completed_work_order_without_invoice(): void

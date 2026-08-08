@@ -26,10 +26,12 @@ class PaymentReceiptController extends Controller
             ->values()->all();
 
         $search = is_string(request('q')) ? trim(request('q')) : null;
+        $status = request('status') ?: null;
 
         $paymentReceipts = PaymentReceipt::with(['branch', 'customer'])
             ->whereIn('branch_id', $permittedBranches->pluck('id'))
             ->when($branchIds, fn ($query) => $query->whereIn('branch_id', $branchIds))
+            ->when($status, fn ($query, $s) => $query->where('status', $s))
             ->when($search, function ($query, $q) {
                 $query->where('number', 'like', '%' . addcslashes($q, '%_\\') . '%');
             })
@@ -41,7 +43,8 @@ class PaymentReceiptController extends Controller
         return view('payment-receipts.index', compact('paymentReceipts'))
             ->with('branches', $permittedBranches)
             ->with('selectedBranchIds', $branchIds)
-            ->with('search', $search);
+            ->with('search', $search)
+            ->with('selectedStatus', $status);
     }
 
     public function create()

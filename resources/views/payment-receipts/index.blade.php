@@ -10,6 +10,7 @@
         'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
+        'extraFilterHtml' => view('payment-receipts._status_filter_select', ['selectedStatus' => $selectedStatus])->render(),
         'actionsHtml' => auth()->user()->branchesWithPermission('payment.create')->isNotEmpty()
             ? '<a href="' . route('payment-receipts.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Catat Pembayaran</a>'
             : '',

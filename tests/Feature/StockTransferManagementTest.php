@@ -175,6 +175,28 @@ class StockTransferManagementTest extends TestCase
         $response->assertSee($visibleTransfer->number);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $draft = StockTransfer::create([
+            'number' => 'ST-DRAFT-TEST', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DRAFT,
+        ]);
+        $approved = StockTransfer::create([
+            'number' => 'ST-APPROVED-TEST', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::APPROVED,
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.view');
+
+        $response = $this->actingAs($user)->get('/stock-transfers?status=' . TransferStatus::APPROVED);
+
+        $response->assertOk();
+        $response->assertSee($approved->number);
+        $response->assertDontSee($draft->number);
+    }
+
     public function test_index_shows_no_access_page_without_any_stock_transfer_view_grant(): void
     {
         $user = User::factory()->create();

@@ -445,6 +445,27 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertDontSee($receiptB->number);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $draft = GoodsReceipt::create([
+            'number' => 'GR-DRAFT-TEST', 'branch_id' => $branch->id, 'receipt_date' => now()->toDateString(),
+            'status' => GoodsReceiptStatus::DRAFT,
+        ]);
+        $posted = GoodsReceipt::create([
+            'number' => 'GR-POSTED-TEST', 'branch_id' => $branch->id, 'receipt_date' => now()->toDateString(),
+            'status' => GoodsReceiptStatus::POSTED,
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.view');
+
+        $response = $this->actingAs($user)->get('/goods-receipts?status=' . GoodsReceiptStatus::POSTED);
+
+        $response->assertOk();
+        $response->assertSee($posted->number);
+        $response->assertDontSee($draft->number);
+    }
+
     public function test_index_shows_no_access_page_without_any_receipt_view_grant(): void
     {
         $user = User::factory()->create();

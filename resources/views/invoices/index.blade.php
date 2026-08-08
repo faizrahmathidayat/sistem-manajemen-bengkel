@@ -10,6 +10,7 @@
         'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
+        'extraFilterHtml' => view('invoices._status_filter_select', ['selectedStatus' => $selectedStatus])->render(),
         'actionsHtml' => '',
     ])
 

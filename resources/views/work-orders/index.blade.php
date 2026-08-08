@@ -10,6 +10,7 @@
         'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
+        'extraFilterHtml' => view('work-orders._status_filter_select', ['selectedStatus' => $selectedStatus])->render(),
         'actionsHtml' => auth()->user()->branchesWithPermission('pkb.create')->isNotEmpty()
             ? '<a href="' . route('work-orders.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> PKB Baru</a>'
             : '',

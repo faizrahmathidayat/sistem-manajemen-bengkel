@@ -10,6 +10,7 @@
         'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
+        'extraFilterHtml' => view('goods-receipts._status_filter_select', ['selectedStatus' => $selectedStatus])->render(),
         'actionsHtml' => auth()->user()->branchesWithPermission('receipt.create')->isNotEmpty()
             ? '<a href="' . route('goods-receipts.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Penerimaan Baru</a>'
             : '',

@@ -10,6 +10,7 @@
         'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
+        'extraFilterHtml' => view('stock-transfers._status_filter_select', ['selectedStatus' => $selectedStatus])->render(),
         'actionsHtml' => auth()->user()->branchesWithPermission('stock_transfer.create')->isNotEmpty()
             ? '<a href="' . route('stock-transfers.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Transfer Baru</a>'
             : '',

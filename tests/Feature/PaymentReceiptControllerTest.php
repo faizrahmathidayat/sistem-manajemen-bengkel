@@ -80,6 +80,39 @@ class PaymentReceiptControllerTest extends TestCase
         return (new InvoiceService())->postInvoice($invoice);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoiceA = $this->makePostedInvoice($branch, $customer, 100000);
+        $invoiceB = $this->makePostedInvoice($branch, $customer, 100000);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'payment.create');
+        $this->grantBranchPermission($user, $branch, 'payment.void');
+        $this->grantBranchPermission($user, $branch, 'payment.view');
+
+        $this->actingAs($user)->post('/payment-receipts', [
+            'branch_id' => $branch->id, 'customer_id' => $customer->id, 'payment_date' => now()->format('Y-m-d'),
+            'payment_method' => 'cash', 'amount' => 100000,
+            'allocations' => [['invoice_id' => $invoiceA->id, 'allocated_amount' => 100000]],
+        ]);
+        $postedReceipt = PaymentReceipt::latest('id')->first();
+
+        $this->actingAs($user)->post('/payment-receipts', [
+            'branch_id' => $branch->id, 'customer_id' => $customer->id, 'payment_date' => now()->format('Y-m-d'),
+            'payment_method' => 'cash', 'amount' => 100000,
+            'allocations' => [['invoice_id' => $invoiceB->id, 'allocated_amount' => 100000]],
+        ]);
+        $voidedReceipt = PaymentReceipt::latest('id')->first();
+        $this->actingAs($user)->patch("/payment-receipts/{$voidedReceipt->id}/void", ['reason' => 'Salah input']);
+
+        $response = $this->actingAs($user)->get('/payment-receipts?status=' . \App\Support\PaymentReceiptStatus::VOID);
+
+        $response->assertOk();
+        $response->assertSee($voidedReceipt->number);
+        $response->assertDontSee($postedReceipt->number);
+    }
+
     public function test_store_creates_payment_receipt_and_updates_invoice_status(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

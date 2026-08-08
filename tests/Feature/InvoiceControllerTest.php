@@ -167,6 +167,33 @@ class InvoiceControllerTest extends TestCase
         $response->assertDontSee($invoiceB->number);
     }
 
+    public function test_index_filters_invoices_by_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $draftInvoice = $this->makeInvoice($branch);
+        $sourceWorkOrder = $draftInvoice->workOrder;
+        $secondWorkOrder = WorkOrder::create([
+            'number' => 'PKB-SECOND-TEST', 'branch_id' => $branch->id, 'customer_id' => $sourceWorkOrder->customer_id,
+            'vehicle_id' => $sourceWorkOrder->vehicle_id, 'mechanic_id' => $sourceWorkOrder->mechanic_id,
+            'work_order_date' => now()->toDateString(), 'status' => \App\Support\WorkOrderStatus::COMPLETED,
+        ]);
+        $postedInvoice = Invoice::create([
+            'number' => 'INV-POSTED-TEST', 'work_order_id' => $secondWorkOrder->id, 'branch_id' => $branch->id,
+            'customer_id' => $sourceWorkOrder->customer_id, 'invoice_date' => now()->toDateString(),
+            'status' => \App\Support\InvoiceStatus::POSTED,
+            'subtotal_service' => 100000, 'subtotal_sparepart' => 0, 'discount_percent' => 0, 'discount_amount' => 0,
+            'tax_percent' => 0, 'tax_amount' => 0, 'grand_total' => 100000, 'paid_amount' => 0,
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.view');
+
+        $response = $this->actingAs($user)->get('/invoices?status=' . \App\Support\InvoiceStatus::POSTED);
+
+        $response->assertOk();
+        $response->assertSee($postedInvoice->number);
+        $response->assertDontSee($draftInvoice->number);
+    }
+
     public function test_index_shows_no_access_view_without_any_invoice_view_permission(): void
     {
         $user = User::factory()->create();

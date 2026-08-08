@@ -172,6 +172,27 @@ class StockAdjustmentManagementTest extends TestCase
         $response->assertDontSee($adjustmentB->number);
     }
 
+    public function test_index_filters_by_status(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $draft = StockAdjustment::create([
+            'number' => 'SA-DRAFT-TEST', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::DRAFT,
+        ]);
+        $approved = StockAdjustment::create([
+            'number' => 'SA-APPROVED-TEST', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.view');
+
+        $response = $this->actingAs($user)->get('/stock-adjustments?status=' . StockAdjustmentStatus::APPROVED);
+
+        $response->assertOk();
+        $response->assertSee($approved->number);
+        $response->assertDontSee($draft->number);
+    }
+
     public function test_index_shows_no_access_page_without_any_stock_adjustment_view_grant(): void
     {
         $user = User::factory()->create();

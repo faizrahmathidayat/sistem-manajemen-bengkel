@@ -1,5 +1,15 @@
 @php($user = auth()->user())
 
+@can('dashboard.view')
+    <ul class="nav flex-column mb-3">
+        <li class="nav-item">
+            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                <i class="bi bi-speedometer2 me-2"></i> Dashboard
+            </a>
+        </li>
+    </ul>
+@endcan
+
 @if ($user && ($user->branchesWithPermission('pkb.view')->isNotEmpty() || $user->branchesWithPermission('invoice.view')->isNotEmpty() || $user->branchesWithPermission('payment.view')->isNotEmpty()))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Operasional</div>
     <ul class="nav flex-column mb-3">

@@ -2,19 +2,19 @@
 <div class="card">
     <div class="card-body">
         <form method="GET" action="{{ url()->current() }}" id="listFilterBarForm" class="row g-2 align-items-center">
-            <div class="col-md-5">
+            <div class="col-12 col-md">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-0"><i class="bi bi-search"></i></span>
                     <input type="text" name="q" value="{{ $searchValue }}" class="form-control border-0" placeholder="{{ $searchPlaceholder }}">
                 </div>
             </div>
             @if ($branchFilterBranches !== null)
-            <div class="col-md-3">
+            <div class="col-auto">
                 @include('partials.branch-multiselect-filter', ['allowedBranches' => $branchFilterBranches, 'selectedBranchIds' => $branchFilterSelected])
             </div>
             @endif
             @if ($extraFilterHtml !== '')
-            <div class="col-md-3">
+            <div class="col-auto">
                 {{-- extraFilterHtml is always caller-authored (a rendered Blade partial), never
                      request/user-controlled data — if a future caller ever interpolates
                      user input into this string, it MUST be escaped before being passed in,
@@ -22,7 +22,7 @@
                 {!! $extraFilterHtml !!}
             </div>
             @endif
-            <div class="col-md-4 text-md-end">
+            <div class="col-12 col-md-auto d-flex gap-2">
                 <button type="submit" class="btn btn-outline-primary btn-sm">Terapkan</button>
                 {{-- actionsHtml is always caller-authored (a static string + route()), never
                      request/user-controlled data — if a future caller ever interpolates

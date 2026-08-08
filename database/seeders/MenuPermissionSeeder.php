@@ -40,6 +40,14 @@ class MenuPermissionSeeder extends Seeder
     {
         return [
             [
+                'code' => 'umum.dashboard',
+                'name' => 'Dashboard',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'dashboard.view', 'resource' => 'dashboard', 'action' => 'view', 'description' => 'Melihat dashboard'],
+                ],
+            ],
+            [
                 'code' => 'operasional.pkb',
                 'name' => 'Perintah Kerja Bengkel',
                 'is_branch_scoped' => true,

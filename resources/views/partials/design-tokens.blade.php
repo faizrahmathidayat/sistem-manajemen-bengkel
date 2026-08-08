@@ -60,8 +60,9 @@
     .topbar .btn-outline-light {
         --bs-btn-color: var(--color-ink);
         --bs-btn-border-color: var(--color-border);
-        --bs-btn-hover-bg: var(--color-ink);
-        --bs-btn-hover-border-color: var(--color-ink);
+        --bs-btn-hover-color: var(--color-ink);
+        --bs-btn-hover-bg: rgba(15, 23, 42, .06);
+        --bs-btn-hover-border-color: var(--color-border);
     }
 
     .topbar-permission-badge {

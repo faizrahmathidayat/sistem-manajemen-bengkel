@@ -18,13 +18,6 @@
             <i class="bi bi-tools me-1"></i> Sistem Manajemen Bengkel
         </a>
 
-        @auth
-            <div class="topbar-search d-none d-md-flex align-items-center flex-grow-1 mx-2">
-                <i class="bi bi-search topbar-search-icon"></i>
-                <input type="text" class="form-control form-control-sm topbar-search-input" placeholder="Cari No. PKB, No. Polisi, Kode Sparepart, No. Invoice..." disabled>
-            </div>
-        @endauth
-
         <div class="ms-auto d-flex align-items-center gap-3">
             @auth
                 @php($permissionCodes = auth()->user()->permissionCodes())
@@ -42,11 +35,6 @@
                         @endif
                     </div>
                 @endif
-
-                <button type="button" class="btn btn-outline-light btn-sm position-relative" aria-label="Notifikasi">
-                    <i class="bi bi-bell"></i>
-                    <span class="topbar-notification-badge">3</span>
-                </button>
 
                 <span class="small d-none d-sm-inline" style="color: var(--color-ink-muted);">{{ auth()->user()->name }}</span>
                 <form method="POST" action="{{ route('logout') }}">

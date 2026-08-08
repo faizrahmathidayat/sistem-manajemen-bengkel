@@ -160,16 +160,6 @@ class AppShellTest extends TestCase
         $response->assertDontSee(route('sparepart-branches.index'), false);
     }
 
-    public function test_navbar_shows_quick_search_input_for_authenticated_user(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->get('/dashboard');
-
-        $response->assertOk();
-        $response->assertSee('Cari No. PKB, No. Polisi, Kode Sparepart, No. Invoice', false);
-    }
-
     public function test_navbar_shows_up_to_three_permission_badges_and_overflow_count(): void
     {
         $user = User::factory()->create();
@@ -189,16 +179,6 @@ class AppShellTest extends TestCase
         $response->assertSee('vehicle.view', false);
         $response->assertDontSee('mechanic.view', false);
         $response->assertSee('+1 lainnya', false);
-    }
-
-    public function test_navbar_shows_notification_bell(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->get('/dashboard');
-
-        $response->assertOk();
-        $response->assertSee('bi-bell', false);
     }
 
     public function test_sidebar_shows_pkb_placeholder_when_user_has_pkb_view_permission_in_a_branch(): void
@@ -447,9 +427,10 @@ class AppShellTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('Perintah Kerja Bengkel', false);
-        // Not a bare assertDontSee('Invoice'): the navbar's quick-search placeholder
-        // ("...No. Invoice...", from Task 2) legitimately contains that substring on
-        // every authenticated page. Assert against the placeholder's unique icon class instead.
+        // Not a bare assertDontSee('Invoice'): the Dashboard's own "Status PKB & Invoice"
+        // tab button (dashboard/index.blade.php) renders unconditionally for every user
+        // and legitimately contains that substring. Assert against the sidebar
+        // placeholder's unique icon class instead.
         $response->assertDontSee('bi-receipt', false);
         $response->assertDontSee('Penerimaan Pembayaran', false);
         $response->assertDontSee('Penerimaan Barang', false);

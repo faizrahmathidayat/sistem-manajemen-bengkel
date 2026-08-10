@@ -297,6 +297,41 @@ class MechanicManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Terapkan');
-        $response->assertSee('Cari nama atau telepon...');
+        $response->assertSee('Cari nama, telepon, atau NIP...');
+    }
+
+    public function test_show_page_prefills_nip_and_join_date_in_profil_tab(): void
+    {
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'NIP-001', 'join_date' => '2020-01-15']);
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get("/mechanics/{$mechanic->id}");
+
+        $response->assertOk();
+        $response->assertSee('value="NIP-001"', false);
+        $response->assertSee('value="2020-01-15"', false);
+    }
+
+    public function test_index_lists_nip_and_join_date_columns(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'NIP-001', 'join_date' => '2020-01-15']);
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics');
+
+        $response->assertOk();
+        $response->assertSee('NIP-001');
+        $response->assertSee('15/01/2020');
+    }
+
+    public function test_index_shows_dash_for_mechanic_without_nip_or_join_date(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan']);
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
     }
 }

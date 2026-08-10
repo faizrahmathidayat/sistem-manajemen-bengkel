@@ -6,7 +6,7 @@
     </div>
 
     @include('partials.list-filter-bar', [
-        'searchPlaceholder' => 'Cari nama atau telepon...',
+        'searchPlaceholder' => 'Cari nama, telepon, atau NIP...',
         'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
@@ -21,6 +21,8 @@
                 <thead class="table-light">
                     <tr>
                         <th>Nama</th>
+                        <th>NIP</th>
+                        <th>Tanggal Bergabung</th>
                         <th>Telepon</th>
                         <th>Status</th>
                         <th class="text-end">Aksi</th>
@@ -30,6 +32,8 @@
                     @forelse ($mechanics as $mechanic)
                         <tr>
                             <td>{{ $mechanic->name }}</td>
+                            <td>{{ $mechanic->nip ?? '-' }}</td>
+                            <td>{{ $mechanic->join_date ? $mechanic->join_date->format('d/m/Y') : '-' }}</td>
                             <td>{{ $mechanic->phone ?? '-' }}</td>
                             <td>
                                 @if ($mechanic->is_active)
@@ -46,7 +50,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="p-0">
+                            <td colspan="6" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-person-gear',
                                     'title' => 'Belum ada mekanik',

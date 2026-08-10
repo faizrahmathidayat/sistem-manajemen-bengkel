@@ -17,6 +17,19 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
+                        <label for="nip" class="form-label">NIP</label>
+                        <input type="text" name="nip" id="nip" value="{{ old('nip') }}" class="form-control @error('nip') is-invalid @enderror" maxlength="50" required>
+                        @error('nip')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="join_date" class="form-label">Tanggal Bergabung</label>
+                        <input type="date" name="join_date" id="join_date" value="{{ old('join_date') }}" class="form-control @error('join_date') is-invalid @enderror">
+                        @error('join_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
                         <label for="phone" class="form-label">Telepon</label>
                         <input type="text" name="phone" id="phone" value="{{ old('phone') }}" class="form-control @error('phone') is-invalid @enderror" maxlength="50">
                         @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror

@@ -106,4 +106,46 @@ class InvoicePdfBuilderTest extends TestCase
         $this->assertStringContainsString('Budi Santoso', $content);
         $this->assertStringContainsString('B 1234 XYZ', $content);
     }
+
+    public function test_pdf_hides_ppn_row_when_tax_is_zero(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        // tax_percent/tax_amount are 0 by default on a freshly created draft invoice.
+
+        $output = InvoicePdfBuilder::build($invoice)->output();
+        $content = $this->extractPdfText($output);
+
+        $this->assertStringNotContainsString('PPN', $content);
+    }
+
+    public function test_pdf_shows_ppn_row_when_tax_is_positive(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+
+        (new InvoiceService())->updateInvoice($invoice, [
+            'discount_percent' => 0,
+            'tax_percent' => 11,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => $serviceDetail->description,
+                'qty' => (float) $serviceDetail->qty,
+                'unit_price' => (float) $serviceDetail->unit_price,
+            ]],
+            'spareparts' => [[
+                'work_order_sparepart_line_id' => $sparepartDetail->work_order_sparepart_line_id,
+                'sparepart_branch_id' => $sparepartDetail->sparepart_branch_id,
+                'qty' => (float) $sparepartDetail->qty,
+                'unit_price' => (float) $sparepartDetail->unit_price,
+            ]],
+        ]);
+
+        $output = InvoicePdfBuilder::build($invoice->fresh())->output();
+        $content = $this->extractPdfText($output);
+
+        $this->assertStringContainsString('PPN', $content);
+    }
 }

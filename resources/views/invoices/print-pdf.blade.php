@@ -98,7 +98,9 @@
         <tr><td>Subtotal Jasa</td><td class="num">{{ number_format($invoice->subtotal_service, 0, ',', '.') }}</td></tr>
         <tr><td>Subtotal Sparepart</td><td class="num">{{ number_format($invoice->subtotal_sparepart, 0, ',', '.') }}</td></tr>
         <tr><td>Diskon ({{ number_format($invoice->discount_percent, 2, ',', '.') }}%)</td><td class="num">{{ number_format($invoice->discount_amount, 0, ',', '.') }}</td></tr>
-        <tr><td>PPN ({{ number_format($invoice->tax_percent, 2, ',', '.') }}%)</td><td class="num">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td></tr>
+        @if ($invoice->tax_percent > 0 && $invoice->tax_amount > 0)
+            <tr><td>PPN ({{ number_format($invoice->tax_percent, 2, ',', '.') }}%)</td><td class="num">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td></tr>
+        @endif
         <tr class="grand-total"><td>Grand Total</td><td class="num">{{ number_format($invoice->grand_total, 0, ',', '.') }}</td></tr>
         <tr><td>Sudah Dibayar</td><td class="num">{{ number_format($invoice->paid_amount, 0, ',', '.') }}</td></tr>
         <tr><td>Sisa Piutang</td><td class="num">{{ number_format($invoice->outstanding_amount, 0, ',', '.') }}</td></tr>

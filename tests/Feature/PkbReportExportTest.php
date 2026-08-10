@@ -158,6 +158,48 @@ class PkbReportExportTest extends TestCase
         $this->assertStringContainsString('Ganti Oli', $text);
     }
 
+    public function test_pdf_preview_rekap_mode_shows_branch_mechanic_year_and_odometer(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $workOrder = $this->makeCompletedWorkOrder($branch, $customer, 100000, now()->toDateString());
+        $workOrder->mechanic->update(['nip' => 'MEK-001']);
+        $workOrder->vehicle->update(['year' => 2022]);
+        $workOrder->update(['odometer_km' => 15000.5]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb/pdf-preview');
+
+        $response->assertOk();
+        $text = $this->extractPdfText($response->getContent());
+        $this->assertStringContainsString('Cabang Jakarta', $text);
+        $this->assertStringContainsString('MEK-001 - Mekanik JKT', $text);
+        $this->assertStringContainsString('2022', $text);
+        $this->assertStringContainsString('15000.5', $text);
+    }
+
+    public function test_pdf_preview_detail_mode_shows_branch_mechanic_year_and_odometer(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $workOrder = $this->makeCompletedWorkOrder($branch, $customer, 100000, now()->toDateString());
+        $workOrder->mechanic->update(['nip' => 'MEK-001']);
+        $workOrder->vehicle->update(['year' => 2022]);
+        $workOrder->update(['odometer_km' => 15000.5]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb/pdf-preview?mode=detail');
+
+        $response->assertOk();
+        $text = preg_replace('/\s+/', ' ', $this->extractPdfText($response->getContent()));
+        $this->assertStringContainsString('Cabang Jakarta', $text);
+        $this->assertStringContainsString('MEK-001 - Mekanik JKT', $text);
+        $this->assertStringContainsString('2022', $text);
+        $this->assertStringContainsString('15000.5', $text);
+    }
+
     public function test_export_buttons_render_on_the_report_page_with_filters_forwarded(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

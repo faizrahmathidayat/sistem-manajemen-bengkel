@@ -37,13 +37,17 @@ class PkbReportExport implements FromQuery, WithHeadings, WithMapping, WithChunk
     public function headings(): array
     {
         return $this->mode === 'detail'
-            ? ['No. PKB', 'Tanggal', 'Customer & Kendaraan', 'Tipe Item', 'Nama Item/Jasa', 'Qty', 'Harga Satuan', 'Subtotal Line', 'Status']
-            : ['No. PKB', 'Tanggal', 'Customer & Kendaraan', 'Mekanik', 'Subtotal Jasa', 'Subtotal Sparepart', 'Grand Total', 'Status'];
+            ? ['No. PKB', 'Cabang', 'Tanggal', 'Customer & Kendaraan', 'Mekanik', 'Tahun Motor', 'Kilometer', 'Tipe Item', 'Nama Item/Jasa', 'Qty', 'Harga Satuan', 'Subtotal Line', 'Status']
+            : ['No. PKB', 'Cabang', 'Tanggal', 'Customer & Kendaraan', 'Mekanik', 'Tahun Motor', 'Kilometer', 'Subtotal Jasa', 'Subtotal Sparepart', 'Grand Total', 'Status'];
     }
 
     public function map($workOrder): array
     {
         $customerVehicle = $workOrder->customer->name . ($workOrder->vehicle ? ' / ' . $workOrder->vehicle->plate_number : '');
+        $branchName = $workOrder->branch->name;
+        $mechanicLabel = $workOrder->mechanic->display_label;
+        $vehicleYear = $workOrder->vehicle->year ?? '-';
+        $odometerKm = $workOrder->odometer_km ?? '-';
 
         if ($this->mode !== 'detail') {
             $subtotalService = (float) $workOrder->serviceLines->sum('line_total');
@@ -51,9 +55,12 @@ class PkbReportExport implements FromQuery, WithHeadings, WithMapping, WithChunk
 
             return [
                 $workOrder->number,
+                $branchName,
                 $workOrder->work_order_date->format('Y-m-d'),
                 $customerVehicle,
-                $workOrder->mechanic->name,
+                $mechanicLabel,
+                $vehicleYear,
+                $odometerKm,
                 $subtotalService,
                 $subtotalSparepart,
                 $subtotalService + $subtotalSparepart,
@@ -63,10 +70,10 @@ class PkbReportExport implements FromQuery, WithHeadings, WithMapping, WithChunk
 
         $rows = [];
         foreach ($workOrder->serviceLines as $line) {
-            $rows[] = [$workOrder->number, $workOrder->work_order_date->format('Y-m-d'), $customerVehicle, 'Jasa', $line->description, (float) $line->qty, (float) $line->unit_price, (float) $line->line_total, $workOrder->status];
+            $rows[] = [$workOrder->number, $branchName, $workOrder->work_order_date->format('Y-m-d'), $customerVehicle, $mechanicLabel, $vehicleYear, $odometerKm, 'Jasa', $line->description, (float) $line->qty, (float) $line->unit_price, (float) $line->line_total, $workOrder->status];
         }
         foreach ($workOrder->sparepartLines as $line) {
-            $rows[] = [$workOrder->number, $workOrder->work_order_date->format('Y-m-d'), $customerVehicle, 'Sparepart', $line->item_name_snapshot, (float) $line->qty, (float) $line->unit_price, (float) $line->line_total, $workOrder->status];
+            $rows[] = [$workOrder->number, $branchName, $workOrder->work_order_date->format('Y-m-d'), $customerVehicle, $mechanicLabel, $vehicleYear, $odometerKm, 'Sparepart', $line->item_name_snapshot, (float) $line->qty, (float) $line->unit_price, (float) $line->line_total, $workOrder->status];
         }
 
         return $rows;

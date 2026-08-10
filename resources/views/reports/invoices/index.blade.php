@@ -100,12 +100,15 @@
                 <thead class="table-light">
                     <tr>
                         <th>No. Invoice</th>
+                        <th>Cabang</th>
                         <th>Tanggal</th>
                         <th>Customer</th>
+                        <th>Mekanik</th>
                         <th>Tipe Item</th>
                         <th>Nama Item</th>
                         <th>Qty</th>
                         <th>Harga Satuan</th>
+                        <th>Diskon</th>
                         <th>Subtotal Line</th>
                         <th>Status</th>
                     </tr>
@@ -130,23 +133,32 @@
                                     $statusBadge = '<span class="status-dot status-danger">Dibatalkan</span>';
                             }
                         @endphp
+                        @php
+                            $mechanicLabel = optional(optional($invoice->workOrder)->mechanic)->display_label ?? '-';
+                        @endphp
                         @forelse ($invoice->details as $detail)
                             <tr>
                                 <td><a href="{{ route('invoices.show', $invoice) }}"><code>{{ $invoice->number }}</code></a></td>
+                                <td>{{ $invoice->branch->name }}</td>
                                 <td>{{ $invoice->invoice_date->format('d/m/Y') }}</td>
                                 <td>{{ $invoice->customer->name }}</td>
+                                <td>{{ $mechanicLabel }}</td>
                                 <td>{{ $detail->item_type === \App\Support\InvoiceDetailItemType::SERVICE ? 'Jasa' : 'Sparepart' }}</td>
                                 <td>{{ $detail->description }}</td>
                                 <td>{{ number_format($detail->qty, 0, ',', '.') }}</td>
                                 <td>{{ number_format($detail->unit_price, 0, ',', '.') }}</td>
+                                <td>{{ $detail->discount_amount > 0 ? number_format($detail->discount_amount, 0, ',', '.') : '-' }}</td>
                                 <td>{{ number_format($detail->line_total, 0, ',', '.') }}</td>
                                 <td>{!! $statusBadge !!}</td>
                             </tr>
                         @empty
                             <tr>
                                 <td><a href="{{ route('invoices.show', $invoice) }}"><code>{{ $invoice->number }}</code></a></td>
+                                <td>{{ $invoice->branch->name }}</td>
                                 <td>{{ $invoice->invoice_date->format('d/m/Y') }}</td>
                                 <td>{{ $invoice->customer->name }}</td>
+                                <td>{{ $mechanicLabel }}</td>
+                                <td>&mdash;</td>
                                 <td>&mdash;</td>
                                 <td>&mdash;</td>
                                 <td>&mdash;</td>
@@ -157,7 +169,7 @@
                         @endforelse
                     @empty
                         <tr>
-                            <td colspan="9" class="p-0">
+                            <td colspan="12" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-text',
                                     'title' => 'Belum ada data invoice',
@@ -176,8 +188,10 @@
                 <thead class="table-light">
                     <tr>
                         <th>No. Invoice</th>
+                        <th>Cabang</th>
                         <th>Tanggal</th>
                         <th>Customer</th>
+                        <th>Mekanik</th>
                         <th>Subtotal Jasa</th>
                         <th>Subtotal Sparepart</th>
                         <th>Discount</th>
@@ -191,8 +205,10 @@
                     @forelse ($invoices as $invoice)
                         <tr>
                             <td><a href="{{ route('invoices.show', $invoice) }}"><code>{{ $invoice->number }}</code></a></td>
+                            <td>{{ $invoice->branch->name }}</td>
                             <td>{{ $invoice->invoice_date->format('d/m/Y') }}</td>
                             <td>{{ $invoice->customer->name }}</td>
+                            <td>{{ optional(optional($invoice->workOrder)->mechanic)->display_label ?? '-' }}</td>
                             <td>{{ number_format($invoice->subtotal_service, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->subtotal_sparepart, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->discount_amount, 0, ',', '.') }}</td>
@@ -215,7 +231,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="p-0">
+                            <td colspan="12" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-text',
                                     'title' => 'Belum ada data invoice',

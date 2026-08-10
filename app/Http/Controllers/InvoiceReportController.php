@@ -32,7 +32,7 @@ class InvoiceReportController extends Controller
             'COALESCE(SUM(grand_total - paid_amount), 0) as total_remaining'
         )->first();
 
-        $invoices = $query->with(['branch', 'customer']);
+        $invoices = $query->with(['branch', 'customer', 'workOrder.mechanic']);
 
         if ($filters['mode'] === 'detail') {
             $invoices->with(['details']);
@@ -63,7 +63,7 @@ class InvoiceReportController extends Controller
         $this->authorizeExport($permittedBranches);
 
         $filters = $this->resolveFilters($permittedBranches);
-        $query = $this->buildQuery($filters, $permittedBranches)->with(['branch', 'customer', 'details']);
+        $query = $this->buildQuery($filters, $permittedBranches)->with(['branch', 'customer', 'details', 'workOrder.mechanic']);
 
         return Excel::download(
             new InvoiceReportExport($query, $filters['mode'], $this->filterSummaryText($filters)),
@@ -88,7 +88,7 @@ class InvoiceReportController extends Controller
         $this->authorizeExport($permittedBranches);
 
         $filters = $this->resolveFilters($permittedBranches);
-        $query = $this->buildQuery($filters, $permittedBranches)->with(['branch', 'customer', 'details']);
+        $query = $this->buildQuery($filters, $permittedBranches)->with(['branch', 'customer', 'details', 'workOrder.mechanic']);
 
         $rows = $query->orderByDesc('invoice_date')->orderByDesc('id')->limit(1001)->get();
         [$rows, $truncated] = $this->capRows($rows);

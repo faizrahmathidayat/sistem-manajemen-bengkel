@@ -352,6 +352,64 @@ class InvoiceReportControllerTest extends TestCase
         $response->assertSee('Diposting');
     }
 
+    public function test_index_rekap_mode_shows_branch_and_mechanic_columns(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makeInvoice($branch, $customer, 100000, 0, now()->toDateString());
+        $invoice->workOrder->mechanic->update(['nip' => 'MEK-001']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Jakarta');
+        $response->assertSee('MEK-001 - Mekanik JKT');
+    }
+
+    public function test_index_detail_mode_shows_branch_mechanic_and_discount_columns(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makeInvoice($branch, $customer, 100000, 0, now()->toDateString());
+        $invoice->workOrder->mechanic->update(['nip' => 'MEK-001']);
+        $invoice->details()->first()->update(['discount_percent' => 10, 'discount_amount' => 10000, 'line_total' => 90000]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Jakarta');
+        $response->assertSee('MEK-001 - Mekanik JKT');
+        $response->assertSee('10.000');
+    }
+
+    public function test_index_direct_sale_invoice_shows_dash_for_mechanic_column(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        CustomerBranch::firstOrCreate(['customer_id' => $customer->id, 'branch_id' => $branch->id]);
+        $creator = User::factory()->create();
+        $this->grantBranchPermission($creator, $branch, 'invoice.create');
+        $this->actingAs($creator)->post('/invoices/direct', [
+            'branch_id' => $branch->id,
+            'customer_id' => $customer->id,
+            'invoice_date' => now()->toDateString(),
+            'services' => [['description' => 'Cuci Mobil', 'qty' => 1, 'unit_price' => 40000, 'discount_percent' => 0]],
+            'spareparts' => [],
+        ]);
+        $directSale = \App\Models\Invoice::latest('id')->first();
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices');
+
+        $response->assertOk();
+        $response->assertSee($directSale->number);
+    }
+
     public function test_index_detail_mode_shows_line_item_columns_and_rows(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

@@ -23,8 +23,10 @@ class MechanicController extends Controller
         $mechanics = Mechanic::orderBy('name')
             ->when($search, function ($query, $q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', '%' . addcslashes($q, '%_\\') . '%')
-                        ->orWhere('phone', 'like', '%' . addcslashes($q, '%_\\') . '%');
+                    $escaped = addcslashes($q, '%_\\');
+                    $inner->where('name', 'like', '%' . $escaped . '%')
+                        ->orWhere('phone', 'like', '%' . $escaped . '%')
+                        ->orWhere('nip', 'like', '%' . $escaped . '%');
                 });
             })
             ->when($branchIds, fn ($query) => $query->whereHas('mechanicBranches', fn ($q) => $q->whereIn('branch_id', $branchIds)->where('is_active', true)))

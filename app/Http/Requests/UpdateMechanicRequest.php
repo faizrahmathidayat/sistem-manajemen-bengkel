@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateMechanicRequest extends FormRequest
 {
@@ -15,6 +16,8 @@ class UpdateMechanicRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:150'],
+            'nip' => ['required', 'string', 'max:50', Rule::unique('mechanics', 'nip')->ignore($this->route('mechanic'))],
+            'join_date' => ['nullable', 'date'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string'],

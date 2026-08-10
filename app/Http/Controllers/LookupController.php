@@ -66,7 +66,10 @@ class LookupController extends Controller
 
         return response()->json(
             $query->orderBy('name')->limit(20)->get()
-                ->map(fn (Mechanic $mechanic) => ['id' => $mechanic->id, 'text' => $mechanic->name])
+                ->map(fn (Mechanic $mechanic) => [
+                    'id' => $mechanic->id,
+                    'text' => $mechanic->nip ? "{$mechanic->name} ({$mechanic->nip})" : $mechanic->name,
+                ])
                 ->values()
         );
     }

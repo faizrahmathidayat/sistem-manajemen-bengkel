@@ -15,6 +15,8 @@ class StoreMechanicRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:150'],
+            'nip' => ['required', 'string', 'max:50', 'unique:mechanics,nip'],
+            'join_date' => ['nullable', 'date'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string'],

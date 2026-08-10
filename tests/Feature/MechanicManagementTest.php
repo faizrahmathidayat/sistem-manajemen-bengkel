@@ -59,11 +59,17 @@ class MechanicManagementTest extends TestCase
         $response = $this->actingAs($user)->post('/mechanics', [
             'name' => 'Agus Setiawan',
             'phone' => '081234567890',
+            'nip' => 'NIP-001',
+            'join_date' => '2020-01-15',
             'is_active' => '1',
         ]);
 
         $response->assertRedirect('/mechanics');
-        $this->assertDatabaseHas('mechanics', ['name' => 'Agus Setiawan']);
+        $this->assertDatabaseHas('mechanics', [
+            'name' => 'Agus Setiawan',
+            'nip' => 'NIP-001',
+            'join_date' => '2020-01-15',
+        ]);
     }
 
     public function test_store_validates_required_fields(): void
@@ -72,7 +78,7 @@ class MechanicManagementTest extends TestCase
 
         $response = $this->actingAs($user)->post('/mechanics', []);
 
-        $response->assertSessionHasErrors(['name']);
+        $response->assertSessionHasErrors(['name', 'nip']);
     }
 
     public function test_store_is_forbidden_without_permission(): void
@@ -82,6 +88,20 @@ class MechanicManagementTest extends TestCase
         $response = $this->actingAs($user)->post('/mechanics', ['name' => 'Agus Setiawan']);
 
         $response->assertForbidden();
+    }
+
+    public function test_store_rejects_duplicate_nip(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'NIP-001']);
+        $user = $this->userWithPermissions(['mechanic.create']);
+
+        $response = $this->actingAs($user)->post('/mechanics', [
+            'name' => 'Budi Santoso',
+            'nip' => 'NIP-001',
+        ]);
+
+        $response->assertSessionHasErrors(['nip']);
+        $this->assertDatabaseMissing('mechanics', ['name' => 'Budi Santoso']);
     }
 
     public function test_show_renders_profil_tab_for_authorized_user(): void
@@ -97,11 +117,12 @@ class MechanicManagementTest extends TestCase
 
     public function test_update_edits_mechanic_and_can_deactivate(): void
     {
-        $mechanic = Mechanic::create(['name' => 'Agus Setiawan']);
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'NIP-001']);
         $user = $this->userWithPermissions(['mechanic.edit']);
 
         $response = $this->actingAs($user)->put("/mechanics/{$mechanic->id}", [
             'name' => 'Agus Setiawan Edited',
+            'nip' => 'NIP-001',
             'is_active' => '0',
         ]);
 
@@ -121,6 +142,34 @@ class MechanicManagementTest extends TestCase
         $response = $this->actingAs($user)->put("/mechanics/{$mechanic->id}", ['name' => 'Agus Setiawan Edited']);
 
         $response->assertForbidden();
+    }
+
+    public function test_update_rejects_nip_already_used_by_another_mechanic(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'NIP-001']);
+        $mechanicB = Mechanic::create(['name' => 'Budi Santoso', 'nip' => 'NIP-002']);
+        $user = $this->userWithPermissions(['mechanic.edit']);
+
+        $response = $this->actingAs($user)->put("/mechanics/{$mechanicB->id}", [
+            'name' => 'Budi Santoso',
+            'nip' => 'NIP-001',
+        ]);
+
+        $response->assertSessionHasErrors(['nip']);
+    }
+
+    public function test_update_allows_keeping_own_nip_unchanged(): void
+    {
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'NIP-001']);
+        $user = $this->userWithPermissions(['mechanic.edit']);
+
+        $response = $this->actingAs($user)->put("/mechanics/{$mechanic->id}", [
+            'name' => 'Agus Setiawan Edited',
+            'nip' => 'NIP-001',
+        ]);
+
+        $response->assertRedirect("/mechanics/{$mechanic->id}");
+        $response->assertSessionDoesntHaveErrors(['nip']);
     }
 
     public function test_index_search_by_name_filters_results(): void
@@ -143,6 +192,19 @@ class MechanicManagementTest extends TestCase
         $user = $this->userWithPermissions(['mechanic.view']);
 
         $response = $this->actingAs($user)->get('/mechanics?q=081111');
+
+        $response->assertOk();
+        $response->assertSee('Agus Setiawan');
+        $response->assertDontSee('Budi Santoso');
+    }
+
+    public function test_index_search_by_nip_filters_results(): void
+    {
+        Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'NIP-001']);
+        Mechanic::create(['name' => 'Budi Santoso', 'nip' => 'NIP-002']);
+        $user = $this->userWithPermissions(['mechanic.view']);
+
+        $response = $this->actingAs($user)->get('/mechanics?q=NIP-001');
 
         $response->assertOk();
         $response->assertSee('Agus Setiawan');

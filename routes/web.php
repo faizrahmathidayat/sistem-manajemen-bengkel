@@ -16,6 +16,7 @@ use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\PaymentLookupController;
 use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\PkbReportController;
+use App\Http\Controllers\WorkshopPerformanceReportController;
 use App\Http\Controllers\ReceivableReportController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
@@ -232,6 +233,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/export-excel', [InvoiceReportController::class, 'exportExcel'])->name('invoices.export-excel');
         Route::get('/invoices/pdf-preview', [InvoiceReportController::class, 'previewPdf'])->name('invoices.pdf-preview');
         Route::get('/invoices/pdf-download', [InvoiceReportController::class, 'downloadPdf'])->name('invoices.pdf-download');
+        Route::get('/workshop-performance', [WorkshopPerformanceReportController::class, 'index'])->name('workshop-performance.index');
+        Route::get('/workshop-performance/export-excel', [WorkshopPerformanceReportController::class, 'exportExcel'])->name('workshop-performance.export-excel');
+        Route::get('/workshop-performance/pdf-preview', [WorkshopPerformanceReportController::class, 'previewPdf'])->name('workshop-performance.pdf-preview');
+        Route::get('/workshop-performance/pdf-download', [WorkshopPerformanceReportController::class, 'downloadPdf'])->name('workshop-performance.pdf-download');
         Route::get('/invoice-pkb-gap', [InvoicePkbGapReportController::class, 'index'])->name('invoice-pkb-gap.index');
         Route::get('/invoice-pkb-gap/export-excel', [InvoicePkbGapReportController::class, 'exportExcel'])->name('invoice-pkb-gap.export-excel');
         Route::get('/invoice-pkb-gap/pdf-preview', [InvoicePkbGapReportController::class, 'previewPdf'])->name('invoice-pkb-gap.pdf-preview');

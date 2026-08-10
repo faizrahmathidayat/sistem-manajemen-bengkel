@@ -585,6 +585,41 @@ class WorkOrderManagementTest extends TestCase
         $response->assertSee('select2-ajax-picker.js', false);
     }
 
+    public function test_edit_page_vehicle_option_label_includes_year(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $scenario['vehicle']->update(['year' => 2020]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.edit');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('Toyota Avanza 2020 - B 1234 ' . $branch->code);
+    }
+
+    public function test_show_page_displays_vehicle_year(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $scenario['vehicle']->update(['year' => 2021]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee('Tahun Kendaraan');
+        $response->assertSee('2021');
+    }
+
     public function test_update_replaces_lines_and_recomputes_totals(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

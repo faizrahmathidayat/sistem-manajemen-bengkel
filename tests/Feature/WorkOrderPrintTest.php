@@ -105,6 +105,20 @@ class WorkOrderPrintTest extends TestCase
         $this->assertStringContainsString("B 1234 {$branch->code}", $content);
     }
 
+    public function test_print_content_includes_vehicle_year(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $workOrder->vehicle->update(['year' => 2022]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.print');
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}/print");
+
+        $content = $this->extractPdfText($response->getContent());
+        $this->assertStringContainsString('2022', $content);
+    }
+
     public function test_print_works_regardless_of_work_order_status(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

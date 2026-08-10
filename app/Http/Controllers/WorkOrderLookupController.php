@@ -19,13 +19,14 @@ class WorkOrderLookupController extends Controller
         $vehicles = $customer->vehicles()->where('is_active', true)
             ->with(['brand:id,name', 'type:id,name'])
             ->orderBy('plate_number')
-            ->get(['id', 'plate_number', 'frame_number', 'brand_id', 'type_id'])
+            ->get(['id', 'plate_number', 'frame_number', 'brand_id', 'type_id', 'year'])
             ->map(fn (Vehicle $vehicle) => [
                 'id' => $vehicle->id,
                 'plate_number' => $vehicle->plate_number,
                 'frame_number' => $vehicle->frame_number,
                 'brand_name' => optional($vehicle->brand)->name,
                 'type_name' => optional($vehicle->type)->name,
+                'year' => $vehicle->year,
             ]);
 
         return response()->json($vehicles);

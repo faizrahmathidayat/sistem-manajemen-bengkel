@@ -49,20 +49,25 @@
 </div>
 
 <div class="row">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <label for="plate_number" class="form-label">No. Polisi</label>
         <input type="text" name="plate_number" id="plate_number" value="{{ old('plate_number', $vehicle->plate_number) }}" class="form-control @error('plate_number') is-invalid @enderror" maxlength="30">
         @error('plate_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <label for="frame_number" class="form-label">No. Rangka</label>
         <input type="text" name="frame_number" id="frame_number" value="{{ old('frame_number', $vehicle->frame_number) }}" class="form-control @error('frame_number') is-invalid @enderror" maxlength="100">
         @error('frame_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <label for="engine_number" class="form-label">No. Mesin</label>
         <input type="text" name="engine_number" id="engine_number" value="{{ old('engine_number', $vehicle->engine_number) }}" class="form-control @error('engine_number') is-invalid @enderror" maxlength="100">
         @error('engine_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+    <div class="col-md-3 mb-3">
+        <label for="year" class="form-label">Tahun Kendaraan</label>
+        <input type="number" name="year" id="year" value="{{ old('year', $vehicle->year) }}" class="form-control @error('year') is-invalid @enderror" min="1900" max="{{ now()->year + 1 }}">
+        @error('year')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 </div>
 

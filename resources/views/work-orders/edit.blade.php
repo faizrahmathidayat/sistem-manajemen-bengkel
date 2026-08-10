@@ -20,7 +20,7 @@
                         <select name="vehicle_id" id="vehicleSelect" class="form-select @error('vehicle_id') is-invalid @enderror" required>
                             @foreach ($vehicles as $vehicle)
                                 @php
-                                    $vehicleBrandType = trim(($vehicle->brand->name ?? '') . ' ' . ($vehicle->type->name ?? ''));
+                                    $vehicleBrandType = trim(($vehicle->brand->name ?? '') . ' ' . ($vehicle->type->name ?? '') . ' ' . ($vehicle->year ?? ''));
                                     $vehicleLabel = $vehicleBrandType !== '' ? $vehicleBrandType . ' - ' . ($vehicle->plate_number ?? $vehicle->frame_number) : ($vehicle->plate_number ?? $vehicle->frame_number);
                                 @endphp
                                 <option value="{{ $vehicle->id }}" {{ (int) old('vehicle_id', $workOrder->vehicle_id) === $vehicle->id ? 'selected' : '' }}>{{ $vehicleLabel }}</option>

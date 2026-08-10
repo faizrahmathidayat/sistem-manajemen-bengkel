@@ -57,7 +57,7 @@
                 <h3>Data Customer &amp; Kendaraan</h3>
                 <div><span class="label">Nama:</span> {{ $workOrder->customer->name }}</div>
                 <div><span class="label">No. Polisi:</span> {{ $workOrder->vehicle->plate_number ?? '-' }}</div>
-                <div><span class="label">Kendaraan:</span> {{ optional($workOrder->vehicle->brand)->name }} {{ optional($workOrder->vehicle->type)->name }}</div>
+                <div><span class="label">Kendaraan:</span> {{ optional($workOrder->vehicle->brand)->name }} {{ optional($workOrder->vehicle->type)->name }}{{ $workOrder->vehicle->year ? " ({$workOrder->vehicle->year})" : '' }}</div>
                 <div><span class="label">Kilometer:</span> {{ $workOrder->odometer_km ?? '-' }}</div>
             </td>
             <td>

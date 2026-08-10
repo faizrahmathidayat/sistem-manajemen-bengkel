@@ -12,7 +12,7 @@ class Vehicle extends Model
 
     protected $fillable = [
         'customer_id', 'plate_number', 'frame_number', 'engine_number',
-        'category_id', 'brand_id', 'type_id', 'is_active',
+        'category_id', 'brand_id', 'type_id', 'year', 'is_active',
     ];
 
     protected $casts = ['is_active' => 'boolean'];

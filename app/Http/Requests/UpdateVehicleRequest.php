@@ -24,6 +24,7 @@ class UpdateVehicleRequest extends FormRequest
             'category_id' => ['required', 'exists:vehicle_categories,id'],
             'brand_id' => ['required', 'exists:vehicle_brands,id'],
             'type_id' => ['required', 'exists:vehicle_types,id'],
+            'year' => ['nullable', 'integer', 'digits:4', 'between:1900,' . (now()->year + 1)],
         ];
     }
 

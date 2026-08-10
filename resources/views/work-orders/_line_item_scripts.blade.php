@@ -67,7 +67,7 @@
 
     function vehicleLabel(item) {
         const plate = item.plate_number || item.frame_number || '-';
-        const brandType = [item.brand_name, item.type_name].filter(Boolean).join(' ');
+        const brandType = [item.brand_name, item.type_name, item.year].filter(Boolean).join(' ');
         return brandType ? (brandType + ' - ' + plate) : plate;
     }
 

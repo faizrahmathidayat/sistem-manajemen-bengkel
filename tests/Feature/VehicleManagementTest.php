@@ -87,6 +87,45 @@ class VehicleManagementTest extends TestCase
         $response->assertSee("const existingCustomerId = {$customer->id};", false);
     }
 
+    public function test_store_creates_vehicle_with_year(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        $user = $this->userWithPermissions(['vehicle.create']);
+
+        $response = $this->actingAs($user)->post('/vehicles', [
+            'customer_id' => $customer->id,
+            'category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'type_id' => $type->id,
+            'plate_number' => 'B 1234 XYZ',
+            'year' => 2020,
+            'is_active' => '1',
+        ]);
+
+        $response->assertRedirect('/vehicles');
+        $this->assertDatabaseHas('vehicles', ['plate_number' => 'B 1234 XYZ', 'year' => 2020]);
+    }
+
+    public function test_store_rejects_year_outside_valid_range(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        $user = $this->userWithPermissions(['vehicle.create']);
+
+        $response = $this->actingAs($user)->post('/vehicles', [
+            'customer_id' => $customer->id,
+            'category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'type_id' => $type->id,
+            'plate_number' => 'B 1234 XYZ',
+            'year' => 1899,
+            'is_active' => '1',
+        ]);
+
+        $response->assertSessionHasErrors(['year']);
+    }
+
     public function test_store_creates_vehicle(): void
     {
         $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
@@ -155,6 +194,23 @@ class VehicleManagementTest extends TestCase
         ]);
 
         $response->assertForbidden();
+    }
+
+    public function test_edit_page_renders_year_input_prefilled(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        $vehicle = Vehicle::create([
+            'customer_id' => $customer->id, 'category_id' => $category->id,
+            'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 1234 XYZ', 'year' => 2019,
+        ]);
+        $user = $this->userWithPermissions(['vehicle.edit']);
+
+        $response = $this->actingAs($user)->get("/vehicles/{$vehicle->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('name="year"', false);
+        $response->assertSee('value="2019"', false);
     }
 
     public function test_update_edits_vehicle_and_can_deactivate(): void

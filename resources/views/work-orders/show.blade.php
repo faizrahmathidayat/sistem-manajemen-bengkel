@@ -44,6 +44,7 @@
                 <div class="col-md-3"><strong>Cabang</strong><div>{{ $workOrder->branch->name }}</div></div>
                 <div class="col-md-3"><strong>Customer</strong><div>{{ $workOrder->customer->name }}</div></div>
                 <div class="col-md-3"><strong>Kendaraan</strong><div>{{ $workOrder->vehicle->plate_number ?? '-' }}</div></div>
+                <div class="col-md-3"><strong>Tahun Kendaraan</strong><div>{{ $workOrder->vehicle->year ?? '-' }}</div></div>
                 <div class="col-md-3"><strong>Mekanik</strong><div>{{ $workOrder->mechanic->name }}</div></div>
                 <div class="col-md-3"><strong>Tanggal</strong><div>{{ $workOrder->work_order_date->format('d/m/Y') }}</div></div>
                 <div class="col-md-3"><strong>Kilometer</strong><div>{{ $workOrder->odometer_km ?? '-' }}</div></div>

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSparepartRequest;
 use App\Http\Requests\StoreSparepartToBranchRequest;
 use App\Http\Requests\UpdateSparepartBranchRequest;
 use App\Models\Branch;
+use App\Models\Rack;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
@@ -34,7 +35,7 @@ class SparepartBranchController extends Controller
 
         $search = is_string(request('q')) ? trim(request('q')) : null;
 
-        $sparepartBranches = SparepartBranch::with(['sparepart', 'stock'])
+        $sparepartBranches = SparepartBranch::with(['sparepart', 'stock', 'rack'])
             ->where('branch_id', $currentBranch->id)
             ->when($search, function ($query, $q) {
                 $query->whereHas('sparepart', function ($inner) use ($q) {
@@ -59,8 +60,9 @@ class SparepartBranchController extends Controller
 
         $currentBranchId = session('current_sparepart_branch_id');
         $selectedBranch = $branches->firstWhere('id', $currentBranchId) ?? $branches->first();
+        $racks = Rack::where('is_active', true)->orderBy('code')->get();
 
-        return view('sparepart-branches.create', compact('branches', 'selectedBranch'));
+        return view('sparepart-branches.create', compact('branches', 'selectedBranch', 'racks'));
     }
 
     public function store(StoreSparepartRequest $request)
@@ -77,7 +79,7 @@ class SparepartBranchController extends Controller
             SparepartBranch::create([
                 'sparepart_id' => $sparepart->id,
                 'branch_id' => $branch->id,
-                'rack_number' => $data['rack_number'] ?? null,
+                'rack_id' => $data['rack_id'] ?? null,
                 'selling_price' => $data['selling_price'],
                 'minimum_stock' => $data['minimum_stock'] ?? 0,
             ]);
@@ -94,7 +96,9 @@ class SparepartBranchController extends Controller
             abort(403);
         }
 
-        return view('sparepart-branches.create-existing', compact('branch'));
+        $racks = Rack::where('is_active', true)->orderBy('code')->get();
+
+        return view('sparepart-branches.create-existing', compact('branch', 'racks'));
     }
 
     public function lookupUnconfigured(Request $request)
@@ -137,7 +141,7 @@ class SparepartBranchController extends Controller
             SparepartBranch::create([
                 'sparepart_id' => $data['sparepart_id'],
                 'branch_id' => $branch->id,
-                'rack_number' => $data['rack_number'] ?? null,
+                'rack_id' => $data['rack_id'] ?? null,
                 'selling_price' => $data['selling_price'],
                 'minimum_stock' => $data['minimum_stock'] ?? 0,
             ]);
@@ -151,8 +155,9 @@ class SparepartBranchController extends Controller
         $this->authorize('update', $sparepartBranch);
 
         $sparepartBranch->load('sparepart');
+        $racks = Rack::where('is_active', true)->orderBy('code')->get();
 
-        return view('sparepart-branches.edit', compact('sparepartBranch'));
+        return view('sparepart-branches.edit', compact('sparepartBranch', 'racks'));
     }
 
     public function update(UpdateSparepartBranchRequest $request, SparepartBranch $sparepartBranch)

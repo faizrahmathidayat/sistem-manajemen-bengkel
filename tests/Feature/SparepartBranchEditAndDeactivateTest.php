@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Permission;
+use App\Models\Rack;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
@@ -60,15 +61,16 @@ class SparepartBranchEditAndDeactivateTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_update_saves_rack_price_minimum_stock_without_touching_is_active(): void
+    public function test_update_saves_rack_id_price_minimum_stock_without_touching_is_active(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $sparepartBranch = $this->makeSparepartBranch($branch);
+        $rack = Rack::create(['code' => 'C3']);
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'sparepart.edit');
 
         $response = $this->actingAs(User::find($user->id))->put("/sparepart-branches/{$sparepartBranch->id}", [
-            'rack_number' => 'C3',
+            'rack_id' => $rack->id,
             'selling_price' => 175000,
             'minimum_stock' => 4,
         ]);
@@ -76,10 +78,26 @@ class SparepartBranchEditAndDeactivateTest extends TestCase
         $response->assertRedirect('/sparepart-branches');
         $this->assertDatabaseHas('sparepart_branches', [
             'id' => $sparepartBranch->id,
-            'rack_number' => 'C3',
+            'rack_id' => $rack->id,
             'selling_price' => 175000,
             'is_active' => true,
         ]);
+    }
+
+    public function test_edit_form_lists_only_active_racks_in_dropdown(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        Rack::create(['code' => 'A1', 'is_active' => true]);
+        Rack::create(['code' => 'B2', 'is_active' => false]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.edit');
+
+        $response = $this->actingAs(User::find($user->id))->get("/sparepart-branches/{$sparepartBranch->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('A1');
+        $response->assertDontSee('B2');
     }
 
     public function test_deactivate_sets_is_active_false_and_requires_sparepart_delete_permission(): void

@@ -46,7 +46,7 @@
                         <tr>
                             <td><code>{{ $sparepartBranch->sparepart->code }}</code></td>
                             <td>{{ $sparepartBranch->sparepart->name }}</td>
-                            <td>{{ $sparepartBranch->rack_number ?? '-' }}</td>
+                            <td>{{ optional($sparepartBranch->rack)->code ?? '-' }}</td>
                             <td>{{ number_format($sparepartBranch->selling_price, 0, ',', '.') }}</td>
                             <td>{{ number_format($sparepartBranch->minimum_stock, 0, ',', '.') }}</td>
                             <td>{{ number_format($sparepartBranch->stock->available_qty, 0, ',', '.') }}</td>

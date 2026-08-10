@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Permission;
+use App\Models\Rack;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
@@ -116,6 +117,44 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->assertNotNull($sparepartBranch);
         $this->assertSame($branch->id, $sparepartBranch->branch_id);
         $this->assertDatabaseHas('sparepart_branch_stocks', ['sparepart_branch_id' => $sparepartBranch->id, 'on_hand_qty' => 0]);
+    }
+
+    public function test_create_new_sparepart_saves_rack_id(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.view');
+        $this->grantBranchPermission($user, $branch, 'sparepart.create');
+        $rack = Rack::create(['code' => 'A1']);
+        $this->actingAs(User::find($user->id))->get('/sparepart-branches');
+
+        $response = $this->post('/sparepart-branches', [
+            'branch_id' => $branch->id,
+            'code' => 'BAN-01',
+            'name' => 'Ban Depan',
+            'rack_id' => $rack->id,
+            'selling_price' => 150000,
+            'minimum_stock' => 2,
+        ]);
+
+        $response->assertRedirect('/sparepart-branches');
+        $sparepartBranch = SparepartBranch::whereHas('sparepart', fn ($q) => $q->where('code', 'BAN-01'))->first();
+        $this->assertSame($rack->id, $sparepartBranch->rack_id);
+    }
+
+    public function test_create_form_lists_only_active_racks_in_dropdown(): void
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->grantBranchPermission($user, $branch, 'sparepart.create');
+        Rack::create(['code' => 'A1', 'is_active' => true]);
+        Rack::create(['code' => 'B2', 'is_active' => false]);
+
+        $response = $this->actingAs($user)->get('/sparepart-branches/create');
+
+        $response->assertOk();
+        $response->assertSee('A1');
+        $response->assertDontSee('B2');
     }
 
     public function test_create_new_sparepart_requires_sparepart_create_permission_in_current_branch(): void

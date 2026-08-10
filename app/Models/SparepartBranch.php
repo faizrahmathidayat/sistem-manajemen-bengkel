@@ -10,7 +10,7 @@ class SparepartBranch extends Model
 {
     use HasFactory, HasAudit;
 
-    protected $fillable = ['sparepart_id', 'branch_id', 'rack_number', 'selling_price', 'minimum_stock', 'is_active'];
+    protected $fillable = ['sparepart_id', 'branch_id', 'rack_number', 'rack_id', 'selling_price', 'minimum_stock', 'is_active'];
 
     protected $casts = [
         'selling_price' => 'decimal:2',
@@ -46,5 +46,10 @@ class SparepartBranch extends Model
     public function stock()
     {
         return $this->hasOne(SparepartBranchStock::class);
+    }
+
+    public function rack()
+    {
+        return $this->belongsTo(Rack::class);
     }
 }

@@ -64,7 +64,7 @@
                 <h3>Info PKB</h3>
                 <div><span class="label">Tanggal:</span> {{ $workOrder->work_order_date->format('d/m/Y') }}</div>
                 <div><span class="label">Mekanik:</span> {{ $workOrder->mechanic->name }}</div>
-                <div><span class="label">Catatan:</span> {{ $workOrder->notes ?? '-' }}</div>
+                <div><span class="label">Keluhan:</span> {{ $workOrder->notes ?? '-' }}</div>
             </td>
         </tr>
     </table>

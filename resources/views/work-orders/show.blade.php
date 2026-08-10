@@ -64,7 +64,7 @@
                         @endif
                     </div>
                 </div>
-                <div class="col-md-6"><strong>Catatan</strong><div>{{ $workOrder->notes ?? '-' }}</div></div>
+                <div class="col-md-6"><strong>Keluhan</strong><div>{{ $workOrder->notes ?? '-' }}</div></div>
             </div>
         </div>
     </div>

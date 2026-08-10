@@ -119,6 +119,20 @@ class WorkOrderPrintTest extends TestCase
         $this->assertStringContainsString('2022', $content);
     }
 
+    public function test_print_content_shows_keluhan_label_not_catatan(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.print');
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}/print");
+
+        $content = $this->extractPdfText($response->getContent());
+        $this->assertStringContainsString('Keluhan:', $content);
+        $this->assertStringNotContainsString('Catatan:', $content);
+    }
+
     public function test_print_works_regardless_of_work_order_status(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

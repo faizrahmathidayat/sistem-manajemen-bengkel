@@ -620,6 +620,53 @@ class WorkOrderManagementTest extends TestCase
         $response->assertSee('2021');
     }
 
+    public function test_create_page_shows_keluhan_label_not_catatan(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+
+        $response = $this->actingAs($user)->get('/work-orders/create');
+
+        $response->assertOk();
+        $response->assertSee('Keluhan');
+        $response->assertDontSee('>Catatan<', false);
+    }
+
+    public function test_edit_page_shows_keluhan_label_not_catatan(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.edit');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
+
+        $response->assertOk();
+        $response->assertSee('Keluhan');
+        $response->assertDontSee('>Catatan<', false);
+    }
+
+    public function test_show_page_shows_keluhan_label_not_catatan(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->actingAs(User::find($user->id))->post('/work-orders', $this->baseStorePayload($branch, $scenario));
+        $workOrder = WorkOrder::first();
+
+        $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}");
+
+        $response->assertOk();
+        $response->assertSee('Keluhan');
+        $response->assertDontSee('>Catatan<', false);
+    }
+
     public function test_update_replaces_lines_and_recomputes_totals(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

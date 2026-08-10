@@ -31,9 +31,11 @@ Saat spec ini ditulis, tabel `mechanics` di database sudah berisi **9 baris data
 
 Keputusan berikut dikonfirmasi bersama user sebelum spec ini ditulis:
 
-1. **Strategi NIP untuk data lama:** Backfill otomatis via migration, lalu kolom dibuat `NOT NULL` + `UNIQUE` secara ketat di level DB. 9 baris existing diisi placeholder unik berbasis `id` (format `LEGACY-{id}` dengan zero-padding, mis. `LEGACY-000001`), sehingga migration aman dijalankan tanpa mengubah baris satu per satu secara manual dan tetap menjaga constraint unique dari awal.
+1. **Strategi NIP untuk data lama:** Backfill otomatis via migration dengan placeholder unik berbasis `id` (format `LEGACY-{id}` dengan zero-padding, mis. `LEGACY-000001`) untuk 9 baris existing.
 2. **Search di index Mekanik:** NIP ditambahkan sebagai kolom yang dicari, selain nama & telepon.
 3. **Label dropdown PKB (`LookupController::mechanics`):** NIP ditampilkan dalam label opsi dropdown pemilihan mekanik di form PKB, format `"{name} ({nip})"` — konsisten dengan pola gabungan label yang sudah dipakai untuk sparepart (`code — name`) di controller yang sama.
+4. **Constraint DB untuk `nip` — REVISI:** Keputusan awal (`NOT NULL` ketat di DB) dibatalkan setelah audit lebih lanjut menemukan **48 pemanggilan `Mechanic::create()` tanpa `nip` tersebar di 21 file test tak terkait** (dashboard, invoice, work order, lookup, dll — bukan hanya test khusus mekanik), dan tidak ada `MechanicFactory` yang bisa menyuplai default unik. Menerapkan `NOT NULL` akan mematahkan seluruh 48 call-site tersebut dan memperluas lingkup Task 1 secara signifikan di luar milestone ini.
+   **Keputusan final:** kolom `nip` tetap **nullable** di level DB (dengan `unique` index — MySQL mengizinkan banyak baris `NULL` pada kolom unique). "Wajib diisi" ditegakkan **hanya di layer validasi** (`StoreMechanicRequest`/`UpdateMechanicRequest`), yaitu jalur HTTP form yang sesungguhnya dipakai user. 48 test call-site lain tidak perlu disentuh — tetap membuat mekanik dengan `nip = null`, yang sah secara skema. Backfill 9 baris lama tetap dilakukan (§4.1) agar data existing konsisten dan tidak menampilkan "-" selamanya, tapi sifatnya kini kosmetik/best-effort, bukan syarat migrasi yang mem-block constraint.
 
 ## 4. Design
 
@@ -42,12 +44,11 @@ Keputusan berikut dikonfirmasi bersama user sebelum spec ini ditulis:
 File baru: `database/migrations/2026_08_11_000001_add_nip_and_join_date_to_mechanics_table.php`.
 
 - `up()`:
-  1. Tambah kolom `nip` (`string(50)`, nullable dulu, posisi setelah `name`) dan `join_date` (`date`, nullable, posisi setelah `nip`) dalam satu `Schema::table` pass tanpa constraint unique dulu.
-  2. Backfill: iterasi baris `mechanics` yang `nip` masih null, set `nip = 'LEGACY-' . str_pad($id, 6, '0', STR_PAD_LEFT)`.
-  3. Pass kedua: ubah `nip` menjadi `NOT NULL` dan tambah `unique()` index.
+  1. Tambah kolom `nip` (`string(50)`, nullable, `unique`, posisi setelah `name`) dan `join_date` (`date`, nullable, posisi setelah `nip`) dalam satu `Schema::table` pass.
+  2. Backfill best-effort: iterasi baris `mechanics` yang `nip` masih null, set `nip = 'LEGACY-' . str_pad($id, 6, '0', STR_PAD_LEFT)`.
 - `down()`: drop kolom `nip`, `join_date` (drop unique index otomatis ikut ter-drop bersama kolom di MySQL).
 
-Alasan tiga-langkah (add nullable → backfill → enforce NOT NULL+unique) alih-alih langsung `NOT NULL` di `up()`: migration Laravel tidak bisa menyisipkan default value per-baris yang unik lewat `Blueprint::default()`, sehingga kolom harus sementara nullable agar backfill via query builder bisa berjalan sebelum constraint diperketat.
+`nip` **tetap nullable** di skema (lihat §3 poin 4) — backfill hanya mengisi data lama secara best-effort agar tidak tampil kosong di UI, bukan untuk memenuhi constraint `NOT NULL` yang memang tidak diterapkan.
 
 ### 4.2 Model — `app/Models/Mechanic.php`
 
@@ -140,7 +141,7 @@ Ditempatkan setelah field Nama Mekanik, sebelum row Telepon/Email.
   - Test baru: `test_update_allows_keeping_own_nip_unchanged`.
   - Test baru: `test_index_search_by_nip_filters_results`.
   - Test baru: `test_index_lists_nip_and_join_date_columns`.
-- **Migration/backfill**: `RefreshDatabase` menjalankan seluruh migration dari kosong di setiap test, sehingga skenario "data lama tanpa NIP" tidak pernah tereproduksi secara alami lewat PHPUnit — backfill logic dalam migration ini murni untuk data existing di database dev/production. Karena itu, backfill **diverifikasi manual**, bukan lewat automated test: pada Task 1, setelah migration dijalankan (`php artisan migrate`) terhadap database dev yang sudah punya 9 baris mekanik existing, verifikasi lewat `php artisan tinker` bahwa ke-9 baris tersebut mendapat `nip` unik berformat `LEGACY-000001` dst., dan kolom `nip` sudah berstatus `NOT NULL`+`unique` di schema. Automated test cukup memverifikasi bagian yang deterministic dan reproducible: constraint unique & required bekerja untuk baris baru (§ test uniqueness di atas).
+- **Migration/backfill**: `RefreshDatabase` menjalankan seluruh migration dari kosong di setiap test, sehingga skenario "data lama tanpa NIP" tidak pernah tereproduksi secara alami lewat PHPUnit — backfill logic dalam migration ini murni untuk data existing di database dev/production. Backfill **diverifikasi manual**: pada Task 1, setelah migration dijalankan (`php artisan migrate`) terhadap database dev yang sudah punya 9 baris mekanik existing, verifikasi lewat `php artisan tinker` bahwa ke-9 baris tersebut mendapat `nip` unik berformat `LEGACY-000001` dst. Automated test memverifikasi bagian deterministic & reproducible: constraint `unique` bekerja untuk baris baru, validasi `required` di layer FormRequest, dan 48 call-site `Mechanic::create()` lain di seluruh suite tetap lulus tanpa perubahan karena `nip` nullable di skema (§ test uniqueness di atas).
 - **Lookup**: test baru di file yang relevan (`WorkOrderLookupTest.php` atau `MechanicManagementTest.php`) — `test_mechanic_lookup_label_includes_nip`.
 
 ## 6. Out of Scope

@@ -65,7 +65,7 @@
         <div class="card-body">
             <h2 class="h6">Baris Invoice</h2>
             <table class="table table-sm">
-                <thead><tr><th>Tipe</th><th>Kode</th><th>Deskripsi</th><th>Qty</th><th>Harga</th><th>Total</th></tr></thead>
+                <thead><tr><th>Tipe</th><th>Kode</th><th>Deskripsi</th><th>Qty</th><th>Harga</th><th>Diskon</th><th>Total</th></tr></thead>
                 <tbody>
                     @forelse ($invoice->details as $detail)
                         <tr>
@@ -74,10 +74,11 @@
                             <td>{{ $detail->description }}</td>
                             <td>{{ number_format($detail->qty, 0, ',', '.') }}</td>
                             <td>{{ number_format($detail->unit_price, 0, ',', '.') }}</td>
+                            <td>{{ $detail->discount_amount > 0 ? number_format($detail->discount_amount, 0, ',', '.') : '-' }}</td>
                             <td>{{ number_format($detail->line_total, 0, ',', '.') }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-muted">Tidak ada baris invoice.</td></tr>
+                        <tr><td colspan="7" class="text-muted">Tidak ada baris invoice.</td></tr>
                     @endforelse
                 </tbody>
             </table>

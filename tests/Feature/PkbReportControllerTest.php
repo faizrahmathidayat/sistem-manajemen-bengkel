@@ -295,6 +295,46 @@ class PkbReportControllerTest extends TestCase
         $response->assertSee('Agus Setiawan');
     }
 
+    public function test_index_rekap_mode_shows_branch_mechanic_code_year_and_odometer(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch, 'Agus Setiawan');
+        $scenario['mechanic']->update(['nip' => 'MEK-001']);
+        $scenario['vehicle']->update(['year' => 2022]);
+        $workOrder = $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED);
+        $workOrder->update(['odometer_km' => 15000.5]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Jakarta');
+        $response->assertSee('MEK-001 - Agus Setiawan');
+        $response->assertSee('2022');
+        $response->assertSee('15000.5');
+    }
+
+    public function test_index_detail_mode_shows_branch_mechanic_code_year_and_odometer(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch, 'Agus Setiawan');
+        $scenario['mechanic']->update(['nip' => 'MEK-001']);
+        $scenario['vehicle']->update(['year' => 2022]);
+        $workOrder = $this->makeWorkOrder($branch, $scenario, WorkOrderStatus::COMPLETED, 100000, 60000);
+        $workOrder->update(['odometer_km' => 15000.5]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.pkb.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/pkb?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee('Cabang Jakarta');
+        $response->assertSee('MEK-001 - Agus Setiawan');
+        $response->assertSee('2022');
+        $response->assertSee('15000.5');
+    }
+
     public function test_index_shows_status_badge(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

@@ -91,8 +91,12 @@
                 <thead class="table-light">
                     <tr>
                         <th>No. PKB</th>
+                        <th>Cabang</th>
                         <th>Tanggal</th>
                         <th>Customer &amp; Kendaraan</th>
+                        <th>Mekanik</th>
+                        <th>Tahun Motor</th>
+                        <th>Kilometer</th>
                         <th>Tipe Item</th>
                         <th>Nama Item/Jasa</th>
                         <th>Qty</th>
@@ -129,11 +133,15 @@
                         @if ($lines->isEmpty())
                             <tr>
                                 <td><a href="{{ route('work-orders.show', $workOrder) }}"><code>{{ $workOrder->number }}</code></a></td>
+                                <td>{{ $workOrder->branch->name }}</td>
                                 <td>{{ $workOrder->work_order_date->format('d/m/Y') }}</td>
                                 <td>
                                     {{ $workOrder->customer->name }}<br>
                                     <span class="text-muted small">{{ $workOrder->vehicle->plate_number }}</span>
                                 </td>
+                                <td>{{ $workOrder->mechanic->display_label }}</td>
+                                <td>{{ $workOrder->vehicle->year ?? '-' }}</td>
+                                <td>{{ $workOrder->odometer_km ?? '-' }}</td>
                                 <td>&mdash;</td>
                                 <td>&mdash;</td>
                                 <td>&mdash;</td>
@@ -145,11 +153,15 @@
                             @foreach ($lines as $line)
                                 <tr>
                                     <td><a href="{{ route('work-orders.show', $workOrder) }}"><code>{{ $workOrder->number }}</code></a></td>
+                                    <td>{{ $workOrder->branch->name }}</td>
                                     <td>{{ $workOrder->work_order_date->format('d/m/Y') }}</td>
                                     <td>
                                         {{ $workOrder->customer->name }}<br>
                                         <span class="text-muted small">{{ $workOrder->vehicle->plate_number }}</span>
                                     </td>
+                                    <td>{{ $workOrder->mechanic->display_label }}</td>
+                                    <td>{{ $workOrder->vehicle->year ?? '-' }}</td>
+                                    <td>{{ $workOrder->odometer_km ?? '-' }}</td>
                                     <td>{{ $line['type'] }}</td>
                                     <td>{{ $line['name'] }}</td>
                                     <td>{{ number_format($line['qty'], 0, ',', '.') }}</td>
@@ -161,7 +173,7 @@
                         @endif
                     @empty
                         <tr>
-                            <td colspan="9" class="p-0">
+                            <td colspan="13" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-bar-graph',
                                     'title' => 'Belum ada data PKB',
@@ -180,9 +192,12 @@
                 <thead class="table-light">
                     <tr>
                         <th>No. PKB</th>
+                        <th>Cabang</th>
                         <th>Tanggal</th>
                         <th>Customer &amp; Kendaraan</th>
                         <th>Mekanik</th>
+                        <th>Tahun Motor</th>
+                        <th>Kilometer</th>
                         <th>Subtotal Jasa</th>
                         <th>Subtotal Sparepart</th>
                         <th>Grand Total</th>
@@ -195,12 +210,15 @@
                         @php($subtotalSparepart = $workOrder->subtotal_sparepart ?? 0)
                         <tr>
                             <td><a href="{{ route('work-orders.show', $workOrder) }}"><code>{{ $workOrder->number }}</code></a></td>
+                            <td>{{ $workOrder->branch->name }}</td>
                             <td>{{ $workOrder->work_order_date->format('d/m/Y') }}</td>
                             <td>
                                 {{ $workOrder->customer->name }}<br>
                                 <span class="text-muted small">{{ $workOrder->vehicle->plate_number }}</span>
                             </td>
-                            <td>{{ $workOrder->mechanic->name }}</td>
+                            <td>{{ $workOrder->mechanic->display_label }}</td>
+                            <td>{{ $workOrder->vehicle->year ?? '-' }}</td>
+                            <td>{{ $workOrder->odometer_km ?? '-' }}</td>
                             <td>{{ number_format($subtotalService, 0, ',', '.') }}</td>
                             <td>{{ number_format($subtotalSparepart, 0, ',', '.') }}</td>
                             <td>{{ number_format($subtotalService + $subtotalSparepart, 0, ',', '.') }}</td>
@@ -220,7 +238,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="p-0">
+                            <td colspan="11" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-bar-graph',
                                     'title' => 'Belum ada data PKB',

@@ -61,22 +61,25 @@ return [
     | Application Timezone
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. We have gone
-    | ahead and set this to a sensible default for you out of the box.
+    | This application only serves workshops operating in Indonesia (WIB), so
+    | the app timezone is set to Asia/Jakarta rather than UTC — every now()
+    | call (invoice/work order dates, report filters, PDF print timestamps,
+    | session/cache/queue expiry, log timestamps) reflects local time.
+    | Timestamps stored before this change remain in UTC wall-clock values.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => 'Asia/Jakarta',
 
     /*
     |--------------------------------------------------------------------------
     | Business Timezone
     |--------------------------------------------------------------------------
     |
-    | Storage (created_at, etc.) and the application timezone above must stay
-    | UTC. This value is used only for business-facing period computations,
-    | such as document numbering, which should follow local (WIB) time.
+    | Historically used to force local time for document-numbering periods
+    | while the app timezone above stayed UTC. Now redundant (app timezone is
+    | already Asia/Jakarta) but kept as a no-op so DocumentNumberGenerator's
+    | explicit ->timezone() call and its default here don't need to change.
     |
     */
 

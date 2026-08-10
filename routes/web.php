@@ -196,6 +196,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('invoices')->name('invoices.')->group(function () {
         Route::get('/', [InvoiceController::class, 'index'])->name('index');
+        Route::get('/direct/create', [InvoiceController::class, 'createDirect'])->name('createDirect');
+        Route::post('/direct', [InvoiceController::class, 'storeDirect'])->name('storeDirect');
         Route::post('/', [InvoiceController::class, 'store'])->name('store');
         Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show');
         Route::get('/{invoice}/edit', [InvoiceController::class, 'edit'])->name('edit');

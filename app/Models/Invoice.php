@@ -72,4 +72,9 @@ class Invoice extends Model
     {
         return round((float) $this->grand_total - (float) $this->paid_amount, 2);
     }
+
+    public function getIsDirectSaleAttribute(): bool
+    {
+        return is_null($this->work_order_id);
+    }
 }

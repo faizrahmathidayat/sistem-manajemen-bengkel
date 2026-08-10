@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -19,6 +20,11 @@ class InvoicePolicy
     {
         return $workOrder->status === WorkOrderStatus::COMPLETED
             && $user->hasPermissionToInBranch('invoice.create', $workOrder->branch_id);
+    }
+
+    public function createDirect(User $user, Branch $branch): bool
+    {
+        return $user->hasPermissionToInBranch('invoice.create', $branch->id);
     }
 
     public function update(User $user, Invoice $invoice): bool

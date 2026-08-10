@@ -41,4 +41,9 @@ class Mechanic extends Model
             ->where('is_active', true)
             ->exists();
     }
+
+    public function getDisplayLabelAttribute(): string
+    {
+        return $this->nip ? "{$this->nip} - {$this->name}" : $this->name;
+    }
 }

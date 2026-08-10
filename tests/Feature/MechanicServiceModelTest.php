@@ -41,6 +41,20 @@ class MechanicServiceModelTest extends TestCase
         $this->assertSame('2020-01-15', $mechanic->join_date->format('Y-m-d'));
     }
 
+    public function test_mechanic_display_label_combines_nip_and_name(): void
+    {
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'MEK-001']);
+
+        $this->assertSame('MEK-001 - Agus Setiawan', $mechanic->display_label);
+    }
+
+    public function test_mechanic_display_label_falls_back_to_name_when_nip_is_null(): void
+    {
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan']);
+
+        $this->assertSame('Agus Setiawan', $mechanic->display_label);
+    }
+
     public function test_mechanic_branches_rejects_duplicate_pair(): void
     {
         $mechanic = Mechanic::create(['name' => 'Agus Setiawan']);

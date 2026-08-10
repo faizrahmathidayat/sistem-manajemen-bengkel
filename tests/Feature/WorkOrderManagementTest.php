@@ -117,6 +117,39 @@ class WorkOrderManagementTest extends TestCase
         $this->assertSame(50000.0, (float) $workOrder->serviceLines->first()->line_total);
     }
 
+    public function test_store_forces_service_unit_price_from_catalog_ignoring_client_value(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $payload = $this->baseStorePayload($branch, $scenario);
+        // catalog default_price is 50000 (set in makeScenario); submit a tampered price.
+        $payload['services'][0]['unit_price'] = 1;
+
+        $this->actingAs(User::find($user->id))->post('/work-orders', $payload);
+
+        $workOrder = WorkOrder::first();
+        $this->assertSame(50000.0, (float) $workOrder->serviceLines->first()->unit_price);
+    }
+
+    public function test_store_rejects_a_service_line_without_a_catalog(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['services'] = [
+            ['service_catalog_id' => null, 'description' => 'Servis manual', 'qty' => 1, 'unit_price' => 50000],
+        ];
+
+        $response = $this->actingAs(User::find($user->id))->post('/work-orders', $payload);
+
+        $response->assertSessionHasErrors(['services.0.service_catalog_id']);
+        $this->assertSame(0, WorkOrder::count());
+    }
+
     public function test_store_is_forbidden_without_pkb_create_in_the_branch(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
@@ -301,7 +334,7 @@ class WorkOrderManagementTest extends TestCase
             'work_order_date' => now()->format('Y-m-d'),
             'notes' => 'Catatan diperbarui',
             'services' => [
-                ['service_catalog_id' => null, 'description' => 'Servis tambahan', 'qty' => 2, 'unit_price' => 25000],
+                ['service_catalog_id' => $scenario['catalog']->id, 'description' => 'Servis tambahan', 'qty' => 2, 'unit_price' => 25000],
             ],
             'spareparts' => [],
         ]);
@@ -682,7 +715,7 @@ class WorkOrderManagementTest extends TestCase
             'mechanic_id' => $scenario['mechanic']->id,
             'work_order_date' => now()->format('Y-m-d'),
             'services' => [
-                ['service_catalog_id' => null, 'description' => 'Servis tambahan', 'qty' => 2, 'unit_price' => 25000],
+                ['service_catalog_id' => $scenario['catalog']->id, 'description' => 'Servis tambahan', 'qty' => 1, 'unit_price' => 25000],
             ],
             'spareparts' => [],
         ];

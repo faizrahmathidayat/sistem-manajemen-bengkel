@@ -1,8 +1,8 @@
 <template id="serviceLineTemplate">
     <div class="row g-2 align-items-start mb-2 service-line">
         <div class="col-md-3">
-            <select class="form-select service-catalog-select" data-name-prefix="services">
-                <option value="">-- Manual --</option>
+            <select class="form-select service-catalog-select" data-name-prefix="services" required>
+                <option value="">-- Pilih Jasa --</option>
                 @foreach ($serviceCatalogs as $catalog)
                     <option value="{{ $catalog->id }}" data-price="{{ $catalog->default_price }}" data-name="{{ $catalog->name }}">{{ $catalog->name }}</option>
                 @endforeach
@@ -15,7 +15,7 @@
             <input type="number" step="0.001" min="0.001" class="form-control service-qty" value="1">
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.01" min="0" class="form-control service-unit-price">
+            <input type="number" step="0.01" min="0" class="form-control service-unit-price" readonly>
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-line">&times;</button>

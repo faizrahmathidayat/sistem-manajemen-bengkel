@@ -38,7 +38,7 @@ class UpdateWorkOrderRequest extends FormRequest
             'notes' => ['nullable', 'string'],
             'services' => ['nullable', 'array'],
             'services.*' => ['array'],
-            'services.*.service_catalog_id' => ['nullable', 'integer', 'exists:service_catalogs,id'],
+            'services.*.service_catalog_id' => ['required_with:services.*.qty', 'integer', 'exists:service_catalogs,id'],
             'services.*.description' => ['required_with:services.*.qty', 'string', 'max:255'],
             'services.*.qty' => ['required_with:services.*.description', 'numeric', 'min:0.001'],
             'services.*.unit_price' => ['required_with:services.*.description', 'numeric', 'min:0'],

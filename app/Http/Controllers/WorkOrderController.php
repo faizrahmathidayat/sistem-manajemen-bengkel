@@ -359,11 +359,12 @@ class WorkOrderController extends Controller
         $workOrder->serviceLines()->delete();
 
         foreach (array_values(array_filter($lines)) as $index => $line) {
+            $catalog = ServiceCatalog::findOrFail($line['service_catalog_id']);
             $qty = (float) $line['qty'];
-            $unitPrice = (float) $line['unit_price'];
+            $unitPrice = (float) $catalog->default_price;
             WorkOrderServiceLine::create([
                 'work_order_id' => $workOrder->id,
-                'service_catalog_id' => $line['service_catalog_id'] ?? null,
+                'service_catalog_id' => $catalog->id,
                 'description' => $line['description'],
                 'qty' => $qty,
                 'unit_price' => $unitPrice,

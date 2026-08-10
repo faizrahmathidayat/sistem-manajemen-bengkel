@@ -68,6 +68,14 @@ class PkbReportControllerTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'pkb.confirm');
         $this->grantBranchPermission($user, $branch, 'pkb.complete');
 
+        // Service line price is now always forced server-side from the catalog's current
+        // default_price (price-lock milestone), so this must be set on the catalog before
+        // posting rather than trusted from the submitted unit_price. Mutating it here only
+        // affects lines created after this point (price is snapshotted into unit_price at
+        // creation time), so callers that create several work orders from the same $scenario
+        // with different $serviceAmount values still get distinct, correctly-summed totals.
+        $scenario['catalog']->update(['default_price' => $serviceAmount]);
+
         $spareparts = $sparepartAmount > 0
             ? [['sparepart_branch_id' => $scenario['sparepartBranch']->id, 'qty' => 1, 'unit_price' => $sparepartAmount]]
             : [];

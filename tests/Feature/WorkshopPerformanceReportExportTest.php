@@ -22,6 +22,7 @@ use App\Models\WorkOrder;
 use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\Concerns\ExtractsPdfText;
 use Tests\TestCase;
 
@@ -164,5 +165,70 @@ class WorkshopPerformanceReportExportTest extends TestCase
         $this->assertStringContainsString('Sparepart 0', $text);
         $this->assertStringContainsString('Sparepart 1', $text);
         $this->assertStringContainsString('Cabang Jakarta', $text);
+    }
+
+    protected function loadExportedSheet($response): \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet
+    {
+        // Excel::download() returns a BinaryFileResponse (file written to disk), unlike
+        // DomPDF's stream()/download() which set response content in-memory — so we must
+        // read the underlying file path, not $response->getContent() (which is empty here).
+        $spreadsheet = IOFactory::load($response->getFile()->getPathname());
+
+        return $spreadsheet->getActiveSheet();
+    }
+
+    public function test_export_excel_is_forbidden_without_permission(): void
+    {
+        $response = $this->actingAs(User::factory()->create())->get('/reports/workshop-performance/export-excel');
+
+        $response->assertForbidden();
+    }
+
+    public function test_export_excel_mechanic_view_returns_xlsx_with_grand_total_formula(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'MEK-001']);
+        $this->makeInvoiceWithLines($branch, $customer, $mechanic, [100000], [90000], now()->toDateString());
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.workshop_performance.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/workshop-performance/export-excel');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $sheet = $this->loadExportedSheet($response);
+        $this->assertSame('MEK-001 - Agus Setiawan', $sheet->getCell('A3')->getValue());
+        // assertEquals (bukan assertSame) untuk sel numerik: PhpSpreadsheet boleh membaca ulang
+        // angka bulat sebagai int atau float tergantung reader — yang penting nilainya, bukan tipenya.
+        $this->assertEquals(100000, $sheet->getCell('E3')->getValue());
+        $this->assertEquals(90000, $sheet->getCell('H3')->getValue());
+        $this->assertSame('=E3+H3', $sheet->getCell('I3')->getValue());
+    }
+
+    public function test_export_excel_invoice_detail_view_writes_subtotal_and_total_formulas(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'nip' => 'MEK-001']);
+        $this->makeInvoiceWithLines($branch, $customer, $mechanic, [100000], [90000, 40000], now()->toDateString());
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.workshop_performance.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/workshop-performance/export-excel?view_type=invoice_detail');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $sheet = $this->loadExportedSheet($response);
+        // Baris 2: meta header; baris 3: nilai meta; baris 4: header kolom Jasa/Sparepart; baris 5-6: pairing; baris 7: Total.
+        $this->assertSame('=B5*C5*(1-D5/100)', $sheet->getCell('E5')->getValue());
+        $this->assertSame('=G5*H5*(1-I5/100)', $sheet->getCell('J5')->getValue());
+        $this->assertSame('=J5+E5', $sheet->getCell('K5')->getValue());
+        $this->assertSame('Total', $sheet->getCell('A7')->getValue());
+        $this->assertSame('=SUM(E5:E6)', $sheet->getCell('E7')->getValue());
+        $this->assertSame('=SUM(J5:J6)', $sheet->getCell('J7')->getValue());
+        $this->assertSame('=J7+E7', $sheet->getCell('K7')->getValue());
     }
 }

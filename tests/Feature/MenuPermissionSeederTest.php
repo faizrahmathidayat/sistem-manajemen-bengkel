@@ -49,4 +49,12 @@ class MenuPermissionSeederTest extends TestCase
         $this->assertDatabaseHas('permissions', ['code' => 'vehicle_reference.view']);
         $this->assertDatabaseHas('permissions', ['code' => 'vehicle_reference.manage']);
     }
+
+    public function test_seeder_creates_workshop_performance_report_menu_and_permission(): void
+    {
+        $this->seed(MenuPermissionSeeder::class);
+
+        $this->assertDatabaseHas('menus', ['code' => 'reporting.workshop_performance', 'is_branch_scoped' => true]);
+        $this->assertDatabaseHas('permissions', ['code' => 'report.workshop_performance.view']);
+    }
 }

@@ -151,7 +151,7 @@
     </ul>
 @endif
 
-@if ($user && ($user->branchesWithPermission('report.pkb.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice.view')->isNotEmpty() || $user->branchesWithPermission('report.receivable.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice_pkb_gap.view')->isNotEmpty() || $user->branchesWithPermission('report.sparepart.view')->isNotEmpty()))
+@if ($user && ($user->branchesWithPermission('report.pkb.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice.view')->isNotEmpty() || $user->branchesWithPermission('report.workshop_performance.view')->isNotEmpty() || $user->branchesWithPermission('report.receivable.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice_pkb_gap.view')->isNotEmpty() || $user->branchesWithPermission('report.sparepart.view')->isNotEmpty()))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Reporting</div>
     <ul class="nav flex-column mb-3">
         @if ($user->branchesWithPermission('report.pkb.view')->isNotEmpty())
@@ -165,6 +165,13 @@
         <li class="nav-item">
             <a href="{{ route('reports.invoices.index') }}" class="nav-link {{ request()->routeIs('reports.invoices.*') ? 'active' : '' }}">
                 <i class="bi bi-file-earmark-text me-2"></i> Laporan Invoice
+            </a>
+        </li>
+        @endif
+        @if ($user->branchesWithPermission('report.workshop_performance.view')->isNotEmpty())
+        <li class="nav-item">
+            <a href="{{ route('reports.workshop-performance.index') }}" class="nav-link {{ request()->routeIs('reports.workshop-performance.*') ? 'active' : '' }}">
+                <i class="bi bi-speedometer2 me-2"></i> Laporan Performance Bengkel
             </a>
         </li>
         @endif

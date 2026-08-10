@@ -254,6 +254,14 @@ class MenuPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'code' => 'reporting.workshop_performance',
+                'name' => 'Laporan Performance Bengkel',
+                'is_branch_scoped' => true,
+                'permissions' => [
+                    ['code' => 'report.workshop_performance.view', 'resource' => 'report', 'action' => 'workshop_performance.view', 'description' => 'Melihat laporan performance bengkel'],
+                ],
+            ],
+            [
                 'code' => 'reporting.receivable',
                 'name' => 'Laporan Piutang',
                 'is_branch_scoped' => true,

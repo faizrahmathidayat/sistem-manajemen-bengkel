@@ -389,6 +389,21 @@ class AppShellTest extends TestCase
         $response->assertDontSee('Segera Hadir', false);
     }
 
+    public function test_sidebar_links_directly_to_workshop_performance_report_when_permitted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'report.workshop_performance.view', 'resource' => 'report', 'action' => 'workshop_performance.view', 'description' => 'Melihat laporan performance bengkel']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('reports.workshop-performance.index'), false);
+        $response->assertDontSee('Segera Hadir', false);
+    }
+
     public function test_sidebar_links_directly_to_invoice_pkb_gap_report_when_permitted(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
@@ -443,6 +458,7 @@ class AppShellTest extends TestCase
         $response->assertDontSee('bi-journal-text', false);
         $response->assertDontSee('Laporan PKB', false);
         $response->assertDontSee('Laporan Invoice', false);
+        $response->assertDontSee('Laporan Performance Bengkel', false);
         $response->assertDontSee('bi-bar-chart-steps', false);
         $response->assertDontSee('Laporan Sparepart', false);
     }

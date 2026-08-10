@@ -76,7 +76,7 @@
     </ul>
 @endif
 
-@if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view') || $user->can('mechanic.view') || $user->can('service.view')))
+@if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view') || $user->can('mechanic.view') || $user->can('service.view') || $user->can('rack.view')))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Master Data</div>
     <ul class="nav flex-column mb-3">
         @can('branch.view')
@@ -118,6 +118,13 @@
         <li class="nav-item">
             <a href="{{ route('service-catalogs.index') }}" class="nav-link {{ request()->routeIs('service-catalogs.*') ? 'active' : '' }}">
                 <i class="bi bi-tools me-2"></i> Jasa Service
+            </a>
+        </li>
+        @endcan
+        @can('rack.view')
+        <li class="nav-item">
+            <a href="{{ route('racks.index') }}" class="nav-link {{ request()->routeIs('racks.*') ? 'active' : '' }}">
+                <i class="bi bi-grid-3x3-gap me-2"></i> Rack
             </a>
         </li>
         @endcan

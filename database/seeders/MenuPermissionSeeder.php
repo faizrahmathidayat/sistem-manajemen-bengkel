@@ -194,6 +194,16 @@ class MenuPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'code' => 'master.rack',
+                'name' => 'Rack',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'rack.view', 'resource' => 'rack', 'action' => 'view', 'description' => 'Melihat rack'],
+                    ['code' => 'rack.create', 'resource' => 'rack', 'action' => 'create', 'description' => 'Membuat rack'],
+                    ['code' => 'rack.edit', 'resource' => 'rack', 'action' => 'edit', 'description' => 'Mengubah rack'],
+                ],
+            ],
+            [
                 'code' => 'administrasi.users',
                 'name' => 'Users',
                 'is_branch_scoped' => false,

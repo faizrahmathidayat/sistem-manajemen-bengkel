@@ -20,6 +20,7 @@ use App\Http\Controllers\ReceivableReportController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\RackController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SparepartBranchController;
 use App\Http\Controllers\SparepartStockReportController;
@@ -107,6 +108,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [ServiceCatalogController::class, 'store'])->name('store');
         Route::get('/{serviceCatalog}/edit', [ServiceCatalogController::class, 'edit'])->name('edit');
         Route::put('/{serviceCatalog}', [ServiceCatalogController::class, 'update'])->name('update');
+    });
+
+    Route::prefix('racks')->name('racks.')->group(function () {
+        Route::get('/', [RackController::class, 'index'])->name('index');
+        Route::get('/create', [RackController::class, 'create'])->name('create');
+        Route::post('/', [RackController::class, 'store'])->name('store');
+        Route::get('/{rack}/edit', [RackController::class, 'edit'])->name('edit');
+        Route::put('/{rack}', [RackController::class, 'update'])->name('update');
     });
 
     Route::prefix('sparepart-branches')->name('sparepart-branches.')->group(function () {

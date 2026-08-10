@@ -177,6 +177,42 @@ class InvoiceReportExportTest extends TestCase
         $this->assertStringContainsString('Oli Mesin', $text);
     }
 
+    public function test_pdf_preview_rekap_mode_shows_branch_and_mechanic(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makeInvoice($branch, $customer, 100000, 0, now()->toDateString());
+        $invoice->workOrder->mechanic->update(['nip' => 'MEK-001']);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices/pdf-preview');
+
+        $response->assertOk();
+        $text = preg_replace('/\s+/', ' ', $this->extractPdfText($response->getContent()));
+        $this->assertStringContainsString('Cabang Jakarta', $text);
+        $this->assertStringContainsString('MEK-001 - Mekanik JKT', $text);
+    }
+
+    public function test_pdf_preview_detail_mode_shows_branch_mechanic_and_discount(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makeInvoice($branch, $customer, 100000, 0, now()->toDateString());
+        $invoice->workOrder->mechanic->update(['nip' => 'MEK-001']);
+        $invoice->details()->first()->update(['discount_percent' => 10, 'discount_amount' => 10000, 'line_total' => 90000]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices/pdf-preview?mode=detail');
+
+        $response->assertOk();
+        $text = preg_replace('/\s+/', ' ', $this->extractPdfText($response->getContent()));
+        $this->assertStringContainsString('Cabang Jakarta', $text);
+        $this->assertStringContainsString('MEK-001 - Mekanik JKT', $text);
+        $this->assertStringContainsString('10.000', $text);
+    }
+
     public function test_export_buttons_render_on_the_report_page_with_filters_forwarded(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

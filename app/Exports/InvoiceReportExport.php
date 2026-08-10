@@ -38,17 +38,22 @@ class InvoiceReportExport implements FromQuery, WithHeadings, WithMapping, WithC
     public function headings(): array
     {
         return $this->mode === 'detail'
-            ? ['No. Invoice', 'Tanggal', 'Customer', 'Status', 'Tipe Item', 'Nama Item', 'Qty', 'Harga Satuan', 'Subtotal Line']
-            : ['No. Invoice', 'Tanggal', 'Customer', 'Subtotal Jasa', 'Subtotal Sparepart', 'Discount', 'Grand Total', 'Terbayar', 'Sisa Piutang', 'Status'];
+            ? ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Status', 'Tipe Item', 'Nama Item', 'Qty', 'Harga Satuan', 'Diskon', 'Subtotal Line']
+            : ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Subtotal Jasa', 'Subtotal Sparepart', 'Discount', 'Grand Total', 'Terbayar', 'Sisa Piutang', 'Status'];
     }
 
     public function map($invoice): array
     {
+        $branchName = $invoice->branch->name;
+        $mechanicLabel = optional(optional($invoice->workOrder)->mechanic)->display_label ?? '-';
+
         if ($this->mode !== 'detail') {
             return [
                 $invoice->number,
+                $branchName,
                 $invoice->invoice_date->format('Y-m-d'),
                 $invoice->customer->name,
+                $mechanicLabel,
                 (float) $invoice->subtotal_service,
                 (float) $invoice->subtotal_sparepart,
                 (float) $invoice->discount_amount,
@@ -60,19 +65,22 @@ class InvoiceReportExport implements FromQuery, WithHeadings, WithMapping, WithC
         }
 
         if ($invoice->details->isEmpty()) {
-            return [[$invoice->number, $invoice->invoice_date->format('Y-m-d'), $invoice->customer->name, $invoice->status, '-', '-', null, null, null]];
+            return [[$invoice->number, $branchName, $invoice->invoice_date->format('Y-m-d'), $invoice->customer->name, $mechanicLabel, $invoice->status, '-', '-', null, null, null, null]];
         }
 
-        return $invoice->details->map(function ($detail) use ($invoice) {
+        return $invoice->details->map(function ($detail) use ($invoice, $branchName, $mechanicLabel) {
             return [
                 $invoice->number,
+                $branchName,
                 $invoice->invoice_date->format('Y-m-d'),
                 $invoice->customer->name,
+                $mechanicLabel,
                 $invoice->status,
                 $detail->item_type === InvoiceDetailItemType::SERVICE ? 'Jasa' : 'Sparepart',
                 $detail->description,
                 (float) $detail->qty,
                 (float) $detail->unit_price,
+                (float) $detail->discount_amount,
                 (float) $detail->line_total,
             ];
         })->all();

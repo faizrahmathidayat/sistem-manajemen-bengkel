@@ -3,6 +3,11 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-receipt me-2"></i>Invoice</h1>
+        @if (auth()->user()->branchesWithPermission('invoice.create')->isNotEmpty())
+            <a href="{{ route('invoices.createDirect') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg"></i> Invoice Langsung (DS)
+            </a>
+        @endif
     </div>
 
     @include('partials.list-filter-bar', [

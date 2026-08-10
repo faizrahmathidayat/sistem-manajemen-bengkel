@@ -99,4 +99,102 @@ class InvoiceDirectSaleTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'invoice.create');
         $this->assertTrue($policy->createDirect($user->fresh(), $branch));
     }
+
+    public function test_create_direct_form_is_visible_for_user_with_invoice_create_permission(): void
+    {
+        [$branch] = $this->makeBranchAndCustomer();
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->get('/invoices/direct/create');
+
+        $response->assertOk();
+        $response->assertSee('Invoice Langsung');
+    }
+
+    public function test_create_direct_form_shows_no_access_without_permission(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/invoices/direct/create');
+
+        $response->assertOk();
+        $response->assertSee('belum memiliki akses');
+    }
+
+    public function test_store_direct_creates_invoice_and_redirects_to_show(): void
+    {
+        [$branch, $customer] = $this->makeBranchAndCustomer();
+        $catalog = ServiceCatalog::create(['code' => 'SVC-CUCI', 'name' => 'Cuci Mobil', 'default_price' => 40000]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->post('/invoices/direct', [
+            'branch_id' => $branch->id,
+            'customer_id' => $customer->id,
+            'invoice_date' => now()->toDateString(),
+            'services' => [
+                ['description' => $catalog->name, 'qty' => 1, 'unit_price' => 40000],
+            ],
+            'spareparts' => [],
+        ]);
+
+        $invoice = \App\Models\Invoice::latest('id')->first();
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $this->assertNull($invoice->work_order_id);
+        $this->assertStringStartsWith('DS/', $invoice->number);
+    }
+
+    public function test_store_direct_rejects_empty_line_items(): void
+    {
+        [$branch, $customer] = $this->makeBranchAndCustomer();
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->post('/invoices/direct', [
+            'branch_id' => $branch->id,
+            'customer_id' => $customer->id,
+            'invoice_date' => now()->toDateString(),
+        ]);
+
+        $response->assertSessionHasErrors('services');
+    }
+
+    public function test_show_direct_sale_invoice_does_not_crash_and_shows_placeholder(): void
+    {
+        [$branch, $customer] = $this->makeBranchAndCustomer();
+        $invoice = (new InvoiceService())->createDirectSale($branch, $customer, [
+            'invoice_date' => now()->toDateString(),
+            'services' => [['description' => 'Cuci Mobil', 'qty' => 1, 'unit_price' => 40000]],
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.view');
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}");
+
+        $response->assertOk();
+        $response->assertSee('Direct Sales');
+    }
+
+    public function test_print_direct_sale_invoice_does_not_crash(): void
+    {
+        [$branch, $customer] = $this->makeBranchAndCustomer();
+        $invoice = (new InvoiceService())->createDirectSale($branch, $customer, [
+            'invoice_date' => now()->toDateString(),
+            'services' => [['description' => 'Cuci Mobil', 'qty' => 1, 'unit_price' => 40000]],
+        ]);
+        (new InvoiceService())->updateInvoice($invoice, [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [['description' => 'Cuci Mobil', 'qty' => 1, 'unit_price' => 40000]],
+            'spareparts' => [],
+        ]);
+        (new InvoiceService())->postInvoice($invoice->fresh());
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.print');
+
+        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}/print");
+
+        $response->assertOk();
+    }
 }

@@ -61,12 +61,14 @@
                 <h3>Data Customer &amp; Kendaraan</h3>
                 <div><span class="label">Nama:</span> {{ $invoice->customer->name }}</div>
                 <div><span class="label">Alamat:</span> {{ $invoice->customer->address ?? '-' }}</div>
-                <div><span class="label">No. Polisi:</span> {{ $invoice->workOrder->vehicle->plate_number }}</div>
-                <div><span class="label">Kendaraan:</span> {{ optional($invoice->workOrder->vehicle->brand)->name }} {{ optional($invoice->workOrder->vehicle->type)->name }}</div>
+                @if ($invoice->workOrder)
+                    <div><span class="label">No. Polisi:</span> {{ $invoice->workOrder->vehicle->plate_number }}</div>
+                    <div><span class="label">Kendaraan:</span> {{ optional($invoice->workOrder->vehicle->brand)->name }} {{ optional($invoice->workOrder->vehicle->type)->name }}</div>
+                @endif
             </td>
             <td>
                 <h3>Info Invoice</h3>
-                <div><span class="label">No. PKB:</span> {{ $invoice->workOrder->number }}</div>
+                <div><span class="label">No. PKB:</span> {{ optional($invoice->workOrder)->number ?? 'Direct Sales' }}</div>
                 <div><span class="label">Tanggal Invoice:</span> {{ $invoice->invoice_date->format('d/m/Y') }}</div>
                 <div><span class="label">Jatuh Tempo:</span> {{ optional($invoice->due_date)->format('d/m/Y') ?? '-' }}</div>
             </td>

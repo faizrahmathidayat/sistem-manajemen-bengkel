@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CancelInvoiceRequest;
+use App\Http\Requests\StoreDirectSaleInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
 use App\Mail\InvoicePostedMail;
+use App\Models\Branch;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\ServiceCatalog;
@@ -66,6 +69,29 @@ class InvoiceController extends Controller
         }
 
         return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice draft berhasil dibuat.');
+    }
+
+    public function createDirect()
+    {
+        $branches = auth()->user()->branchesWithPermission('invoice.create');
+
+        if ($branches->isEmpty()) {
+            return view('invoices.no-access');
+        }
+
+        $serviceCatalogs = ServiceCatalog::where('is_active', true)->orderBy('name')->get();
+
+        return view('invoices.create-direct', compact('branches', 'serviceCatalogs'));
+    }
+
+    public function storeDirect(StoreDirectSaleInvoiceRequest $request)
+    {
+        $branch = Branch::findOrFail($request->input('branch_id'));
+        $customer = Customer::findOrFail($request->input('customer_id'));
+
+        $invoice = (new InvoiceService())->createDirectSale($branch, $customer, $request->validated());
+
+        return redirect()->route('invoices.show', $invoice)->with('status', 'Invoice Direct Sales berhasil dibuat.');
     }
 
     public function show(Invoice $invoice)

@@ -13,12 +13,15 @@ class InvoiceDetail extends Model
     protected $fillable = [
         'invoice_id', 'item_type',
         'work_order_service_line_id', 'work_order_sparepart_line_id', 'sparepart_branch_id',
-        'item_code_snapshot', 'description', 'qty', 'unit_price', 'line_total', 'sort_order',
+        'item_code_snapshot', 'description', 'qty', 'unit_price',
+        'discount_percent', 'discount_amount', 'line_total', 'sort_order',
     ];
 
     protected $casts = [
         'qty' => 'decimal:3',
         'unit_price' => 'decimal:2',
+        'discount_percent' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'line_total' => 'decimal:2',
     ];
 

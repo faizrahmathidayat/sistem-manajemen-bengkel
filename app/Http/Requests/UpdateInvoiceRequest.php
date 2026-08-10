@@ -39,12 +39,14 @@ class UpdateInvoiceRequest extends FormRequest
             'services.*.description' => ['required_with:services.*.qty', 'string', 'max:255'],
             'services.*.qty' => ['required_with:services.*.description', 'numeric', 'min:0.001'],
             'services.*.unit_price' => ['required_with:services.*.description', 'numeric', 'min:0'],
+            'services.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'spareparts' => ['nullable', 'array'],
             'spareparts.*' => ['array'],
             'spareparts.*.work_order_sparepart_line_id' => ['nullable', 'integer', 'exists:work_order_sparepart_lines,id'],
             'spareparts.*.sparepart_branch_id' => ['required_with:spareparts.*.qty', 'integer', 'exists:sparepart_branches,id'],
             'spareparts.*.qty' => ['required_with:spareparts.*.sparepart_branch_id', 'numeric', 'min:0.001'],
             'spareparts.*.unit_price' => ['required_with:spareparts.*.sparepart_branch_id', 'numeric', 'min:0'],
+            'spareparts.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
 

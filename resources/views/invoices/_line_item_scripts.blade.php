@@ -1,9 +1,9 @@
 <template id="invoiceServiceLineTemplate">
     <div class="row g-2 align-items-start mb-2 service-line">
-        <div class="col-md-7 service-item-locked d-none">
+        <div class="col-md-6 service-item-locked d-none">
             <input type="text" class="form-control-plaintext fw-bold service-locked-description" readonly>
         </div>
-        <div class="col-md-7 service-item-free">
+        <div class="col-md-6 service-item-free">
             <select class="form-select service-catalog-select">
                 <option value="">-- Manual --</option>
                 @foreach ($serviceCatalogs as $catalog)
@@ -14,8 +14,11 @@
         <div class="col-md-2">
             <input type="number" step="0.001" min="0.001" class="form-control service-qty" value="1">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
             <input type="number" step="0.01" min="0" class="form-control service-unit-price">
+        </div>
+        <div class="col-md-1">
+            <input type="number" step="0.01" min="0" max="100" class="form-control service-discount-percent" value="0">
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-line">&times;</button>
@@ -25,10 +28,10 @@
 
 <template id="invoiceSparepartLineTemplate">
     <div class="row g-2 align-items-start mb-2 sparepart-line">
-        <div class="col-md-5 sparepart-item-locked d-none">
+        <div class="col-md-4 sparepart-item-locked d-none">
             <input type="text" class="form-control-plaintext fw-bold sparepart-locked-label" readonly>
         </div>
-        <div class="col-md-5 sparepart-item-free">
+        <div class="col-md-4 sparepart-item-free">
             <select class="form-select sparepart-select">
                 <option value="">-- Pilih Sparepart --</option>
             </select>
@@ -36,8 +39,11 @@
         <div class="col-md-2">
             <input type="number" step="0.001" min="0.001" class="form-control sparepart-qty" value="1">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
             <input type="number" step="0.01" min="0" class="form-control sparepart-unit-price">
+        </div>
+        <div class="col-md-1">
+            <input type="number" step="0.01" min="0" max="100" class="form-control sparepart-discount-percent" value="0">
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-line">&times;</button>
@@ -65,6 +71,7 @@
 
         wrapper.querySelector('.service-qty').name = `services[${index}][qty]`;
         wrapper.querySelector('.service-unit-price').name = `services[${index}][unit_price]`;
+        wrapper.querySelector('.service-discount-percent').name = `services[${index}][discount_percent]`;
 
         if (locked) {
             wrapper.querySelector('.service-item-locked').classList.remove('d-none');
@@ -107,6 +114,7 @@
 
         wrapper.querySelector('.sparepart-qty').name = `spareparts[${index}][qty]`;
         wrapper.querySelector('.sparepart-unit-price').name = `spareparts[${index}][unit_price]`;
+        wrapper.querySelector('.sparepart-discount-percent').name = `spareparts[${index}][discount_percent]`;
 
         const select = wrapper.querySelector('.sparepart-select');
 

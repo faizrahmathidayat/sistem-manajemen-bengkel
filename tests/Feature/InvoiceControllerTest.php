@@ -297,6 +297,79 @@ class InvoiceControllerTest extends TestCase
         $this->assertSame('Diskon member', $invoice->notes);
     }
 
+    public function test_update_applies_per_line_discount_and_computes_net_line_total(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => 'Ganti Oli',
+                'qty' => 1,
+                'unit_price' => 100000,
+                'discount_percent' => 10,
+            ]],
+            'spareparts' => [[
+                'work_order_sparepart_line_id' => $sparepartDetail->work_order_sparepart_line_id,
+                'sparepart_branch_id' => $sparepartDetail->sparepart_branch_id,
+                'qty' => 2,
+                'unit_price' => 50000,
+                'discount_percent' => 20,
+            ]],
+        ]);
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $invoice->refresh();
+
+        $newServiceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $this->assertSame(10.0, (float) $newServiceDetail->discount_percent);
+        $this->assertSame(10000.0, (float) $newServiceDetail->discount_amount);
+        $this->assertSame(90000.0, (float) $newServiceDetail->line_total);
+
+        $newSparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $this->assertSame(20.0, (float) $newSparepartDetail->discount_percent);
+        $this->assertSame(20000.0, (float) $newSparepartDetail->discount_amount);
+        $this->assertSame(80000.0, (float) $newSparepartDetail->line_total);
+
+        $this->assertSame(90000.0, (float) $invoice->subtotal_service);
+        $this->assertSame(80000.0, (float) $invoice->subtotal_sparepart);
+        $this->assertSame(170000.0, (float) $invoice->grand_total);
+    }
+
+    public function test_update_defaults_discount_percent_to_zero_when_omitted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => 'Ganti Oli',
+                'qty' => 1,
+                'unit_price' => 50000,
+            ]],
+            'spareparts' => [],
+        ]);
+
+        $response->assertRedirect("/invoices/{$invoice->id}");
+        $newServiceDetail = $invoice->fresh()->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $this->assertSame(0.0, (float) $newServiceDetail->discount_percent);
+        $this->assertSame(0.0, (float) $newServiceDetail->discount_amount);
+        $this->assertSame(50000.0, (float) $newServiceDetail->line_total);
+    }
+
     public function test_update_saves_due_date(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

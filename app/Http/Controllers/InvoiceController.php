@@ -89,6 +89,7 @@ class InvoiceController extends Controller
                 'description' => $detail->description,
                 'qty' => (float) $detail->qty,
                 'unit_price' => (float) $detail->unit_price,
+                'discount_percent' => (float) $detail->discount_percent,
             ];
         })->values();
 
@@ -100,6 +101,7 @@ class InvoiceController extends Controller
                 'description' => $detail->description,
                 'qty' => (float) $detail->qty,
                 'unit_price' => (float) $detail->unit_price,
+                'discount_percent' => (float) $detail->discount_percent,
             ];
         })->values();
 

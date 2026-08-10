@@ -75,7 +75,7 @@
 
     <table class="line-table">
         <thead>
-            <tr><th>Tipe</th><th>Kode</th><th>Deskripsi</th><th>Qty</th><th>Harga Satuan</th><th>Total</th></tr>
+            <tr><th>Tipe</th><th>Kode</th><th>Deskripsi</th><th>Qty</th><th>Harga Satuan</th><th>Diskon</th><th>Total</th></tr>
         </thead>
         <tbody>
             @foreach ($invoice->details as $detail)
@@ -85,6 +85,7 @@
                     <td>{{ $detail->description }}</td>
                     <td class="num">{{ number_format($detail->qty, 0, ',', '.') }}</td>
                     <td class="num">{{ number_format($detail->unit_price, 0, ',', '.') }}</td>
+                    <td class="num">{{ $detail->discount_amount > 0 ? number_format($detail->discount_amount, 0, ',', '.') : '-' }}</td>
                     <td class="num">{{ number_format($detail->line_total, 0, ',', '.') }}</td>
                 </tr>
             @endforeach

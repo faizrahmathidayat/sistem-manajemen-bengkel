@@ -68,6 +68,8 @@ class InvoiceService
                     'description' => $line->description,
                     'qty' => $line->qty,
                     'unit_price' => $line->unit_price,
+                    'discount_percent' => 0,
+                    'discount_amount' => 0,
                     'line_total' => $line->line_total,
                     'sort_order' => $sortOrder++,
                 ]);
@@ -84,6 +86,8 @@ class InvoiceService
                     'description' => $line->item_name_snapshot,
                     'qty' => $line->qty,
                     'unit_price' => $line->unit_price,
+                    'discount_percent' => 0,
+                    'discount_amount' => 0,
                     'line_total' => $line->line_total,
                     'sort_order' => $sortOrder++,
                 ]);
@@ -113,6 +117,9 @@ class InvoiceService
             foreach ($data['services'] ?? [] as $line) {
                 $qty = (float) $line['qty'];
                 $unitPrice = (float) $line['unit_price'];
+                $gross = round($qty * $unitPrice, 2);
+                $discountPercent = (float) ($line['discount_percent'] ?? 0);
+                $discountAmount = round($gross * $discountPercent / 100, 2);
                 InvoiceDetail::create([
                     'invoice_id' => $fresh->id,
                     'item_type' => InvoiceDetailItemType::SERVICE,
@@ -123,7 +130,9 @@ class InvoiceService
                     'description' => $line['description'],
                     'qty' => $qty,
                     'unit_price' => $unitPrice,
-                    'line_total' => round($qty * $unitPrice, 2),
+                    'discount_percent' => $discountPercent,
+                    'discount_amount' => $discountAmount,
+                    'line_total' => round($gross - $discountAmount, 2),
                     'sort_order' => $sortOrder++,
                 ]);
             }
@@ -132,6 +141,9 @@ class InvoiceService
                 $sparepartBranch = SparepartBranch::with('sparepart')->findOrFail($line['sparepart_branch_id']);
                 $qty = (float) $line['qty'];
                 $unitPrice = (float) $line['unit_price'];
+                $gross = round($qty * $unitPrice, 2);
+                $discountPercent = (float) ($line['discount_percent'] ?? 0);
+                $discountAmount = round($gross * $discountPercent / 100, 2);
                 InvoiceDetail::create([
                     'invoice_id' => $fresh->id,
                     'item_type' => InvoiceDetailItemType::SPAREPART,
@@ -142,7 +154,9 @@ class InvoiceService
                     'description' => $sparepartBranch->sparepart->name,
                     'qty' => $qty,
                     'unit_price' => $unitPrice,
-                    'line_total' => round($qty * $unitPrice, 2),
+                    'discount_percent' => $discountPercent,
+                    'discount_amount' => $discountAmount,
+                    'line_total' => round($gross - $discountAmount, 2),
                     'sort_order' => $sortOrder++,
                 ]);
             }

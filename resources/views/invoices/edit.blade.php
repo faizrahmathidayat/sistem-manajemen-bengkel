@@ -49,9 +49,10 @@
                     <button type="button" class="btn btn-outline-primary btn-sm" id="addInvoiceServiceLine">+ Tambah Jasa</button>
                 </div>
                 <div class="row g-2 small text-muted mb-1">
-                    <div class="col-md-7">Jasa</div>
+                    <div class="col-md-6">Jasa</div>
                     <div class="col-md-2">Qty</div>
-                    <div class="col-md-2">Harga Satuan</div>
+                    <div class="col-md-1">Harga Satuan</div>
+                    <div class="col-md-1">Diskon %</div>
                     <div class="col-md-1"></div>
                 </div>
                 <div id="invoiceServiceLines"></div>
@@ -66,9 +67,10 @@
                     <button type="button" class="btn btn-outline-primary btn-sm" id="addInvoiceSparepartLine">+ Tambah Sparepart</button>
                 </div>
                 <div class="row g-2 small text-muted mb-1">
-                    <div class="col-md-5">Sparepart</div>
+                    <div class="col-md-4">Sparepart</div>
                     <div class="col-md-2">Qty</div>
-                    <div class="col-md-2">Harga Satuan</div>
+                    <div class="col-md-1">Harga Satuan</div>
+                    <div class="col-md-1">Diskon %</div>
                     <div class="col-md-1"></div>
                 </div>
                 <div id="invoiceSparepartLines"></div>
@@ -109,6 +111,7 @@
             row.querySelector('.service-locked-description').value = line.description;
             row.querySelector('.service-qty').value = line.qty;
             row.querySelector('.service-unit-price').value = line.unit_price;
+            row.querySelector('.service-discount-percent').value = line.discount_percent || 0;
         });
 
         const existingSparepartLines = @json($existingSparepartLines);
@@ -118,6 +121,7 @@
             row.querySelector('.sparepart-wo-line-id').value = line.work_order_sparepart_line_id || '';
             row.querySelector('.sparepart-qty').value = line.qty;
             row.querySelector('.sparepart-unit-price').value = line.unit_price;
+            row.querySelector('.sparepart-discount-percent').value = line.discount_percent || 0;
             if (locked) {
                 row.querySelector('.sparepart-locked-branch-id').value = line.sparepart_branch_id;
                 row.querySelector('.sparepart-locked-label').value = (line.item_code_snapshot ? line.item_code_snapshot + ' — ' : '') + line.description;

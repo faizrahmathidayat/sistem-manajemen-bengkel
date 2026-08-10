@@ -35,7 +35,7 @@
             <input type="number" step="0.001" min="0.001" class="form-control sparepart-qty" value="1">
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.01" min="0" class="form-control sparepart-unit-price">
+            <input type="number" step="0.01" min="0" class="form-control sparepart-unit-price" readonly>
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-line">&times;</button>

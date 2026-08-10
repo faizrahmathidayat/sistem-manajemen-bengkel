@@ -133,6 +133,22 @@ class WorkOrderManagementTest extends TestCase
         $this->assertSame(50000.0, (float) $workOrder->serviceLines->first()->unit_price);
     }
 
+    public function test_store_forces_sparepart_unit_price_from_branch_selling_price_ignoring_client_value(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $payload = $this->baseStorePayload($branch, $scenario);
+        // sparepartBranch selling_price is 60000 (set in makeScenario); submit a tampered price.
+        $payload['spareparts'][0]['unit_price'] = 1;
+
+        $this->actingAs(User::find($user->id))->post('/work-orders', $payload);
+
+        $workOrder = WorkOrder::first();
+        $this->assertSame(60000.0, (float) $workOrder->sparepartLines->first()->unit_price);
+    }
+
     public function test_store_rejects_a_service_line_without_a_catalog(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

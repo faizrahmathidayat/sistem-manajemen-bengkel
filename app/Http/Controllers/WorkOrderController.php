@@ -381,7 +381,7 @@ class WorkOrderController extends Controller
         foreach (array_values(array_filter($lines)) as $index => $line) {
             $sparepartBranch = SparepartBranch::with('sparepart')->findOrFail($line['sparepart_branch_id']);
             $qty = (float) $line['qty'];
-            $unitPrice = (float) $line['unit_price'];
+            $unitPrice = (float) $sparepartBranch->selling_price;
             WorkOrderSparepartLine::create([
                 'work_order_id' => $workOrder->id,
                 'sparepart_branch_id' => $sparepartBranch->id,

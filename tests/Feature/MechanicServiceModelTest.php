@@ -23,11 +23,22 @@ class MechanicServiceModelTest extends TestCase
         $mechanic = Mechanic::create([
             'name' => 'Agus Setiawan',
             'phone' => '081234567890',
+            'nip' => 'NIP-001',
+            'join_date' => '2020-01-15',
         ]);
 
         $this->assertSame('Agus Setiawan', $mechanic->name);
+        $this->assertSame('NIP-001', $mechanic->nip);
         $this->assertTrue($mechanic->is_active);
         $this->assertSame($user->id, $mechanic->created_by);
+    }
+
+    public function test_mechanic_join_date_is_cast_to_a_date(): void
+    {
+        $mechanic = Mechanic::create(['name' => 'Agus Setiawan', 'join_date' => '2020-01-15']);
+
+        $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $mechanic->join_date);
+        $this->assertSame('2020-01-15', $mechanic->join_date->format('Y-m-d'));
     }
 
     public function test_mechanic_branches_rejects_duplicate_pair(): void

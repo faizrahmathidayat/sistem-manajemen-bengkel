@@ -11,11 +11,12 @@ class Mechanic extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'name', 'phone', 'email', 'address', 'is_active',
+        'name', 'phone', 'email', 'address', 'is_active', 'nip', 'join_date',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'join_date' => 'date',
     ];
 
     protected $attributes = [

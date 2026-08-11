@@ -12,6 +12,7 @@ class UserPermissionAssignmentController extends Controller
     public function store(Request $request, User $user, Permission $permission)
     {
         $this->authorize('user_permission.manage');
+        $this->authorize('update', $user);
 
         UserPermission::firstOrCreate(
             ['user_id' => $user->id, 'permission_id' => $permission->id],
@@ -24,6 +25,7 @@ class UserPermissionAssignmentController extends Controller
     public function destroy(Request $request, User $user, Permission $permission)
     {
         $this->authorize('user_permission.manage');
+        $this->authorize('update', $user);
 
         if ($this->wouldStripLastSelfManagePermission($request->user(), $user, $permission)) {
             return response()->json([

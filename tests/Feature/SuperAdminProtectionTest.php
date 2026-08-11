@@ -107,4 +107,83 @@ class SuperAdminProtectionTest extends TestCase
         $response->assertForbidden();
         $this->assertDatabaseHas('users', ['id' => $superAdmin->id, 'name' => 'Super Admin']);
     }
+
+    public function test_branch_assignment_is_forbidden_for_non_superadmin_targeting_superadmin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $actor = $this->userWithPermissions(['user_branch.manage']);
+        $branch = \App\Models\Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+
+        $response = $this->actingAs($actor)->post("/users/{$superAdmin->id}/branches/{$branch->id}");
+
+        $response->assertForbidden();
+    }
+
+    public function test_branch_default_assignment_is_forbidden_for_non_superadmin_targeting_superadmin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $actor = $this->userWithPermissions(['user_branch.manage']);
+        $branch = \App\Models\Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+
+        $response = $this->actingAs($actor)->put("/users/{$superAdmin->id}/branches/{$branch->id}/default");
+
+        $response->assertForbidden();
+    }
+
+    public function test_branch_removal_is_forbidden_for_non_superadmin_targeting_superadmin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $actor = $this->userWithPermissions(['user_branch.manage']);
+        $branch = \App\Models\Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+
+        $response = $this->actingAs($actor)->delete("/users/{$superAdmin->id}/branches/{$branch->id}");
+
+        $response->assertForbidden();
+    }
+
+    public function test_branch_permission_grant_is_forbidden_for_non_superadmin_targeting_superadmin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $actor = $this->userWithPermissions(['user_permission.manage']);
+        $branch = \App\Models\Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::firstOrCreate(['code' => 'pkb.view'], ['resource' => 'pkb', 'action' => 'view', 'description' => 'pkb.view']);
+
+        $response = $this->actingAs($actor)->post("/users/{$superAdmin->id}/branches/{$branch->id}/permissions/{$permission->id}");
+
+        $response->assertForbidden();
+    }
+
+    public function test_branch_permission_revoke_is_forbidden_for_non_superadmin_targeting_superadmin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $actor = $this->userWithPermissions(['user_permission.manage']);
+        $branch = \App\Models\Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::firstOrCreate(['code' => 'pkb.view'], ['resource' => 'pkb', 'action' => 'view', 'description' => 'pkb.view']);
+
+        $response = $this->actingAs($actor)->delete("/users/{$superAdmin->id}/branches/{$branch->id}/permissions/{$permission->id}");
+
+        $response->assertForbidden();
+    }
+
+    public function test_global_permission_grant_is_forbidden_for_non_superadmin_targeting_superadmin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $actor = $this->userWithPermissions(['user_permission.manage']);
+        $permission = Permission::firstOrCreate(['code' => 'report.pkb.view'], ['resource' => 'report', 'action' => 'pkb.view', 'description' => 'report.pkb.view']);
+
+        $response = $this->actingAs($actor)->post("/users/{$superAdmin->id}/permissions/{$permission->id}");
+
+        $response->assertForbidden();
+    }
+
+    public function test_global_permission_revoke_is_forbidden_for_non_superadmin_targeting_superadmin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $actor = $this->userWithPermissions(['user_permission.manage']);
+        $permission = Permission::firstOrCreate(['code' => 'report.pkb.view'], ['resource' => 'report', 'action' => 'pkb.view', 'description' => 'report.pkb.view']);
+
+        $response = $this->actingAs($actor)->delete("/users/{$superAdmin->id}/permissions/{$permission->id}");
+
+        $response->assertForbidden();
+    }
 }

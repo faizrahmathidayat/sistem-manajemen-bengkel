@@ -12,6 +12,7 @@ class UserBranchAssignmentController extends Controller
     public function store(User $user, Branch $branch, UserBranchService $service)
     {
         $this->authorize('user_branch.manage');
+        $this->authorize('update', $user);
 
         $service->assign($user, $branch);
 
@@ -21,6 +22,7 @@ class UserBranchAssignmentController extends Controller
     public function destroy(User $user, Branch $branch)
     {
         $this->authorize('user_branch.manage');
+        $this->authorize('update', $user);
 
         UserBranch::where('user_id', $user->id)
             ->where('branch_id', $branch->id)
@@ -32,6 +34,7 @@ class UserBranchAssignmentController extends Controller
     public function setDefault(User $user, Branch $branch, UserBranchService $service)
     {
         $this->authorize('user_branch.manage');
+        $this->authorize('update', $user);
 
         if (! $user->hasAccessToBranch($branch->id)) {
             return response()->json(['message' => 'User belum memiliki akses ke cabang ini.'], 422);

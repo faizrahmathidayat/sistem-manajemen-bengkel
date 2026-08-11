@@ -15,6 +15,7 @@ class UserBranchPermissionAssignmentController extends Controller
     public function store(Request $request, User $user, Branch $branch, Permission $permission)
     {
         $this->authorize('user_permission.manage');
+        $this->authorize('update', $user);
 
         if (! optional($permission->menu)->is_branch_scoped) {
             return response()->json(['message' => 'Permission ini bersifat global, tidak bisa diberikan per cabang.'], 422);
@@ -43,6 +44,7 @@ class UserBranchPermissionAssignmentController extends Controller
     public function destroy(User $user, Branch $branch, Permission $permission)
     {
         $this->authorize('user_permission.manage');
+        $this->authorize('update', $user);
 
         UserBranchPermission::where('user_id', $user->id)
             ->where('branch_id', $branch->id)

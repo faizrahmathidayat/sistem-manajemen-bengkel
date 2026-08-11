@@ -9,7 +9,7 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize()
     {
-        return $this->user()->can('user.edit');
+        return $this->user()->can('user.edit') && $this->user()->can('update', $this->route('user'));
     }
 
     public function rules()

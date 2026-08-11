@@ -20,6 +20,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\StockTransfer::class => \App\Policies\StockTransferPolicy::class,
         \App\Models\Invoice::class => \App\Policies\InvoicePolicy::class,
         \App\Models\PaymentReceipt::class => \App\Policies\PaymentReceiptPolicy::class,
+        \App\Models\User::class => \App\Policies\UserPolicy::class,
     ];
 
     /**

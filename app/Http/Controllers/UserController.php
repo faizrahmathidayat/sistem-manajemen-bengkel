@@ -30,6 +30,7 @@ class UserController extends Controller
                 });
             })
             ->when($branchIds, fn ($query) => $query->whereHas('branches', fn ($q) => $q->whereIn('branches.id', $branchIds)))
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->where('username', '!=', config('app.superadmin_username')))
             ->simplePaginate(15)
             ->withQueryString();
 
@@ -65,6 +66,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         $this->authorize('user.view');
+        $this->authorize('view', $user);
 
         $user->load('userBranches');
         $allBranches = Branch::orderBy('name')->get();

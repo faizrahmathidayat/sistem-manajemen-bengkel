@@ -168,7 +168,7 @@ class WorkshopPerformanceReportController extends Controller
             ->when($filters['status'], fn ($q) => $q->where('invoices.status', $filters['status']))
             ->when($filters['dateFrom'], fn ($q) => $q->whereDate('invoices.invoice_date', '>=', $filters['dateFrom']))
             ->when($filters['dateTo'], fn ($q) => $q->whereDate('invoices.invoice_date', '<=', $filters['dateTo']))
-            ->groupBy('mechanics.id')
+            ->groupBy('mechanics.id', 'mechanics.name', 'mechanics.nip')
             ->select([
                 'mechanics.id as mechanic_id',
                 'mechanics.name as mechanic_name',

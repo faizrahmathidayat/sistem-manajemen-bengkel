@@ -87,6 +87,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Superadmin Account
+    |--------------------------------------------------------------------------
+    |
+    | Identifies the single bootstrap admin account by username — this app is
+    | deliberately role-less (every other check is a granular permission
+    | code), so there is no separate "is_admin" column. Used to hide this
+    | account from the Users list and block direct access to it by anyone
+    | else (see App\Policies\UserPolicy). The password fallback below is only
+    | used if SUPERADMIN_PASSWORD isn't set in .env — set it there and change
+    | the password via the UI immediately after first login in production.
+    |
+    */
+
+    'superadmin_username' => env('SUPERADMIN_USERNAME', 'superadmin'),
+    'superadmin_password' => env('SUPERADMIN_PASSWORD', 'Rahasiaku109!'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

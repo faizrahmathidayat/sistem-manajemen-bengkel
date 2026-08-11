@@ -82,4 +82,9 @@ class User extends Authenticatable
     {
         return $this->branches()->wherePivot('is_default', true)->first();
     }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->username === config('app.superadmin_username');
+    }
 }

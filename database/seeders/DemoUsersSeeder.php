@@ -15,96 +15,31 @@ class DemoUsersSeeder extends Seeder
 {
     public function run()
     {
-        if (! app()->environment(['local', 'testing'])) {
-            $this->command->error('DemoUsersSeeder only runs in local/testing environments (demo accounts use weak, guessable passwords).');
-
-            return;
-        }
-
         $this->call(MenuPermissionSeeder::class);
 
-        $branches = $this->seedBranches();
-        $users = $this->seedUsers();
+        $branch = Branch::updateOrCreate(
+            ['code' => 'CABANGUTAMA'],
+            ['name' => 'CABANGUTAMA', 'is_active' => true]
+        );
 
-        $branchService = new UserBranchService();
+        $superAdmin = User::updateOrCreate(
+            ['username' => config('app.superadmin_username')],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make(config('app.superadmin_password')),
+                'is_active' => true,
+            ]
+        );
+
+        (new UserBranchService())->assign($superAdmin, $branch, true);
 
         $globalCodes = Permission::whereHas('menu', fn ($query) => $query->where('is_branch_scoped', false))->pluck('code')->all();
         $branchScopedCodes = Permission::whereHas('menu', fn ($query) => $query->where('is_branch_scoped', true))->pluck('code')->all();
 
-        // Faiz: all access, all branches, all permissions — global codes granted once,
-        // every branch-scoped code granted in every branch he's assigned to.
-        foreach ($branches as $index => $branch) {
-            $branchService->assign($users['faiz'], $branch, $index === 0);
-            $this->grantBranchPermissions($users['faiz'], $branch, $branchScopedCodes);
-        }
-        $this->grantPermissions($users['faiz'], $globalCodes);
+        $this->grantPermissions($superAdmin, $globalCodes);
+        $this->grantBranchPermissions($superAdmin, $branch, $branchScopedCodes);
 
-        // Romi: Bengkel 1 only, PKB view/create + view all laporan, scoped to Bengkel 1.
-        $branchService->assign($users['romi'], $branches->first(), true);
-        $this->grantBranchPermissions($users['romi'], $branches->first(), array_merge([
-            'pkb.view',
-            'pkb.create',
-        ], $this->laporanCodes()));
-
-        // Syilawati: Bengkel 1 only, invoice view/create + view all laporan, scoped to Bengkel 1.
-        $branchService->assign($users['syilawati'], $branches->first(), true);
-        $this->grantBranchPermissions($users['syilawati'], $branches->first(), array_merge([
-            'invoice.view',
-            'invoice.create',
-        ], $this->laporanCodes()));
-
-        $this->command->info('Demo users seeded (local/testing only): faiz_rahmat, romi_ramdani, syilawati_rn — password sama dengan username.');
-    }
-
-    protected function seedBranches()
-    {
-        $definitions = [
-            ['code' => 'BENGKEL1', 'name' => 'Bengkel 1'],
-            ['code' => 'BENGKEL2', 'name' => 'Bengkel 2'],
-            ['code' => 'BENGKEL3', 'name' => 'Bengkel 3'],
-        ];
-
-        return collect($definitions)->map(function ($definition) {
-            return Branch::updateOrCreate(
-                ['code' => $definition['code']],
-                ['name' => $definition['name'], 'is_active' => true]
-            );
-        });
-    }
-
-    protected function seedUsers()
-    {
-        $definitions = [
-            'faiz' => ['username' => 'faiz_rahmat', 'name' => 'Faiz Rahmat Hidayat'],
-            'romi' => ['username' => 'romi_ramdani', 'name' => 'Romi Ramdani'],
-            'syilawati' => ['username' => 'syilawati_rn', 'name' => 'Syilawati'],
-        ];
-
-        $users = [];
-
-        foreach ($definitions as $key => $definition) {
-            $users[$key] = User::updateOrCreate(
-                ['username' => $definition['username']],
-                [
-                    'name' => $definition['name'],
-                    'password' => Hash::make($definition['username']),
-                    'is_active' => true,
-                ]
-            );
-        }
-
-        return $users;
-    }
-
-    protected function laporanCodes(): array
-    {
-        return [
-            'report.pkb.view',
-            'report.invoice.view',
-            'report.receivable.view',
-            'report.invoice_pkb_gap.view',
-            'report.sparepart.view',
-        ];
+        $this->command->info("Superadmin seeded: {$superAdmin->username} — cabang {$branch->code} — semua permission diberikan.");
     }
 
     protected function grantPermissions(User $user, array $codes)

@@ -25,4 +25,13 @@ class UserAccountTest extends TestCase
         $this->assertTrue($user->is_active);
         $this->assertNull($user->last_login_at);
     }
+
+    public function test_is_super_admin_matches_configured_username(): void
+    {
+        $superAdmin = User::factory()->create(['username' => config('app.superadmin_username')]);
+        $regular = User::factory()->create(['username' => 'someone_else']);
+
+        $this->assertTrue($superAdmin->isSuperAdmin());
+        $this->assertFalse($regular->isSuperAdmin());
+    }
 }

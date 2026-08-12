@@ -7,9 +7,9 @@
                 <div class="card">
                     <div class="card-body p-4">
                         <div class="text-center mb-3">
-                            <i class="bi bi-tools" style="font-size: 1.75rem; color: var(--color-accent);"></i>
+                            <img src="{{ asset('images/logo.png') }}" alt="JMS MOTOR" style="width: 96px; height: 96px; object-fit: contain;">
                         </div>
-                        <h1 class="h4 mb-1 text-center">Sistem Manajemen Bengkel</h1>
+                        <h1 class="h4 mb-1 text-center">JMS MOTOR</h1>
                         <p class="text-center mb-4" style="color: var(--color-ink-muted);">Masuk untuk melanjutkan</p>
 
                         @if ($errors->any())

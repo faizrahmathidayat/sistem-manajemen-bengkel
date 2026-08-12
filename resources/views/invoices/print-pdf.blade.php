@@ -34,13 +34,26 @@
         .signature-table { width: 100%; margin-top: 40px; font-size: 10px; }
         .signature-table td { width: 50%; text-align: center; }
         .signature-space { height: 50px; }
+
+        .invoice-header .logo-cell { width: 56px; }
+        .invoice-header .logo-cell img { width: 48px; height: 48px; object-fit: contain; }
+        .invoice-header .branch-cell { padding-left: 10px; }
     </style>
 </head>
 <body>
+    @php
+        $logoPath = public_path('images/logo.png');
+        $logoDataUri = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : null;
+    @endphp
     <div class="invoice-header">
         <table>
             <tr>
-                <td>
+                @if ($logoDataUri)
+                    <td class="logo-cell">
+                        <img src="{{ $logoDataUri }}" alt="JMS MOTOR">
+                    </td>
+                @endif
+                <td class="branch-cell">
                     <p class="branch-name">{{ $invoice->branch->name }}</p>
                     <p class="branch-detail">
                         {{ $invoice->branch->address ?? '-' }}<br>

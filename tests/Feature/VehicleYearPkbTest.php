@@ -83,7 +83,7 @@ class VehicleYearPkbTest extends TestCase
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $workOrder = $this->makeWorkOrderWithYear($branch, 2020);
 
-        $lookupResponse = $this->actingAs(User::first())->getJson("/work-orders/lookup/vehicles/{$workOrder->customer_id}");
+        $lookupResponse = $this->actingAs(User::first())->getJson("/lookup/vehicles?ids[]={$workOrder->vehicle_id}&branch_id={$branch->id}");
         $lookupResponse->assertOk();
         $lookupResponse->assertJsonFragment(['year' => 2020]);
 

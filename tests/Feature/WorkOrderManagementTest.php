@@ -314,21 +314,26 @@ class WorkOrderManagementTest extends TestCase
 
         $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
 
-        // As of the Select2 AJAX picker conversion (Task 2), the customer_id <select> is no
-        // longer server-rendered with a "push if missing" backfill for the linked customer —
-        // it's an empty <select> populated client-side via preselectAjaxOption(), which fetches
-        // /lookup/customers?ids[]=<id> and injects a matching <option>. A non-JS-executing HTTP
+        // As of the Kendaraan-first cascade, Customer is a readonly display derived from the
+        // selected vehicle rather than its own Select2 picker. The edit page seeds that readonly
+        // field server-side from $workOrder->customer->name (surviving deactivation, since it's
+        // a plain eager-loaded relation, not a lookup query), and the vehicle picker itself is
+        // preselected client-side via preselectAjaxOption(), which fetches
+        // /lookup/vehicles?ids[]=<id> and injects a matching <option>. A non-JS-executing HTTP
         // test cannot observe that injected <option>. What it CAN and must still prove is that
-        // the edit page renders successfully (doesn't error) AND that the data the client-side
-        // preselect depends on — the linked customer's id, echoed verbatim into the inline
-        // bootstrap <script> as `preselectAjaxOption(customerSelect, { ..., id: <id>, ... })` —
+        // the edit page renders successfully (doesn't error), that the readonly Customer field
+        // shows the (now inactive) customer's name, AND that the data the client-side vehicle
+        // preselect depends on — the linked vehicle's id, echoed verbatim into the inline
+        // bootstrap <script> as `preselectAjaxOption(vehicleSelect, { ..., id: <id>, ... })` —
         // is present and correct in the raw response. Combined with
-        // LookupControllerTest::test_customers_ids_mode_resolves_an_inactive_customer (which
-        // proves that id, once fetched, resolves to the customer even though it's now inactive),
-        // this is the strongest assertion a Feature test can honestly make about this flow.
+        // LookupControllerTest::test_vehicles_ids_mode_resolves_a_specific_vehicle_regardless_of_active_customer_status
+        // (which proves that id, once fetched, resolves the vehicle and its owner's name even
+        // though the customer is now inactive), this is the strongest assertion a Feature test
+        // can honestly make about this flow.
         $response->assertOk();
-        $response->assertSee('preselectAjaxOption(customerSelect', false);
-        $response->assertSee('id: ' . $scenario['customer']->id . ',', false);
+        $response->assertSee('value="' . $scenario['customer']->name . '"', false);
+        $response->assertSee('preselectAjaxOption(vehicleSelect', false);
+        $response->assertSee('id: ' . $scenario['vehicle']->id . ',', false);
     }
 
     public function test_update_does_not_silently_reassign_a_now_inactive_customer(): void
@@ -587,21 +592,22 @@ class WorkOrderManagementTest extends TestCase
         $response->assertOk();
         $response->assertSee('select2', false);
         $response->assertSee('select2-ajax-picker.js', false);
-        $response->assertSee('id="customerSelect"', false);
+        $response->assertSee('id="vehicleSelect"', false);
         $response->assertSee('id="mechanicSelect"', false);
+        $response->assertSee('id="customerDisplay"', false);
+        $response->assertSee('id="customerIdInput"', false);
     }
 
-    public function test_create_form_mechanic_and_customer_replay_both_trigger_select2_change(): void
+    public function test_create_form_mechanic_and_vehicle_replay_both_trigger_select2_change(): void
     {
-        // Regression guard: after a failed validation round-trip, old('mechanic_id') repopulates
-        // the underlying <select> value via preselectAjaxOption(), but Select2 only re-renders
-        // its visible widget in response to a jQuery 'change' event — without an explicit
-        // $(mechanicSelect).trigger('change') the Mekanik picker would silently keep showing its
-        // placeholder even though the correct value was set underneath. The customer preselect
-        // already had this trigger; the mechanic preselect was missing it. Since Select2's actual
-        // re-render is client-side JS with no PHP-testable surface, the strongest thing a Feature
-        // test can honestly assert is that the compiled page source contains the trigger call
-        // immediately tied to the mechanic preselect, the same way it already does for customer.
+        // Regression guard: after a failed validation round-trip, old('mechanic_id')/old('vehicle_id')
+        // repopulate the underlying <select> values via preselectAjaxOption(), but Select2 only
+        // re-renders its visible widget in response to a jQuery 'change' event — without an explicit
+        // $(...).trigger('change') the picker would silently keep showing its placeholder even
+        // though the correct value was set underneath. Since Select2's actual re-render is
+        // client-side JS with no PHP-testable surface, the strongest thing a Feature test can
+        // honestly assert is that the compiled page source contains the trigger call immediately
+        // tied to each preselect.
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'pkb.create');
@@ -609,11 +615,9 @@ class WorkOrderManagementTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get('/work-orders/create');
 
         $response->assertOk();
-        $response->assertSee("preselectAjaxOption(customerSelect, { endpoint: '" . route('lookup.customers') . "', id: oldCustomerId, extraParams: function () { return { branch_id: currentBranchId }; } });", false);
+        $response->assertSee("const item = await preselectAjaxOption(vehicleSelect, { endpoint: '" . route('lookup.vehicles') . "', id: oldVehicleId, extraParams: function () { return { branch_id: currentBranchId }; } });", false);
         $response->assertSee("preselectAjaxOption(mechanicSelect, { endpoint: '" . route('lookup.mechanics') . "', id: oldMechanicId, extraParams: function () { return { branch_id: currentBranchId }; } });", false);
-        // Both of these must appear in the page source: the customer one already did before this
-        // fix, the mechanic one is the regression this test guards against reappearing.
-        $response->assertSee("\$(customerSelect).trigger('change');", false);
+        $response->assertSee("\$(vehicleSelect).trigger('change');", false);
         $response->assertSee("\$(mechanicSelect).trigger('change');", false);
     }
 
@@ -634,8 +638,13 @@ class WorkOrderManagementTest extends TestCase
         $response->assertSee('select2-ajax-picker.js', false);
     }
 
-    public function test_edit_page_vehicle_option_label_includes_year(): void
+    public function test_edit_page_preselects_the_work_orders_vehicle(): void
     {
+        // The vehicle option label (including brand/type/year) is now built server-side by
+        // LookupController::vehicles() and delivered via AJAX rather than rendered inline in
+        // this page — see LookupControllerTest::test_vehicles_returns_matches_scoped_to_branch_with_full_shape
+        // for that assertion. What this page can honestly assert is that it echoes the correct
+        // vehicle id into the client-side preselect call.
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $scenario = $this->makeScenario($branch);
         $scenario['vehicle']->update(['year' => 2020]);
@@ -648,7 +657,8 @@ class WorkOrderManagementTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get("/work-orders/{$workOrder->id}/edit");
 
         $response->assertOk();
-        $response->assertSee('Toyota Avanza 2020 - B 1234 ' . $branch->code);
+        $response->assertSee('preselectAjaxOption(vehicleSelect', false);
+        $response->assertSee('id: ' . $scenario['vehicle']->id . ',', false);
     }
 
     public function test_show_page_displays_vehicle_year(): void

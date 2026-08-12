@@ -20,18 +20,17 @@
                         @error('branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Customer</label>
-                        <select name="customer_id" id="customerSelect" class="form-select @error('customer_id') is-invalid @enderror" required disabled>
-                            <option value="">-- Pilih Cabang Dulu --</option>
-                        </select>
-                        @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
                         <label class="form-label">Kendaraan</label>
                         <select name="vehicle_id" id="vehicleSelect" class="form-select @error('vehicle_id') is-invalid @enderror" required disabled>
-                            <option value="">-- Pilih Customer Dulu --</option>
+                            <option value="">-- Pilih Cabang Dulu --</option>
                         </select>
                         @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Customer</label>
+                        <input type="text" id="customerDisplay" class="form-control @error('customer_id') is-invalid @enderror" value="" readonly placeholder="-- Pilih Kendaraan Dulu --">
+                        <input type="hidden" name="customer_id" id="customerIdInput" value="{{ old('customer_id') }}">
+                        @error('customer_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Mekanik</label>
@@ -114,7 +113,6 @@
         // them via bare @json($var) below, never @json(old(...)) directly.
         $oldServices = old('services', []);
         $oldSpareparts = old('spareparts', []);
-        $oldCustomerId = old('customer_id');
         $oldMechanicId = old('mechanic_id');
         $oldVehicleId = old('vehicle_id');
     @endphp
@@ -122,18 +120,25 @@
     <script>
     (function () {
         const branchSelect = document.getElementById('branchSelect');
-        const customerSelect = document.getElementById('customerSelect');
         const vehicleSelect = document.getElementById('vehicleSelect');
+        const customerDisplay = document.getElementById('customerDisplay');
+        const customerIdInput = document.getElementById('customerIdInput');
         const mechanicSelect = document.getElementById('mechanicSelect');
         const addSparepartButton = document.getElementById('addSparepartLine');
         let currentBranchId = branchSelect.value || null;
         window.currentWorkOrderBranchId = currentBranchId;
 
+        function setCustomer(customerId, customerName) {
+            customerIdInput.value = customerId || '';
+            customerDisplay.value = customerName || '';
+        }
+
         function initPickers() {
-            initAjaxSelect(customerSelect, {
-                endpoint: '{{ route('lookup.customers') }}',
+            initAjaxSelect(vehicleSelect, {
+                endpoint: '{{ route('lookup.vehicles') }}',
                 extraParams: function () { return { branch_id: currentBranchId }; },
-                placeholder: '-- Pilih Customer --',
+                placeholder: '-- Pilih Kendaraan --',
+                onSelect: function (item) { setCustomer(item.customer_id, item.customer_name); },
             });
             initAjaxSelect(mechanicSelect, {
                 endpoint: '{{ route('lookup.mechanics') }}',
@@ -143,7 +148,7 @@
         }
 
         function destroyPickers() {
-            if ($(customerSelect).data('select2')) $(customerSelect).select2('destroy');
+            if ($(vehicleSelect).data('select2')) $(vehicleSelect).select2('destroy');
             if ($(mechanicSelect).data('select2')) $(mechanicSelect).select2('destroy');
         }
 
@@ -151,39 +156,24 @@
             currentBranchId = this.value || null;
             window.currentWorkOrderBranchId = currentBranchId;
             destroyPickers();
-            customerSelect.innerHTML = '<option value=""></option>';
+            vehicleSelect.innerHTML = '<option value=""></option>';
             mechanicSelect.innerHTML = '<option value=""></option>';
-            WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', WorkOrderLineItems.vehicleLabel);
-            vehicleSelect.disabled = true;
+            setCustomer(null, null);
             if (!currentBranchId) {
-                customerSelect.disabled = true;
+                vehicleSelect.disabled = true;
                 mechanicSelect.disabled = true;
                 addSparepartButton.disabled = true;
                 initPickers();
                 return;
             }
-            customerSelect.disabled = false;
+            vehicleSelect.disabled = false;
             mechanicSelect.disabled = false;
             addSparepartButton.disabled = false;
             initPickers();
         });
 
-        customerSelect.addEventListener('change', async function () {
-            if (!this.value) {
-                WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Customer Dulu --', 'id', WorkOrderLineItems.vehicleLabel);
-                vehicleSelect.disabled = true;
-                return;
-            }
-            const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${this.value}`);
-            WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
-            vehicleSelect.disabled = false;
-        });
-
-        // Select2 replaces the native <select>'s change semantics with its own
-        // jQuery events; customerSelect's cascade to vehicles must still fire on
-        // a Select2-driven selection, so re-trigger the native listener via jQuery.
-        $(customerSelect).on('select2:select select2:clear', function () {
-            customerSelect.dispatchEvent(new Event('change'));
+        $(vehicleSelect).on('select2:clear', function () {
+            setCustomer(null, null);
         });
 
         async function replayOldLines() {
@@ -210,10 +200,11 @@
                 }
             }
 
-            const oldCustomerId = @json($oldCustomerId);
-            if (oldCustomerId) {
-                await preselectAjaxOption(customerSelect, { endpoint: '{{ route('lookup.customers') }}', id: oldCustomerId, extraParams: function () { return { branch_id: currentBranchId }; } });
-                $(customerSelect).trigger('change');
+            const oldVehicleId = @json($oldVehicleId);
+            if (oldVehicleId) {
+                const item = await preselectAjaxOption(vehicleSelect, { endpoint: '{{ route('lookup.vehicles') }}', id: oldVehicleId, extraParams: function () { return { branch_id: currentBranchId }; } });
+                if (item) setCustomer(item.customer_id, item.customer_name);
+                $(vehicleSelect).trigger('change');
             }
             const oldMechanicId = @json($oldMechanicId);
             if (oldMechanicId) {
@@ -223,22 +214,13 @@
         }
 
         if (branchSelect.value) {
-            customerSelect.disabled = false;
+            vehicleSelect.disabled = false;
             mechanicSelect.disabled = false;
             addSparepartButton.disabled = false;
             initPickers();
-            replayOldLines().then(async function () {
-                const oldCustomerId = @json($oldCustomerId);
-                if (oldCustomerId) {
-                    const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${oldCustomerId}`);
-                    WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
-                    vehicleSelect.disabled = false;
-                    const oldVehicleId = @json($oldVehicleId);
-                    if (oldVehicleId) vehicleSelect.value = oldVehicleId;
-                }
-            });
+            replayOldLines();
         } else {
-            customerSelect.disabled = true;
+            vehicleSelect.disabled = true;
             mechanicSelect.disabled = true;
             addSparepartButton.disabled = true;
             initPickers();

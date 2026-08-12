@@ -13,6 +13,10 @@ use App\Models\SparepartBranch;
 use App\Models\User;
 use App\Models\UserBranchPermission;
 use App\Models\UserPermission;
+use App\Models\Vehicle;
+use App\Models\VehicleBrand;
+use App\Models\VehicleCategory;
+use App\Models\VehicleType;
 use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -358,5 +362,126 @@ class LookupControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonMissing(['code' => 'SP-OLI-003']);
+    }
+
+    // --- vehicles() ---
+
+    protected function makeVehicleScenario(Branch $branch, array $vehicleOverrides = [], array $customerOverrides = []): array
+    {
+        $customer = Customer::create(array_merge([
+            'customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso',
+        ], $customerOverrides));
+        CustomerBranch::create(['customer_id' => $customer->id, 'branch_id' => $branch->id]);
+        $category = VehicleCategory::create(['name' => 'Motor ' . $branch->code]);
+        $brand = VehicleBrand::create(['category_id' => $category->id, 'name' => 'Honda']);
+        $type = VehicleType::create(['brand_id' => $brand->id, 'name' => 'Beat']);
+        $vehicle = Vehicle::create(array_merge([
+            'customer_id' => $customer->id, 'category_id' => $category->id,
+            'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 1234 XYZ', 'year' => 2020,
+        ], $vehicleOverrides));
+
+        return compact('customer', 'vehicle');
+    }
+
+    public function test_vehicles_requires_branch_id(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->getJson('/lookup/vehicles?q=234')->assertStatus(400);
+    }
+
+    public function test_vehicles_is_forbidden_without_pkb_create_or_edit_in_that_branch(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->getJson("/lookup/vehicles?q=234&branch_id={$branch->id}")->assertForbidden();
+    }
+
+    public function test_vehicles_allows_a_user_with_only_pkb_edit(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeVehicleScenario($branch);
+        $user = $this->userWithBranchPermission('pkb.edit', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/vehicles?q=234&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['plate_number' => 'B 1234 XYZ']);
+    }
+
+    public function test_vehicles_returns_matches_scoped_to_branch_with_full_shape(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeVehicleScenario($branch);
+        $user = $this->userWithBranchPermission('pkb.create', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/vehicles?q=234&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment([
+            'id' => $scenario['vehicle']->id,
+            'text' => 'Honda Beat 2020 - B 1234 XYZ (Budi Santoso)',
+            'plate_number' => 'B 1234 XYZ',
+            'brand_name' => 'Honda',
+            'type_name' => 'Beat',
+            'year' => 2020,
+            'customer_id' => $scenario['customer']->id,
+            'customer_name' => 'Budi Santoso',
+        ]);
+    }
+
+    public function test_vehicles_returns_empty_for_less_than_three_characters(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeVehicleScenario($branch);
+        $user = $this->userWithBranchPermission('pkb.create', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/vehicles?q=23&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertExactJson([]);
+    }
+
+    public function test_vehicles_excludes_vehicles_outside_branch_scope(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->makeVehicleScenario($branchA, ['plate_number' => 'B 1111 AAA']);
+        $this->makeVehicleScenario($branchB, ['plate_number' => 'B 1111 BBB'], ['name' => 'Siti Aminah', 'stnk_name' => 'Siti Aminah']);
+        $user = $this->userWithBranchPermission('pkb.create', $branchA);
+
+        $response = $this->actingAs($user)->getJson("/lookup/vehicles?q=111&branch_id={$branchA->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['plate_number' => 'B 1111 AAA']);
+        $response->assertJsonMissing(['plate_number' => 'B 1111 BBB']);
+    }
+
+    public function test_vehicles_excludes_inactive_vehicles(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeVehicleScenario($branch, ['plate_number' => 'B 2222 NON', 'is_active' => false]);
+        $user = $this->userWithBranchPermission('pkb.create', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/vehicles?q=222&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertExactJson([]);
+    }
+
+    public function test_vehicles_ids_mode_resolves_a_specific_vehicle_regardless_of_active_customer_status(): void
+    {
+        // Regression coverage: the PKB edit page's vehicle picker preselects via ids[] mode, and
+        // must keep resolving the linked vehicle/customer even after the customer has since been
+        // deactivated — mirrors LookupControllerTest::test_customers_ids_mode_resolves_an_inactive_customer.
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeVehicleScenario($branch, ['plate_number' => 'B 3333 XYZ'], ['is_active' => false]);
+        $user = $this->userWithBranchPermission('pkb.edit', $branch);
+
+        $response = $this->actingAs($user)->getJson("/lookup/vehicles?ids[]={$scenario['vehicle']->id}&branch_id={$branch->id}");
+
+        $response->assertOk();
+        $response->assertJsonFragment(['id' => $scenario['vehicle']->id, 'plate_number' => 'B 3333 XYZ', 'customer_name' => 'Budi Santoso']);
     }
 }

@@ -204,13 +204,9 @@ class WorkOrderController extends Controller
     {
         $this->authorize('update', $workOrder);
 
-        $workOrder->load(['customer', 'vehicle.brand', 'vehicle.type', 'mechanic', 'serviceLines', 'sparepartLines']);
+        $workOrder->load(['customer', 'vehicle', 'mechanic', 'serviceLines', 'sparepartLines']);
 
         $serviceCatalogs = ServiceCatalog::where('is_active', true)->orderBy('name')->get();
-        $vehicles = $workOrder->customer->vehicles()->where('is_active', true)->with(['brand', 'type'])->orderBy('plate_number')->get();
-        if ($workOrder->vehicle && ! $vehicles->contains('id', $workOrder->vehicle->id)) {
-            $vehicles->push($workOrder->vehicle);
-        }
 
         $existingServiceLines = $workOrder->serviceLines->map(function ($line) {
             return [
@@ -232,7 +228,6 @@ class WorkOrderController extends Controller
         return view('work-orders.edit', compact(
             'workOrder',
             'serviceCatalogs',
-            'vehicles',
             'existingServiceLines',
             'existingSparepartLines'
         ));

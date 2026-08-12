@@ -33,7 +33,6 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
 use App\Http\Controllers\VehicleReferenceLookupController;
 use App\Http\Controllers\WorkOrderController;
-use App\Http\Controllers\WorkOrderLookupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -140,11 +139,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/customers', [LookupController::class, 'customers'])->name('customers');
         Route::get('/mechanics', [LookupController::class, 'mechanics'])->name('mechanics');
         Route::get('/spareparts', [LookupController::class, 'spareparts'])->name('spareparts');
+        Route::get('/vehicles', [LookupController::class, 'vehicles'])->name('vehicles');
     });
 
     Route::prefix('work-orders')->name('work-orders.')->group(function () {
-        Route::get('/lookup/vehicles/{customer}', [WorkOrderLookupController::class, 'vehiclesByCustomer'])->name('lookup.vehicles');
-
         Route::get('/', [WorkOrderController::class, 'index'])->name('index');
         Route::get('/create', [WorkOrderController::class, 'create'])->name('create');
         Route::post('/', [WorkOrderController::class, 'store'])->name('store');

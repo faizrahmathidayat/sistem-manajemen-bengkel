@@ -11,22 +11,15 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <label class="form-label">Customer</label>
-                        <select name="customer_id" id="customerSelect" class="form-select @error('customer_id') is-invalid @enderror" required></select>
-                        @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <label class="form-label">Kendaraan</label>
+                        <select name="vehicle_id" id="vehicleSelect" class="form-select @error('vehicle_id') is-invalid @enderror" required></select>
+                        @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Kendaraan</label>
-                        <select name="vehicle_id" id="vehicleSelect" class="form-select @error('vehicle_id') is-invalid @enderror" required>
-                            @foreach ($vehicles as $vehicle)
-                                @php
-                                    $vehicleBrandType = trim(($vehicle->brand->name ?? '') . ' ' . ($vehicle->type->name ?? '') . ' ' . ($vehicle->year ?? ''));
-                                    $vehicleLabel = $vehicleBrandType !== '' ? $vehicleBrandType . ' - ' . ($vehicle->plate_number ?? $vehicle->frame_number) : ($vehicle->plate_number ?? $vehicle->frame_number);
-                                @endphp
-                                <option value="{{ $vehicle->id }}" {{ (int) old('vehicle_id', $workOrder->vehicle_id) === $vehicle->id ? 'selected' : '' }}>{{ $vehicleLabel }}</option>
-                            @endforeach
-                        </select>
-                        @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <label class="form-label">Customer</label>
+                        <input type="text" id="customerDisplay" class="form-control @error('customer_id') is-invalid @enderror" value="{{ $workOrder->customer->name }}" readonly>
+                        <input type="hidden" name="customer_id" id="customerIdInput" value="{{ old('customer_id', $workOrder->customer_id) }}">
+                        @error('customer_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Mekanik</label>
@@ -102,27 +95,40 @@
     @push('scripts')
     <script>
     (function () {
-        const customerSelect = document.getElementById('customerSelect');
         const vehicleSelect = document.getElementById('vehicleSelect');
+        const customerDisplay = document.getElementById('customerDisplay');
+        const customerIdInput = document.getElementById('customerIdInput');
         const mechanicSelect = document.getElementById('mechanicSelect');
         const branchId = {{ $workOrder->branch_id }};
         window.currentWorkOrderBranchId = branchId;
 
-        initAjaxSelect(customerSelect, {
-            endpoint: '{{ route('lookup.customers') }}',
+        function setCustomer(customerId, customerName) {
+            customerIdInput.value = customerId || '';
+            customerDisplay.value = customerName || '';
+        }
+
+        initAjaxSelect(vehicleSelect, {
+            endpoint: '{{ route('lookup.vehicles') }}',
             extraParams: function () { return { branch_id: branchId }; },
-            placeholder: '-- Pilih Customer --',
+            placeholder: '-- Pilih Kendaraan --',
+            onSelect: function (item) { setCustomer(item.customer_id, item.customer_name); },
         });
         initAjaxSelect(mechanicSelect, {
             endpoint: '{{ route('lookup.mechanics') }}',
             extraParams: function () { return { branch_id: branchId }; },
             placeholder: '-- Pilih Mekanik --',
         });
-        preselectAjaxOption(customerSelect, {
-            endpoint: '{{ route('lookup.customers') }}',
-            id: {{ $workOrder->customer_id }},
+        $(vehicleSelect).on('select2:clear', function () {
+            setCustomer(null, null);
+        });
+        preselectAjaxOption(vehicleSelect, {
+            endpoint: '{{ route('lookup.vehicles') }}',
+            id: {{ $workOrder->vehicle_id }},
             extraParams: function () { return { branch_id: branchId }; },
-        }).then(function () { $(customerSelect).trigger('change'); });
+        }).then(function (item) {
+            if (item) setCustomer(item.customer_id, item.customer_name);
+            $(vehicleSelect).trigger('change');
+        });
         preselectAjaxOption(mechanicSelect, {
             endpoint: '{{ route('lookup.mechanics') }}',
             id: {{ $workOrder->mechanic_id }},
@@ -146,15 +152,6 @@
             row.querySelector('.sparepart-qty').value = line.qty;
             row.querySelector('.sparepart-unit-price').value = line.unit_price;
             WorkOrderLineItems.preselectSparepartLine(row, line.sparepart_branch_id, branchId);
-        });
-
-        customerSelect.addEventListener('change', async function () {
-            if (!this.value) {
-                WorkOrderLineItems.fillSelect(vehicleSelect, [], '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
-                return;
-            }
-            const vehicles = await WorkOrderLineItems.fetchJson(`/work-orders/lookup/vehicles/${this.value}`);
-            WorkOrderLineItems.fillSelect(vehicleSelect, vehicles, '-- Pilih Kendaraan --', 'id', WorkOrderLineItems.vehicleLabel);
         });
     })();
     </script>

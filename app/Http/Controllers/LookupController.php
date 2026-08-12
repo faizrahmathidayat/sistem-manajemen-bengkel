@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Mechanic;
 use App\Models\SparepartBranch;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 
 class LookupController extends Controller
@@ -123,6 +124,63 @@ class LookupController extends Controller
                 })
                 ->values()
         );
+    }
+
+    public function vehicles(Request $request)
+    {
+        $branchId = (int) $request->query('branch_id');
+        abort_if($branchId <= 0, 400, 'branch_id is required.');
+        abort_unless(
+            auth()->user()->hasPermissionToInBranch('pkb.create', $branchId)
+                || auth()->user()->hasPermissionToInBranch('pkb.edit', $branchId),
+            403
+        );
+
+        $query = Vehicle::with(['customer', 'brand:id,name', 'type:id,name'])
+            ->where('is_active', true)
+            ->whereHas('customer.customerBranches', function ($inner) use ($branchId) {
+                $inner->where('branch_id', $branchId)->where('is_active', true);
+            });
+        $ids = array_map('intval', (array) $request->query('ids', []));
+
+        if (! empty($ids)) {
+            $query->whereIn('id', $ids);
+        } else {
+            $term = $this->searchTerm($request);
+            if ($term === null) {
+                return response()->json([]);
+            }
+            $query->where('plate_number', 'like', '%' . addcslashes($term, '%_\\') . '%');
+        }
+
+        return response()->json(
+            $query->orderBy('plate_number')->limit(20)->get()
+                ->map(fn (Vehicle $vehicle) => [
+                    'id' => $vehicle->id,
+                    'text' => $this->vehicleLabel($vehicle),
+                    'plate_number' => $vehicle->plate_number,
+                    'frame_number' => $vehicle->frame_number,
+                    'brand_name' => optional($vehicle->brand)->name,
+                    'type_name' => optional($vehicle->type)->name,
+                    'year' => $vehicle->year,
+                    'customer_id' => $vehicle->customer_id,
+                    'customer_name' => optional($vehicle->customer)->name,
+                ])
+                ->values()
+        );
+    }
+
+    private function vehicleLabel(Vehicle $vehicle): string
+    {
+        $plate = $vehicle->plate_number ?: $vehicle->frame_number ?: '-';
+        $brandType = trim(implode(' ', array_filter([
+            optional($vehicle->brand)->name,
+            optional($vehicle->type)->name,
+            $vehicle->year,
+        ])));
+        $label = $brandType !== '' ? "{$brandType} - {$plate}" : $plate;
+
+        return $vehicle->customer ? "{$label} ({$vehicle->customer->name})" : $label;
     }
 
     private function searchTerm(Request $request): ?string

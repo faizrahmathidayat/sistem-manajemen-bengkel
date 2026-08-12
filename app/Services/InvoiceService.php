@@ -18,9 +18,22 @@ use App\Support\InvoiceStatus;
 use App\Support\WorkOrderStatus;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class InvoiceService
 {
+    protected function generatePublicAccessCredentials(): array
+    {
+        do {
+            $hashId = Str::random(32);
+        } while (Invoice::where('hash_id', $hashId)->exists());
+
+        return [
+            'hash_id' => $hashId,
+            'pin' => str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT),
+        ];
+    }
+
     public function createFromWorkOrder(WorkOrder $workOrder): Invoice
     {
         return DB::transaction(function () use ($workOrder) {
@@ -40,7 +53,7 @@ class InvoiceService
             $subtotalService = round((float) $serviceLines->sum('line_total'), 2);
             $subtotalSparepart = round((float) $sparepartLines->sum('line_total'), 2);
 
-            $invoice = Invoice::create([
+            $invoice = Invoice::create(array_merge($this->generatePublicAccessCredentials(), [
                 'number' => (new DocumentNumberGenerator())->next($fresh->branch, 'INV'),
                 'work_order_id' => $fresh->id,
                 'branch_id' => $fresh->branch_id,
@@ -56,7 +69,7 @@ class InvoiceService
                 'tax_percent' => 0,
                 'tax_amount' => 0,
                 'grand_total' => round($subtotalService + $subtotalSparepart, 2),
-            ]);
+            ]));
 
             $sortOrder = 0;
 
@@ -102,7 +115,7 @@ class InvoiceService
     public function createDirectSale(Branch $branch, Customer $customer, array $data): Invoice
     {
         return DB::transaction(function () use ($branch, $customer, $data) {
-            $invoice = Invoice::create([
+            $invoice = Invoice::create(array_merge($this->generatePublicAccessCredentials(), [
                 'number' => (new DocumentNumberGenerator())->next($branch, 'DS'),
                 'work_order_id' => null,
                 'branch_id' => $branch->id,
@@ -116,7 +129,7 @@ class InvoiceService
                 'tax_percent' => 0,
                 'tax_amount' => 0,
                 'grand_total' => 0,
-            ]);
+            ]));
 
             $sortOrder = 0;
 

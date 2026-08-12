@@ -12,7 +12,7 @@ class Invoice extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'number', 'work_order_id', 'branch_id', 'customer_id', 'invoice_date', 'due_date', 'status',
+        'number', 'hash_id', 'pin', 'work_order_id', 'branch_id', 'customer_id', 'invoice_date', 'due_date', 'status',
         'subtotal_service', 'subtotal_sparepart',
         'discount_percent', 'discount_amount',
         'tax_percent', 'tax_amount',

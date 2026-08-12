@@ -257,23 +257,26 @@ protected function generatePublicAccessCredentials(): array
 }
 ```
 
-In `createFromWorkOrder()`, change the `Invoice::create([...])` call to spread the credentials in right
-after `'number' => ...`:
+In `createFromWorkOrder()`, wrap the `Invoice::create([...])` array with `array_merge($this->generatePublicAccessCredentials(), [...])`
+(string-key spread inside an array literal, `[...$assoc]`, is PHP 8.1+ only — this project targets PHP
+7.4, so `array_merge()` is used instead), and close the extra `)` at the end of that array literal:
 
 ```php
-$invoice = Invoice::create([
+$invoice = Invoice::create(array_merge($this->generatePublicAccessCredentials(), [
     'number' => (new DocumentNumberGenerator())->next($fresh->branch, 'INV'),
-    ...$this->generatePublicAccessCredentials(),
     'work_order_id' => $fresh->id,
+    // ...unchanged fields...
+]));
 ```
 
 In `createDirectSale()`, same pattern:
 
 ```php
-$invoice = Invoice::create([
+$invoice = Invoice::create(array_merge($this->generatePublicAccessCredentials(), [
     'number' => (new DocumentNumberGenerator())->next($branch, 'DS'),
-    ...$this->generatePublicAccessCredentials(),
     'work_order_id' => null,
+    // ...unchanged fields...
+]));
 ```
 
 - [ ] **Step 6: Run the tests to verify they pass**

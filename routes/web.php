@@ -16,6 +16,7 @@ use App\Http\Controllers\MechanicController;
 use App\Http\Controllers\PaymentLookupController;
 use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\PkbReportController;
+use App\Http\Controllers\PublicInvoiceController;
 use App\Http\Controllers\WorkshopPerformanceReportController;
 use App\Http\Controllers\ReceivableReportController;
 use App\Http\Controllers\UserBranchAssignmentController;
@@ -42,6 +43,13 @@ Route::get('/', function () {
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:5,1');
+});
+
+Route::prefix('i')->name('public-invoices.')->group(function () {
+    Route::get('/{invoice:hash_id}', [PublicInvoiceController::class, 'showPinForm'])->name('show');
+    Route::post('/{invoice:hash_id}/verify', [PublicInvoiceController::class, 'verifyPin'])
+        ->name('verify')->middleware('throttle:10,1');
+    Route::get('/{invoice:hash_id}/pdf', [PublicInvoiceController::class, 'showPdf'])->name('pdf');
 });
 
 Route::middleware(['auth'])->group(function () {

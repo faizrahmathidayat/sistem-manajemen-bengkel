@@ -184,6 +184,12 @@ class WhatsAppInvoiceLinkBuilder
 {
     public static function build(Invoice $invoice): ?string
     {
+        // Invoice lama dari sebelum migration ini punya hash_id/pin NULL (tidak dibackfill,
+        // lihat §7.B) — tombol WhatsApp otomatis tersembunyi untuknya lewat null-check ini.
+        if (! $invoice->hash_id || ! $invoice->pin) {
+            return null;
+        }
+
         $phone = static::formatPhone($invoice->customer->phone);
         if (! $phone) {
             return null;
@@ -362,32 +368,21 @@ Customer lihat PDF → GET /i/{hash_id}/pdf → cek session + status invoice →
   murni membuka aplikasi WhatsApp staff sendiri, staff yang menekan tombol "Kirim" di WhatsApp secara
   manual, sesuai requirement ("Direct Link").
 
-## 7. Keputusan yang Perlu Dikonfirmasi
+## 7. Keputusan Terkonfirmasi
 
-Tiga keputusan berikut sudah saya ambil dengan rekomendasi default (ditandai **[Rekomendasi]**), tapi
-sifatnya cukup mengubah scope/perilaku sehingga saya ingin konfirmasi eksplisit sebelum lanjut ke
-Implementation Plan:
+Tiga keputusan berikut sempat diajukan dengan rekomendasi default, dan sudah dikonfirmasi user — semua
+tiga rekomendasi diterima apa adanya:
 
-**A. Kapan `hash_id`/`pin` digenerate?**
-- **[Rekomendasi] Saat invoice dibuat** (create, baik dari PKB maupun Direct Sales) — satu titik
-  pemanggilan per alur, invoice DRAFT jadi sudah punya kredensial publik tapi tidak bisa diakses publik
-  sampai statusnya POSTED+ (§2.1, §2.3).
-- Alternatif: hanya saat **posting** (`postInvoice()`) — kredensial publik baru ada persis saat invoice
-  jadi final, tidak ada masa "punya hash_id tapi belum postable" sama sekali. Butuh assign kolom di
-  `postInvoice()`, bukan di kedua method create.
+**A. Kapan `hash_id`/`pin` digenerate? → Saat invoice dibuat** (baik dari PKB maupun Direct Sales), satu
+titik pemanggilan per alur di `InvoiceService`. Invoice DRAFT jadi sudah punya kredensial publik di DB,
+tapi tetap tidak bisa diakses publik sampai statusnya POSTED+ (double-gate di §2.1, §2.3).
 
-**B. Invoice lama (sudah ada di DB sebelum migration ini) — dapat backfill atau tidak?**
-- **[Rekomendasi] Tidak dibackfill.** Invoice lama tetap `hash_id`/`pin` NULL — tombol "Kirim via
-  WhatsApp" otomatis tidak akan berfungsi untuknya (karena `WhatsAppInvoiceLinkBuilder::build()` akan
-  butuh `pin`/hash yang belum ada — perlu ditambah null-check di §2.6 kalau opsi ini dipilih, atau tombol
-  disembunyikan juga saat `hash_id` kosong). Sederhana, tidak ada data migration tambahan.
-- Alternatif: seeder/artisan command sekali-jalan yang mengisi `hash_id`+`pin` untuk semua invoice POSTED+
-  yang belum punya — supaya invoice lama juga bisa dibagikan via WhatsApp.
+**B. Invoice lama dibackfill? → Tidak.** Invoice yang sudah ada sebelum migration ini tetap
+`hash_id`/`pin` NULL selamanya (tidak ada data migration/seeder tambahan). `WhatsAppInvoiceLinkBuilder::build()`
+(§2.6) eksplisit mengembalikan `null` kalau `hash_id`/`pin` kosong, sehingga tombol "Kirim via WhatsApp"
+otomatis tersembunyi untuk invoice lama tersebut.
 
-**C. Permission baru `invoice.share_whatsapp`, atau reuse `invoice.email`?**
-- **[Rekomendasi] Permission baru `invoice.share_whatsapp`** — konsisten dengan filosofi granular
-  (`invoice.print` vs `invoice.email` juga terpisah), tapi berarti ada 1 permission code baru yang perlu
-  di-assign manual ke user non-superadmin di production setelah deploy.
-- Alternatif: reuse `invoice.email` — tidak perlu permission baru/assignment manual, tapi menggabungkan
-  dua aksi ("kirim email" dan "kirim WhatsApp") di balik satu permission yang secara semantik agak
-  longgar.
+**C. Permission tombol WhatsApp? → Permission baru `invoice.share_whatsapp`**, ditambahkan ke
+`MenuPermissionSeeder` sejajar `invoice.print`/`invoice.email` (§2.5). **Catatan operasional:** setelah
+deploy, permission ini perlu di-assign manual ke user non-superadmin yang butuh akses tombol ini di
+production (superadmin otomatis dapat semua permission lewat `DemoUsersSeeder`).

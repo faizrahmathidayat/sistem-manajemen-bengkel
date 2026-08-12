@@ -74,6 +74,7 @@ class MenuPermissionSeeder extends Seeder
                     ['code' => 'invoice.void', 'resource' => 'invoice', 'action' => 'void', 'description' => 'Void invoice'],
                     ['code' => 'invoice.print', 'resource' => 'invoice', 'action' => 'print', 'description' => 'Cetak invoice'],
                     ['code' => 'invoice.email', 'resource' => 'invoice', 'action' => 'email', 'description' => 'Kirim invoice via email'],
+                    ['code' => 'invoice.share_whatsapp', 'resource' => 'invoice', 'action' => 'share_whatsapp', 'description' => 'Kirim invoice via WhatsApp'],
                 ],
             ],
             [

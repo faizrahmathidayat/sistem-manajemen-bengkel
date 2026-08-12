@@ -29,6 +29,13 @@
                     </button>
                 </form>
             @endcan
+            @can('shareWhatsapp', $invoice)
+                @if ($waLink = \App\Support\WhatsAppInvoiceLinkBuilder::build($invoice))
+                    <a href="{{ $waLink }}" target="_blank" class="btn btn-success btn-sm">
+                        <i class="bi bi-whatsapp"></i> Kirim via WhatsApp
+                    </a>
+                @endif
+            @endcan
         </div>
     </div>
 

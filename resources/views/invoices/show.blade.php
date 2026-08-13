@@ -22,9 +22,9 @@
                 </a>
             @endcan
             @can('sendEmail', $invoice)
-                <form method="POST" action="{{ route('invoices.send-email', $invoice) }}" class="d-inline">
+                <form method="POST" action="{{ route('invoices.send-email', $invoice) }}" class="d-inline" id="sendEmailForm">
                     @csrf
-                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" id="sendEmailButton">
                         <i class="bi bi-envelope"></i> Kirim Email
                     </button>
                 </form>
@@ -161,4 +161,20 @@
     @endif
 
     <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
+
+    @can('sendEmail', $invoice)
+        <div class="page-loading-overlay d-none" id="sendEmailOverlay">
+            <div class="spinner-border text-primary" role="status"></div>
+            <div>Mengirim email...</div>
+        </div>
+
+        @push('scripts')
+        <script>
+        document.getElementById('sendEmailForm').addEventListener('submit', function () {
+            document.getElementById('sendEmailButton').disabled = true;
+            document.getElementById('sendEmailOverlay').classList.remove('d-none');
+        });
+        </script>
+        @endpush
+    @endcan
 @endsection

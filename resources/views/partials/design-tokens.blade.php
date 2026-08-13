@@ -134,6 +134,18 @@
     }
     .dashboard-loading-parent { position: relative; min-height: 80px; }
 
+    .page-loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, .85);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .75rem;
+        z-index: 2000;
+    }
+
     .app-body { align-items: stretch; }
 
     /* Buttons */

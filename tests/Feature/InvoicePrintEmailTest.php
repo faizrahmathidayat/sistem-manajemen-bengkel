@@ -205,7 +205,7 @@ class InvoicePrintEmailTest extends TestCase
 
     // --- sendEmail() ---
 
-    public function test_send_email_queues_mail_and_flashes_success_when_customer_has_email(): void
+    public function test_send_email_sends_mail_synchronously_and_flashes_success_when_customer_has_email(): void
     {
         Mail::fake();
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
@@ -217,7 +217,7 @@ class InvoicePrintEmailTest extends TestCase
 
         $response->assertRedirect("/invoices/{$invoice->id}");
         $response->assertSessionHas('status');
-        Mail::assertQueued(InvoicePostedMail::class, function ($mail) use ($invoice) {
+        Mail::assertSent(InvoicePostedMail::class, function ($mail) use ($invoice) {
             return $mail->hasTo($invoice->customer->email) && $mail->invoice->is($invoice);
         });
     }
@@ -235,7 +235,7 @@ class InvoicePrintEmailTest extends TestCase
 
         $response->assertRedirect("/invoices/{$invoice->id}");
         $response->assertSessionHas('error');
-        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
     }
 
     public function test_send_email_is_forbidden_for_draft_invoice(): void
@@ -249,7 +249,7 @@ class InvoicePrintEmailTest extends TestCase
         $response = $this->actingAs($user)->post("/invoices/{$invoice->id}/send-email");
 
         $response->assertForbidden();
-        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
     }
 
     public function test_send_email_is_forbidden_without_invoice_email_permission(): void
@@ -262,7 +262,7 @@ class InvoicePrintEmailTest extends TestCase
         $response = $this->actingAs($user)->post("/invoices/{$invoice->id}/send-email");
 
         $response->assertForbidden();
-        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
     }
 
     // --- UI buttons ---

@@ -188,9 +188,9 @@ class InvoiceController extends Controller
                 ->with('error', 'Customer belum memiliki alamat email. Tidak dapat mengirim invoice.');
         }
 
-        Mail::to($email)->queue(new InvoicePostedMail($invoice));
+        Mail::to($email)->send(new InvoicePostedMail($invoice));
 
         return redirect()->route('invoices.show', $invoice)
-            ->with('status', "Invoice sedang dikirim ke {$email} (diproses di antrean).");
+            ->with('status', "Invoice berhasil dikirim ke {$email}.");
     }
 }

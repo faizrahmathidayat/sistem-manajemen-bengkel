@@ -4,15 +4,10 @@ namespace App\Mail;
 
 use App\Models\Invoice;
 use App\Support\InvoicePdfBuilder;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Queue\SerializesModels;
 
-class InvoicePostedMail extends Mailable implements ShouldQueue
+class InvoicePostedMail extends Mailable
 {
-    use Queueable, SerializesModels;
-
     public Invoice $invoice;
 
     public function __construct(Invoice $invoice)

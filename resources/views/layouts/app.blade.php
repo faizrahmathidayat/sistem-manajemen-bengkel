@@ -14,8 +14,9 @@
         <button class="btn btn-outline-light d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar">
             <i class="bi bi-list"></i>
         </button>
-        <a class="navbar-brand mb-0" href="{{ route('dashboard') }}">
-            <i class="bi bi-tools me-1"></i> Sistem Manajemen Bengkel
+        <a class="navbar-brand mb-0 d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
+            <img src="{{ asset('images/logo.png') }}" alt="JMS MOTOR" style="width: 28px; height: 28px; object-fit: contain;">
+            JMS MOTOR
         </a>
 
         <div class="ms-auto d-flex align-items-center gap-3">

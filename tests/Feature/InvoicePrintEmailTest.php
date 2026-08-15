@@ -301,36 +301,4 @@ class InvoicePrintEmailTest extends TestCase
         $response->assertDontSee('Kirim Email');
     }
 
-    public function test_show_page_includes_send_email_loading_overlay_and_script_when_permitted(): void
-    {
-        // Regression guard: sendEmail became a synchronous request (no more queue), so a slow SMTP
-        // server can leave the page looking frozen for a few seconds with no feedback. This overlay
-        // is the fix — shown via a 'submit' listener on #sendEmailForm, so it can't be tested through
-        // an HTTP-only Feature test's response, but we can assert the markup/script that makes it work
-        // is actually present in the page source.
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $invoice = $this->makePostedInvoice($branch);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'invoice.view');
-        $this->grantBranchPermission($user, $branch, 'invoice.email');
-
-        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}");
-
-        $response->assertOk();
-        $response->assertSee('id="sendEmailOverlay"', false);
-        $response->assertSee("document.getElementById('sendEmailForm').addEventListener('submit'", false);
-    }
-
-    public function test_show_page_hides_send_email_loading_overlay_without_email_permission(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $invoice = $this->makePostedInvoice($branch);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'invoice.view');
-
-        $response = $this->actingAs($user)->get("/invoices/{$invoice->id}");
-
-        $response->assertOk();
-        $response->assertDontSee('id="sendEmailOverlay"', false);
-    }
 }

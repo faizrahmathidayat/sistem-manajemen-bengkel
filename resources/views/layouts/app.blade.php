@@ -16,6 +16,11 @@
     @include('partials.design-tokens')
 </head>
 <body class="app-shell">
+    <div class="page-loading-overlay d-none" id="globalLoadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
     <nav class="navbar topbar px-3 d-flex align-items-center gap-2">
         <button class="btn btn-outline-light d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar">
             <i class="bi bi-list"></i>
@@ -109,6 +114,33 @@
                 applyTheme(current === 'dark' ? 'light' : 'dark');
             });
         }
+    })();
+    </script>
+    <script>
+    (function () {
+        var overlay = document.getElementById('globalLoadingOverlay');
+        var appBody = document.querySelector('.app-body');
+        if (!overlay || !appBody) return;
+
+        function showOverlay() {
+            overlay.classList.remove('d-none');
+        }
+
+        appBody.addEventListener('click', function (event) {
+            var link = event.target.closest('a[href]');
+            if (!link || !appBody.contains(link)) return;
+            if (link.target === '_blank') return;
+            if (link.hasAttribute('download')) return;
+            if (link.hasAttribute('data-no-loading')) return;
+            var href = link.getAttribute('href');
+            if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+            showOverlay();
+        });
+
+        appBody.addEventListener('submit', function (event) {
+            if (event.target.hasAttribute('data-no-loading')) return;
+            showOverlay();
+        });
     })();
     </script>
     @stack('scripts')

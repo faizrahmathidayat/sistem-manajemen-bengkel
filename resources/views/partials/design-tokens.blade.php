@@ -154,13 +154,36 @@
     .page-loading-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(255, 255, 255, .85);
+        background: rgba(248, 250, 252, .72);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: .75rem;
+        gap: .85rem;
         z-index: 2000;
+    }
+    html[data-bs-theme="dark"] .page-loading-overlay {
+        background: rgba(11, 15, 23, .72);
+    }
+    .page-loading-overlay .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 3px solid rgba(37, 99, 235, .15);
+        border-top-color: var(--color-accent);
+        box-shadow: 0 0 16px rgba(37, 99, 235, .45);
+        animation: loadingSpin .7s linear infinite;
+    }
+    @keyframes loadingSpin {
+        to { transform: rotate(360deg); }
+    }
+    .page-loading-overlay .loading-text {
+        font-family: var(--font-mono);
+        font-size: .8rem;
+        color: var(--color-ink-muted);
+        letter-spacing: .04em;
     }
 
     .app-body { align-items: stretch; }

@@ -1,99 +1,116 @@
 @extends('layouts.app')
 @section('title', 'PKB Baru')
 @section('content')
-    <div class="mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-clipboard-check me-2"></i>PKB Baru</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-clipboard-check"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Perintah Kerja Bengkel</p>
+                <h1 class="h3 mb-1">PKB Baru</h1>
+                <p class="text-muted mb-0">Buat Perintah Kerja Bengkel baru beserta baris jasa dan sparepart.</p>
+            </div>
+        </div>
+        <div class="heading-actions">
+            <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a>
+        </div>
     </div>
+
     <form method="POST" action="{{ route('work-orders.store') }}" id="workOrderForm">
         @csrf
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Cabang</label>
-                        <select name="branch_id" id="branchSelect" class="form-select @error('branch_id') is-invalid @enderror" required>
-                            <option value="">-- Pilih Cabang --</option>
-                            @foreach ($branches as $branch)
-                                <option value="{{ $branch->id }}" {{ (int) old('branch_id') === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Kendaraan</label>
-                        <select name="vehicle_id" id="vehicleSelect" class="form-select @error('vehicle_id') is-invalid @enderror" required disabled>
-                            <option value="">-- Pilih Cabang Dulu --</option>
-                        </select>
-                        @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Customer</label>
-                        <input type="text" id="customerDisplay" class="form-control @error('customer_id') is-invalid @enderror" value="" readonly placeholder="-- Pilih Kendaraan Dulu --">
-                        <input type="hidden" name="customer_id" id="customerIdInput" value="{{ old('customer_id') }}">
-                        @error('customer_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Mekanik</label>
-                        <select name="mechanic_id" id="mechanicSelect" class="form-select @error('mechanic_id') is-invalid @enderror" required disabled>
-                            <option value="">-- Pilih Cabang Dulu --</option>
-                        </select>
-                        @error('mechanic_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Tanggal PKB</label>
-                        <input type="date" name="work_order_date" value="{{ old('work_order_date', now()->format('Y-m-d')) }}" class="form-control @error('work_order_date') is-invalid @enderror" required>
-                        @error('work_order_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Kilometer</label>
-                        <input type="number" step="0.1" min="0" name="odometer_km" value="{{ old('odometer_km') }}" class="form-control @error('odometer_km') is-invalid @enderror">
-                        @error('odometer_km')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Keluhan</label>
-                        <textarea name="notes" class="form-control @error('notes') is-invalid @enderror" rows="1">{{ old('notes') }}</textarea>
-                        @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <div>
+                    <h2 class="h5 mb-1 section-title"><i class="bi bi-info-circle"></i><span>Informasi PKB</span></h2>
+                    <p class="text-muted mb-0">Pilih cabang, kendaraan, mekanik, dan tanggal pengerjaan.</p>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Cabang</label>
+                    <select name="branch_id" id="branchSelect" class="form-select @error('branch_id') is-invalid @enderror" required>
+                        <option value="">-- Pilih Cabang --</option>
+                        @foreach ($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ (int) old('branch_id') === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Kendaraan</label>
+                    <select name="vehicle_id" id="vehicleSelect" class="form-select @error('vehicle_id') is-invalid @enderror" required disabled>
+                        <option value="">-- Pilih Cabang Dulu --</option>
+                    </select>
+                    @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Customer</label>
+                    <input type="text" id="customerDisplay" class="form-control @error('customer_id') is-invalid @enderror" value="" readonly placeholder="-- Pilih Kendaraan Dulu --">
+                    <input type="hidden" name="customer_id" id="customerIdInput" value="{{ old('customer_id') }}">
+                    @error('customer_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Mekanik</label>
+                    <select name="mechanic_id" id="mechanicSelect" class="form-select @error('mechanic_id') is-invalid @enderror" required disabled>
+                        <option value="">-- Pilih Cabang Dulu --</option>
+                    </select>
+                    @error('mechanic_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tanggal PKB</label>
+                    <input type="date" name="work_order_date" value="{{ old('work_order_date', now()->format('Y-m-d')) }}" class="form-control @error('work_order_date') is-invalid @enderror" required>
+                    @error('work_order_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Kilometer</label>
+                    <input type="number" step="0.1" min="0" name="odometer_km" value="{{ old('odometer_km') }}" class="form-control @error('odometer_km') is-invalid @enderror">
+                    @error('odometer_km')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Keluhan</label>
+                    <textarea name="notes" class="form-control @error('notes') is-invalid @enderror" rows="1">{{ old('notes') }}</textarea>
+                    @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
         </div>
 
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h2 class="h6 mb-0">Baris Jasa</h2>
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="addServiceLine">+ Tambah Jasa</button>
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <div>
+                    <h2 class="h5 mb-1 section-title"><i class="bi bi-wrench-adjustable"></i><span>Baris Jasa</span></h2>
                 </div>
-                <div class="row g-2 small text-muted mb-1">
-                    <div class="col-md-3">Katalog Jasa</div>
-                    <div class="col-md-4">Deskripsi</div>
-                    <div class="col-md-2">Qty</div>
-                    <div class="col-md-2">Harga Satuan</div>
-                    <div class="col-md-1"></div>
-                </div>
-                <div id="serviceLines"></div>
-                @error('services')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addServiceLine">+ Tambah Jasa</button>
             </div>
+            <div class="row g-2 small text-muted mb-1">
+                <div class="col-md-3">Katalog Jasa</div>
+                <div class="col-md-4">Deskripsi</div>
+                <div class="col-md-2">Qty</div>
+                <div class="col-md-2">Harga Satuan</div>
+                <div class="col-md-1"></div>
+            </div>
+            <div id="serviceLines"></div>
+            @error('services')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
         </div>
 
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h2 class="h6 mb-0">Baris Sparepart</h2>
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="addSparepartLine" disabled>+ Tambah Sparepart</button>
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <div>
+                    <h2 class="h5 mb-1 section-title"><i class="bi bi-nut"></i><span>Baris Sparepart</span></h2>
                 </div>
-                <div class="row g-2 small text-muted mb-1">
-                    <div class="col-md-5">Sparepart</div>
-                    <div class="col-md-2">Qty</div>
-                    <div class="col-md-2">Harga Satuan</div>
-                    <div class="col-md-1"></div>
-                </div>
-                <div id="sparepartLines"></div>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addSparepartLine" disabled>+ Tambah Sparepart</button>
             </div>
+            <div class="row g-2 small text-muted mb-1">
+                <div class="col-md-5">Sparepart</div>
+                <div class="col-md-2">Qty</div>
+                <div class="col-md-2">Harga Satuan</div>
+                <div class="col-md-1"></div>
+            </div>
+            <div id="sparepartLines"></div>
         </div>
 
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>
-        <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary">Batal</a>
+        <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+            <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>
+        </div>
     </form>
 
     @include('work-orders._line_item_scripts', ['serviceCatalogs' => \App\Models\ServiceCatalog::where('is_active', true)->orderBy('name')->get()])

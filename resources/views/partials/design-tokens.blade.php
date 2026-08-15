@@ -2,55 +2,74 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+    /* Design tokens ported precisely from the adminHMD template (docs/adminhmd) —
+       variable names keep the --color-* convention already used across this file
+       and asserted by feature tests; values are copied from docs/adminhmd/assets/css/style.css. */
     :root {
         --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-        --color-bg: #F8FAFC;
+        --color-bg: #F5F7FB;
         --color-surface: #FFFFFF;
-        --color-ink: #0F172A;
-        --color-ink-muted: #64748B;
-        --color-border: #E2E8F0;
+        --color-surface-soft: #F8FAFC;
+        --color-ink: #1F2937;
+        --color-ink-muted: #6B7280;
+        --color-border: #DBE4EF;
         --color-sidebar: #FFFFFF;
-        --color-sidebar-border: #E2E8F0;
-        --color-sidebar-ink: #334155;
+        --color-sidebar-border: #DBE4EF;
+        --color-sidebar-soft: #EEF4FF;
+        --color-sidebar-ink: #475569;
         --color-sidebar-ink-active: #0F172A;
         --color-sidebar-heading: rgba(15, 23, 42, .45);
         --color-sidebar-ink-disabled: rgba(15, 23, 42, .35);
+        --color-sidebar-icon-bg: #EAF2FF;
+        --color-sidebar-icon: #2563EB;
         --color-accent: #2563EB;
         --color-accent-dark: #1D4ED8;
-        --color-success: #10B981;
+        --color-success: #0F766E;
         --color-danger: #DC2626;
-        --color-warning: #F59E0B;
+        --color-warning: #D97706;
+        --color-shadow-sm: 0 10px 24px rgba(15, 23, 42, .06);
+        --color-shadow: 0 18px 46px rgba(15, 23, 42, .09);
+        --color-shadow-lg: 0 26px 70px rgba(15, 23, 42, .12);
+        --color-sidebar-shadow: 18px 0 42px rgba(15, 23, 42, .08);
+        --color-ring: 0 0 0 4px rgba(37, 99, 235, .12);
     }
 
     html[data-bs-theme="dark"] {
-        --color-bg: #0B0F17;
-        --color-surface: #1E293B;
-        --color-ink: #F1F5F9;
-        --color-ink-muted: #94A3B8;
-        --color-border: rgba(51, 65, 85, .6);
-        --color-accent: #3B82F6;
-        --color-accent-dark: #2563EB;
-        --color-sidebar: #1E293B;
-        --color-sidebar-border: rgba(51, 65, 85, .6);
-        --color-sidebar-ink: rgba(241, 245, 249, .68);
+        --color-bg: #0F172A;
+        --color-surface: #182235;
+        --color-surface-soft: #111827;
+        --color-ink: #E5EDF7;
+        --color-ink-muted: #9AA8BD;
+        --color-border: #2F3B52;
+        --color-sidebar: #090F1D;
+        --color-sidebar-border: rgba(255, 255, 255, .08);
+        --color-sidebar-soft: #172033;
+        --color-sidebar-ink: #D1D5DB;
         --color-sidebar-ink-active: #FFFFFF;
         --color-sidebar-heading: rgba(241, 245, 249, .4);
         --color-sidebar-ink-disabled: rgba(241, 245, 249, .35);
-    }
-
-    html[data-bs-theme="dark"] .card {
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, .35);
-    }
-
-    html[data-bs-theme="dark"] .card:hover:not(:focus-within) {
-        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, .5);
+        --color-sidebar-icon-bg: rgba(255, 255, 255, .08);
+        --color-sidebar-icon: #BFDBFE;
+        --color-accent: #60A5FA;
+        --color-accent-dark: #3B82F6;
+        --color-success: #2DD4BF;
+        --color-danger: #F87171;
+        --color-warning: #FBBF24;
+        --color-shadow-sm: 0 10px 24px rgba(0, 0, 0, .24);
+        --color-shadow: 0 18px 46px rgba(0, 0, 0, .32);
+        --color-shadow-lg: 0 26px 70px rgba(0, 0, 0, .42);
+        --color-sidebar-shadow: 18px 0 42px rgba(0, 0, 0, .34);
+        --color-ring: 0 0 0 4px rgba(96, 165, 250, .18);
     }
 
     body {
         font-family: var(--font-sans);
-        background-color: var(--color-bg);
+        background: linear-gradient(180deg, #F8FBFF 0%, var(--color-bg) 42%, #EEF4FA 100%);
         color: var(--color-ink);
+    }
+    html[data-bs-theme="dark"] body {
+        background: linear-gradient(180deg, #111827 0%, var(--color-bg) 48%, #0B1120 100%);
     }
 
     /* App shell (authenticated layout only) — keeps the sidebar's dark
@@ -72,19 +91,19 @@
         letter-spacing: -.01em;
     }
 
-    /* Topbar */
+    /* Topbar (adminHMD .admin-navbar) */
     .topbar {
-        background-color: rgba(255, 255, 255, .72) !important;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(226, 232, 240, .6);
+        background-color: rgba(255, 255, 255, .94) !important;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--color-border);
+        box-shadow: var(--color-shadow-sm);
         position: sticky;
         top: 0;
         z-index: 1020;
     }
     html[data-bs-theme="dark"] .topbar {
-        background-color: rgba(11, 15, 23, .72) !important;
-        border-bottom: 1px solid rgba(255, 255, 255, .05);
+        background-color: rgba(24, 34, 53, .92) !important;
     }
     .topbar .navbar-brand { color: var(--color-ink) !important; font-weight: 700; }
     .topbar .navbar-brand i { color: var(--color-accent); }
@@ -110,8 +129,14 @@
     }
 
 
-    /* Sidebar */
-    #sidebar { width: 260px; flex-shrink: 0; background-color: var(--color-sidebar) !important; border-right: 1px solid var(--color-sidebar-border); }
+    /* Sidebar (adminHMD .admin-sidebar / .sidebar-nav) */
+    #sidebar {
+        width: 260px;
+        flex-shrink: 0;
+        background-color: var(--color-sidebar) !important;
+        border-right: 1px solid var(--color-sidebar-border);
+        box-shadow: var(--color-sidebar-shadow);
+    }
     #sidebar .sidebar-heading {
         color: var(--color-sidebar-heading);
         font-size: .7rem;
@@ -121,17 +146,25 @@
     #sidebar .nav-link {
         display: flex;
         align-items: center;
+        gap: .75rem;
         color: var(--color-sidebar-ink);
         border-left: 3px solid transparent;
-        border-radius: 0;
-        padding: .5rem .75rem;
+        border-radius: 8px;
+        padding: .6rem .75rem;
+        font-weight: 700;
+        transition: background .16s ease, color .16s ease, transform .16s ease;
     }
-    #sidebar .nav-link:hover { color: var(--color-sidebar-ink-active); background-color: color-mix(in srgb, var(--color-sidebar-ink-active) 8%, transparent); }
+    #sidebar .nav-link:hover,
+    #sidebar .nav-link:focus {
+        color: var(--color-sidebar-ink-active);
+        background-color: var(--color-sidebar-soft);
+        transform: translateX(2px);
+    }
     #sidebar .nav-link.active {
         color: var(--color-sidebar-ink-active);
-        background: linear-gradient(135deg, #3B82F6, #2563EB);
-        font-weight: 600;
-        box-shadow: 0 0 12px rgba(59, 130, 246, .35);
+        background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+        font-weight: 700;
+        box-shadow: 0 0 12px rgba(37, 99, 235, .35);
     }
     #sidebar .nav-link.nav-link-disabled {
         cursor: not-allowed;
@@ -140,6 +173,7 @@
     #sidebar .nav-link.nav-link-disabled:hover {
         background-color: transparent;
         color: var(--color-sidebar-ink-disabled);
+        transform: none;
     }
     .badge-soon {
         font-family: var(--font-mono);
@@ -209,7 +243,19 @@
 
     .app-body { align-items: stretch; }
 
-    /* Buttons */
+    /* Buttons (adminHMD .btn) */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        border-radius: .5rem;
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
+        transition: border-color .16s ease, background .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+    html[data-bs-theme="dark"] .btn { box-shadow: 0 8px 18px rgba(0, 0, 0, .2); }
+    .btn:hover, .btn:focus { transform: translateY(-1px); }
     .btn-primary {
         --bs-btn-bg: var(--color-accent);
         --bs-btn-border-color: var(--color-accent);
@@ -224,65 +270,139 @@
         --bs-btn-hover-bg: var(--color-accent);
         --bs-btn-hover-border-color: var(--color-accent);
     }
-    .btn { border-radius: .5rem; font-weight: 500; }
+    .btn-light {
+        border-color: var(--color-border);
+        background: var(--color-surface-soft);
+        color: var(--color-ink);
+    }
+    .btn-outline-secondary {
+        border-color: var(--color-border);
+        color: var(--color-ink);
+    }
+    .btn-outline-secondary:hover,
+    .btn-outline-secondary:focus {
+        border-color: var(--color-accent);
+        background: var(--color-sidebar-icon-bg);
+        color: var(--color-accent-dark);
+    }
+    html[data-bs-theme="dark"] .btn-outline-secondary:hover,
+    html[data-bs-theme="dark"] .btn-outline-secondary:focus {
+        background: #1E3A5F;
+        color: #BFDBFE;
+    }
 
-    /* Form controls (soft rounded, AdminHMD style) */
+    /* Form controls (adminHMD .form-control / .form-select) */
     .form-control,
     .form-select {
-        border-radius: 10px;
+        border-color: var(--color-border);
         background-color: var(--color-surface);
-        border: 1px solid var(--color-border);
         color: var(--color-ink);
+        transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
     }
     .form-control:focus,
     .form-select:focus {
+        border-color: #93C5FD;
         background-color: var(--color-surface);
         color: var(--color-ink);
-        border-color: var(--color-accent);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, .2);
+        box-shadow: var(--color-ring);
     }
+    .form-control::placeholder { color: var(--color-ink-muted); }
 
-    /* Cards */
+    /* Page heading (adminHMD .page-heading) */
+    .page-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.35rem;
+    }
+    .page-heading h1 { font-weight: 800; letter-spacing: 0; }
+    .page-heading-copy {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 1rem;
+        min-width: 0;
+    }
+    .eyebrow {
+        color: var(--color-accent);
+        font-size: .78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .heading-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: .65rem;
+    }
+    .page-icon,
+    .section-title i {
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 8px;
+        background: var(--color-sidebar-icon-bg);
+        color: var(--color-accent-dark);
+    }
+    .page-icon { width: 48px; height: 48px; font-size: 1.25rem; }
+    .section-title { display: inline-flex; align-items: center; gap: .55rem; }
+    .section-title i { width: 34px; height: 34px; font-size: .95rem; }
+
+    /* Panel / elevated surface (adminHMD .panel, replaces bare .card for
+       form and content surfaces) */
+    .panel,
     .card {
         border: 1px solid var(--color-border);
-        border-radius: 14px;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, .05);
-        transition: transform .15s ease, box-shadow .15s ease;
+        border-radius: 8px;
+        background: var(--color-surface);
+        box-shadow: var(--color-shadow);
+        transition: border-color .18s ease, box-shadow .18s ease;
     }
+    .panel { padding: 1.35rem; }
+    .panel:hover,
     .card:hover:not(:focus-within) {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, .08);
+        border-color: #C6D5E8;
+        box-shadow: var(--color-shadow-lg);
     }
-
-    /* Tables */
-    .table thead th {
-        font-size: .72rem;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-        color: var(--color-ink-muted);
-        font-weight: 600;
-        border-bottom: none;
-        background: var(--color-bg);
+    html[data-bs-theme="dark"] .panel:hover,
+    html[data-bs-theme="dark"] .card:hover:not(:focus-within) {
+        border-color: #35435E;
     }
-    .table td { vertical-align: middle; }
-    .table tbody tr { border-bottom: 1px solid var(--color-border); }
+    .panel-header { margin-bottom: 1.25rem; }
+    .panel-header p { font-size: .92rem; }
 
-    .table-hover > tbody > tr:hover > * {
-        background-color: rgba(0, 0, 0, .015);
+    /* Tables (adminHMD .table) */
+    .table {
+        --bs-table-bg: transparent;
+        --bs-table-color: var(--color-ink);
+        --bs-table-border-color: var(--color-border);
         color: var(--color-ink);
     }
-    html[data-bs-theme="dark"] .table-hover > tbody > tr:hover > * {
-        background-color: rgba(255, 255, 255, .02);
-        color: #F1F5F9;
+    .table thead th {
+        color: var(--color-ink-muted);
+        font-size: .78rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+        border-bottom: none;
     }
+    .table tbody td { vertical-align: middle; padding-block: 1rem; }
+    .table tbody tr {
+        border-bottom: 1px solid var(--color-border);
+        transition: background .16s ease;
+    }
+    .table tbody tr:hover { background: #F8FBFF; }
+    html[data-bs-theme="dark"] .table tbody tr:hover { background: #111827; }
 
-    /* Table action buttons (soft pill, AdminHMD style) */
+    /* Table action buttons (soft pill, kept for edit/delete color semantics
+       not present in adminHMD's sample tables) */
     .table .btn-outline-primary,
     .table .btn-outline-danger {
         border: none;
         border-radius: 8px;
         padding: .35rem .65rem;
         font-weight: 500;
+        box-shadow: none;
     }
     .table .btn-outline-primary {
         background-color: rgba(37, 99, 235, .12);

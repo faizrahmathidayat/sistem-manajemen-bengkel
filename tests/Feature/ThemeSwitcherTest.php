@@ -20,7 +20,7 @@ class ThemeSwitcherTest extends TestCase
         $response->assertSeeInOrder([
             "localStorage.getItem('theme')",
             'data-bs-theme',
-            '--color-bg: #F8FAFC;',
+            '--color-bg: #F5F7FB;',
         ], false);
     }
 
@@ -40,7 +40,7 @@ class ThemeSwitcherTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('html[data-bs-theme="dark"]', false);
-        $response->assertSee('--color-bg: #0B0F17;', false);
+        $response->assertSee('--color-bg: #0F172A;', false);
     }
 
     public function test_authenticated_layout_includes_theme_toggle_handler_script(): void

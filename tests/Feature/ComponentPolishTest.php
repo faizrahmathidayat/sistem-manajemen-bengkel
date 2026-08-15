@@ -33,8 +33,8 @@ class ComponentPolishTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('--color-sidebar: #FFFFFF;', false);
-        $response->assertSee('--color-sidebar-border: #E2E8F0;', false);
-        $response->assertSee('--color-sidebar: #1E293B;', false);
+        $response->assertSee('--color-sidebar-border: #DBE4EF;', false);
+        $response->assertSee('--color-sidebar: #090F1D;', false);
     }
 
     public function test_design_tokens_include_stat_icon_badge_and_row_animation(): void

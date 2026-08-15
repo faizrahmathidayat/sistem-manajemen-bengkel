@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+    (function () {
+        var theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', theme);
+    })();
+    </script>
     <title>@yield('title', 'Sistem Manajemen Bengkel')</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -73,6 +79,39 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        var STORAGE_KEY = 'theme';
+
+        function updateToggleUI(theme) {
+            var btn = document.getElementById('themeToggleBtn');
+            if (!btn) return;
+            var icon = btn.querySelector('i');
+            if (theme === 'dark') {
+                icon.className = 'bi bi-brightness-high';
+                btn.setAttribute('title', 'Mode Terang');
+            } else {
+                icon.className = 'bi bi-moon-stars';
+                btn.setAttribute('title', 'Mode Gelap');
+            }
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem(STORAGE_KEY, theme);
+            updateToggleUI(theme);
+        }
+
+        var toggleBtn = document.getElementById('themeToggleBtn');
+        if (toggleBtn) {
+            updateToggleUI(document.documentElement.getAttribute('data-bs-theme') || 'light');
+            toggleBtn.addEventListener('click', function () {
+                var current = document.documentElement.getAttribute('data-bs-theme') || 'light';
+                applyTheme(current === 'dark' ? 'light' : 'dark');
+            });
+        }
+    })();
+    </script>
     @stack('scripts')
 </body>
 </html>

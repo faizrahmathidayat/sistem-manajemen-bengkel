@@ -5,7 +5,7 @@
     :root {
         --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-        --color-bg: #F4F6F9;
+        --color-bg: #F8FAFC;
         --color-surface: #FFFFFF;
         --color-ink: #0F172A;
         --color-ink-muted: #64748B;
@@ -18,6 +18,24 @@
         --color-success: #10B981;
         --color-danger: #DC2626;
         --color-warning: #F59E0B;
+    }
+
+    html[data-bs-theme="dark"] {
+        --color-bg: #0B0F17;
+        --color-surface: #1E293B;
+        --color-ink: #F1F5F9;
+        --color-ink-muted: #94A3B8;
+        --color-border: rgba(51, 65, 85, .6);
+        --color-accent: #3B82F6;
+        --color-accent-dark: #2563EB;
+    }
+
+    html[data-bs-theme="dark"] .card {
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, .35);
+    }
+
+    html[data-bs-theme="dark"] .card:hover:not(:focus-within) {
+        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, .5);
     }
 
     body {

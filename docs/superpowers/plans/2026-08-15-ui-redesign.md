@@ -477,7 +477,7 @@ git commit -m "feat: redesign navbar with profile dropdown, remove permission ba
 - Consumes: `.app-body` wrapper element (already exists in `layouts/app.blade.php`, unchanged).
 - Produces: `#globalLoadingOverlay` element and `data-no-loading` escape-hatch attribute — no later task depends on these.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Feature/GlobalLoadingOverlayTest.php`:
 
@@ -532,12 +532,12 @@ class GlobalLoadingOverlayTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `php artisan test --filter=GlobalLoadingOverlayTest`
 Expected: FAIL — global overlay markup/script doesn't exist yet.
 
-- [ ] **Step 3: Update `.page-loading-overlay` styles in `design-tokens.blade.php`**
+- [x] **Step 3: Update `.page-loading-overlay` styles in `design-tokens.blade.php`**
 
 Find:
 
@@ -594,7 +594,7 @@ Replace with:
     }
 ```
 
-- [ ] **Step 4: Add the overlay markup and delegation script to `layouts/app.blade.php`**
+- [x] **Step 4: Add the overlay markup and delegation script to `layouts/app.blade.php`**
 
 Find:
 
@@ -668,7 +668,7 @@ Replace with:
     @stack('scripts')
 ```
 
-- [ ] **Step 5: Delete the page-specific overlay block from `invoices/show.blade.php`**
+- [x] **Step 5: Delete the page-specific overlay block from `invoices/show.blade.php`**
 
 Find:
 
@@ -697,7 +697,7 @@ Replace with:
 @endsection
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `php artisan test --filter=GlobalLoadingOverlayTest`
 Expected: PASS (3/3)

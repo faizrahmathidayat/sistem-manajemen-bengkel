@@ -301,9 +301,8 @@
     }
     #sidebar .nav-link.active {
         color: var(--color-sidebar-ink-active);
-        background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+        background-color: var(--color-sidebar-soft);
         font-weight: 700;
-        box-shadow: 0 0 12px rgba(37, 99, 235, .35);
     }
     #sidebar .nav-link.nav-link-disabled {
         cursor: not-allowed;
@@ -325,11 +324,6 @@
         color: var(--color-sidebar-icon);
         font-size: .8rem;
     }
-    #sidebar .nav-link.active .nav-icon {
-        background: rgba(255, 255, 255, .18);
-        color: #fff;
-    }
-
     .sidebar-user {
         margin: auto 1rem 1rem;
         padding: .85rem;

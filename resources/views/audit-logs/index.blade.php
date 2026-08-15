@@ -1,8 +1,15 @@
 @extends('layouts.app')
 @section('title', 'Audit Log')
 @section('content')
-    <div class="mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-journal-text me-2"></i>Audit Log</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-journal-text"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Administrasi</p>
+                <h1 class="h3 mb-1">Audit Log</h1>
+                <p class="text-muted mb-0">Riwayat aktivitas pengguna di sistem.</p>
+            </div>
+        </div>
     </div>
 
     <div class="card mb-3">

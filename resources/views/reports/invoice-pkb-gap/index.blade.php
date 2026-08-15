@@ -1,13 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Laporan Gap Invoice vs PKB')
 @section('content')
-    <div class="mb-4 d-flex justify-content-between align-items-center">
-        <h1 class="h4 mb-0"><i class="bi bi-bar-chart-steps me-2"></i>PKB vs Invoice</h1>
-        @include('partials.report-export-buttons', [
-            'excelRoute' => 'reports.invoice-pkb-gap.export-excel',
-            'pdfPreviewRoute' => 'reports.invoice-pkb-gap.pdf-preview',
-            'pdfDownloadRoute' => 'reports.invoice-pkb-gap.pdf-download',
-        ])
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-bar-chart-steps"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Reporting</p>
+                <h1 class="h3 mb-1">PKB vs Invoice</h1>
+                <p class="text-muted mb-0">Bandingkan selisih PKB selesai dengan invoice yang terbit.</p>
+            </div>
+        </div>
+        <div class="heading-actions">
+            @include('partials.report-export-buttons', [
+                'excelRoute' => 'reports.invoice-pkb-gap.export-excel',
+                'pdfPreviewRoute' => 'reports.invoice-pkb-gap.pdf-preview',
+                'pdfDownloadRoute' => 'reports.invoice-pkb-gap.pdf-download',
+            ])
+        </div>
     </div>
 
     <div class="card mb-3">

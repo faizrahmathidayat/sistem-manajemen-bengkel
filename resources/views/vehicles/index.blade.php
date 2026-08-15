@@ -1,8 +1,15 @@
 @extends('layouts.app')
 @section('title', 'Kendaraan')
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-car-front me-2"></i>Kendaraan</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-car-front"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Master Data</p>
+                <h1 class="h3 mb-1">Kendaraan</h1>
+                <p class="text-muted mb-0">Kelola data kendaraan customer.</p>
+            </div>
+        </div>
     </div>
 
     @include('partials.list-filter-bar', [

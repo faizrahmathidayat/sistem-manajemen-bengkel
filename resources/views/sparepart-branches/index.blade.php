@@ -1,11 +1,18 @@
 @extends('layouts.app')
 @section('title', 'Master Sparepart')
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-box-seam me-2"></i>Master Sparepart</h1>
-        <div class="d-flex gap-2">
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-box-seam"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Persediaan</p>
+                <h1 class="h3 mb-1">Master Sparepart</h1>
+                <p class="text-muted mb-0">Kelola konfigurasi sparepart per cabang.</p>
+            </div>
+        </div>
+        <div class="heading-actions">
             @if (auth()->user()->hasPermissionToInBranch('sparepart.create', $currentBranch->id))
-                <a href="{{ route('sparepart-branches.createExisting') }}" class="btn btn-outline-primary btn-sm">
+                <a href="{{ route('sparepart-branches.createExisting') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-link-45deg"></i> Tambah dari Cabang Lain
                 </a>
             @endif

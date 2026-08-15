@@ -1,8 +1,15 @@
 @extends('layouts.app')
 @section('title', 'Kartu Stok')
 @section('content')
-    <div class="mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-card-list me-2"></i>Kartu Stok</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-card-list"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Persediaan</p>
+                <h1 class="h3 mb-1">Kartu Stok</h1>
+                <p class="text-muted mb-0">Pantau riwayat pergerakan stok sparepart.</p>
+            </div>
+        </div>
     </div>
 
     <div class="card mb-3">

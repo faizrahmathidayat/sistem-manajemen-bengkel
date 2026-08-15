@@ -1,13 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Laporan Invoice')
 @section('content')
-    <div class="mb-4 d-flex justify-content-between align-items-center">
-        <h1 class="h4 mb-0"><i class="bi bi-file-earmark-text me-2"></i>Laporan Invoice</h1>
-        @include('partials.report-export-buttons', [
-            'excelRoute' => 'reports.invoices.export-excel',
-            'pdfPreviewRoute' => 'reports.invoices.pdf-preview',
-            'pdfDownloadRoute' => 'reports.invoices.pdf-download',
-        ])
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-file-earmark-text"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Reporting</p>
+                <h1 class="h3 mb-1">Laporan Invoice</h1>
+                <p class="text-muted mb-0">Rekap invoice per cabang dan status.</p>
+            </div>
+        </div>
+        <div class="heading-actions">
+            @include('partials.report-export-buttons', [
+                'excelRoute' => 'reports.invoices.export-excel',
+                'pdfPreviewRoute' => 'reports.invoices.pdf-preview',
+                'pdfDownloadRoute' => 'reports.invoices.pdf-download',
+            ])
+        </div>
     </div>
 
     <div class="card mb-3">

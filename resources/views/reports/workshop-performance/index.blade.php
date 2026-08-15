@@ -1,13 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Laporan Performance Bengkel')
 @section('content')
-    <div class="mb-4 d-flex justify-content-between align-items-center">
-        <h1 class="h4 mb-0"><i class="bi bi-speedometer2 me-2"></i>Laporan Performance Bengkel</h1>
-        @include('partials.report-export-buttons', [
-            'excelRoute' => 'reports.workshop-performance.export-excel',
-            'pdfPreviewRoute' => 'reports.workshop-performance.pdf-preview',
-            'pdfDownloadRoute' => 'reports.workshop-performance.pdf-download',
-        ])
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-speedometer2"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Reporting</p>
+                <h1 class="h3 mb-1">Laporan Performance Bengkel</h1>
+                <p class="text-muted mb-0">Pantau produktivitas mekanik dan bengkel.</p>
+            </div>
+        </div>
+        <div class="heading-actions">
+            @include('partials.report-export-buttons', [
+                'excelRoute' => 'reports.workshop-performance.export-excel',
+                'pdfPreviewRoute' => 'reports.workshop-performance.pdf-preview',
+                'pdfDownloadRoute' => 'reports.workshop-performance.pdf-download',
+            ])
+        </div>
     </div>
 
     <div class="card mb-3">

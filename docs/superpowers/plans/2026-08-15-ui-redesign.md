@@ -725,7 +725,7 @@ git commit -m "feat: consolidate loading feedback into a global page overlay"
 - Consumes: the `html[data-bs-theme="dark"] { ... }` block from Task 1 (appends 5 more custom properties into it) and the `:root { ... }` block's existing `--color-sidebar*` declarations (redefines their values).
 - Produces: `.line-row-enter` class, consumed by both `_line_item_scripts.blade.php` files' `appendChild` call sites.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Feature/ComponentPolishTest.php`:
 
@@ -807,12 +807,12 @@ class ComponentPolishTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `php artisan test --filter=ComponentPolishTest`
 Expected: FAIL — sidebar still permanently dark, no stat-icon badge, no row animation.
 
-- [ ] **Step 3: Make the sidebar theme-aware — light tokens in `:root`**
+- [x] **Step 3: Make the sidebar theme-aware — light tokens in `:root`**
 
 Find:
 
@@ -833,7 +833,7 @@ Replace with:
         --color-sidebar-ink-disabled: rgba(15, 23, 42, .35);
 ```
 
-- [ ] **Step 4: Add dark-mode sidebar tokens (append into Task 1's dark block)**
+- [x] **Step 4: Add dark-mode sidebar tokens (append into Task 1's dark block)**
 
 Find:
 
@@ -855,7 +855,7 @@ Replace with:
     }
 ```
 
-- [ ] **Step 5: Use the new tokens in the sidebar component rules**
+- [x] **Step 5: Use the new tokens in the sidebar component rules**
 
 Find:
 
@@ -923,7 +923,7 @@ Replace with:
 
 (The disabled-link fix is a direct consequence of making the sidebar theme-aware: the old hardcoded near-white text would be almost invisible on the new white light-mode sidebar.)
 
-- [ ] **Step 6: Add the pastel stat-icon badge**
+- [x] **Step 6: Add the pastel stat-icon badge**
 
 Find:
 
@@ -948,7 +948,7 @@ Replace with:
     }
 ```
 
-- [ ] **Step 7: Make the table header dark-mode aware**
+- [x] **Step 7: Make the table header dark-mode aware**
 
 Find:
 
@@ -978,7 +978,7 @@ Replace with:
     }
 ```
 
-- [ ] **Step 8: Add the row-enter animation**
+- [x] **Step 8: Add the row-enter animation**
 
 Find:
 
@@ -1000,7 +1000,7 @@ Replace with:
     .app-body { align-items: stretch; }
 ```
 
-- [ ] **Step 9: Apply `.line-row-enter` in `work-orders/_line_item_scripts.blade.php`**
+- [x] **Step 9: Apply `.line-row-enter` in `work-orders/_line_item_scripts.blade.php`**
 
 Find:
 
@@ -1040,7 +1040,7 @@ Replace with:
         initAjaxSelect(select, {
 ```
 
-- [ ] **Step 10: Apply `.line-row-enter` in `invoices/_line_item_scripts.blade.php`**
+- [x] **Step 10: Apply `.line-row-enter` in `invoices/_line_item_scripts.blade.php`**
 
 Find:
 
@@ -1090,12 +1090,12 @@ Replace with:
     }
 ```
 
-- [ ] **Step 11: Run test to verify it passes**
+- [x] **Step 11: Run test to verify it passes**
 
 Run: `php artisan test --filter=ComponentPolishTest`
 Expected: PASS (4/4)
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add resources/views/partials/design-tokens.blade.php resources/views/work-orders/_line_item_scripts.blade.php resources/views/invoices/_line_item_scripts.blade.php tests/Feature/ComponentPolishTest.php

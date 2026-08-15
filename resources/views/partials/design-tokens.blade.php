@@ -83,18 +83,17 @@
         --bs-btn-hover-border-color: var(--color-border);
     }
 
-    .topbar-permission-badge {
-        font-size: .75rem;
-        color: #2563EB;
-        background: #EFF6FF;
-        border: 1px solid #DBEAFE;
-        border-radius: 999px;
-        padding: .25rem .625rem;
-    }
-    .topbar-permission-badge-more {
-        color: var(--color-ink-muted);
-        background: var(--color-bg);
-        border-color: var(--color-border);
+    .topbar-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--color-accent);
+        color: #fff;
+        font-weight: 600;
+        font-size: .8rem;
     }
 
 

@@ -27,29 +27,28 @@
 
         <div class="ms-auto d-flex align-items-center gap-3">
             @auth
-                @php($permissionCodes = auth()->user()->permissionCodes())
-                @if (count($permissionCodes) > 0)
-                    <div class="d-none d-lg-flex align-items-center gap-1">
-                        {{-- Renders up to 3 of the user's global permission codes as visible page text.
-                             Careful with assertDontSee('some.permission.code') in future tests — if the
-                             acting user holds that code globally, this navbar block will make the
-                             assertion fail regardless of what the test is actually checking. --}}
-                        @foreach (array_slice($permissionCodes, 0, 3) as $code)
-                            <span class="topbar-permission-badge">{{ $code }}</span>
-                        @endforeach
-                        @if (count($permissionCodes) > 3)
-                            <span class="topbar-permission-badge topbar-permission-badge-more">+{{ count($permissionCodes) - 3 }} lainnya</span>
-                        @endif
-                    </div>
-                @endif
+                <span class="small d-none d-lg-inline" id="topbarDate" style="color: var(--color-ink-muted);">{{ now()->locale('id')->translatedFormat('l, d F Y') }}</span>
 
-                <span class="small d-none d-sm-inline" style="color: var(--color-ink-muted);">{{ auth()->user()->name }}</span>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-outline-light btn-sm">
-                        <i class="bi bi-box-arrow-right"></i> Logout
+                <button type="button" class="btn btn-outline-light btn-sm" id="themeToggleBtn" title="Mode Gelap">
+                    <i class="bi bi-moon-stars"></i>
+                </button>
+
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button" id="profileDropdownToggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="topbar-avatar">{{ strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
+                        <span class="d-none d-sm-inline">{{ auth()->user()->name }}</span>
                     </button>
-                </form>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdownToggle">
+                        <li>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-box-arrow-right me-2"></i> Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             @endauth
         </div>
     </nav>

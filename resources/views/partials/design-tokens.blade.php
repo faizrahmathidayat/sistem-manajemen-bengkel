@@ -82,6 +82,10 @@
         top: 0;
         z-index: 1020;
     }
+    html[data-bs-theme="dark"] .topbar {
+        background-color: rgba(11, 15, 23, .72) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, .05);
+    }
     .topbar .navbar-brand { color: var(--color-ink) !important; font-weight: 700; }
     .topbar .navbar-brand i { color: var(--color-accent); }
     .topbar .btn-outline-light {
@@ -222,10 +226,26 @@
     }
     .btn { border-radius: .5rem; font-weight: 500; }
 
+    /* Form controls (soft rounded, AdminHMD style) */
+    .form-control,
+    .form-select {
+        border-radius: 10px;
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        color: var(--color-ink);
+    }
+    .form-control:focus,
+    .form-select:focus {
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, .2);
+    }
+
     /* Cards */
     .card {
-        border: 1px solid rgba(226, 232, 240, .8);
-        border-radius: 1rem;
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
         box-shadow: 0 4px 20px -2px rgba(0, 0, 0, .05);
         transition: transform .15s ease, box-shadow .15s ease;
     }
@@ -245,8 +265,49 @@
         background: var(--color-bg);
     }
     .table td { vertical-align: middle; }
-    .table-hover { --bs-table-hover-bg: #F8FAFC; }
     .table tbody tr { border-bottom: 1px solid var(--color-border); }
+
+    .table-hover > tbody > tr:hover > * {
+        background-color: rgba(0, 0, 0, .015);
+        color: var(--color-ink);
+    }
+    html[data-bs-theme="dark"] .table-hover > tbody > tr:hover > * {
+        background-color: rgba(255, 255, 255, .02);
+        color: #F1F5F9;
+    }
+
+    /* Table action buttons (soft pill, AdminHMD style) */
+    .table .btn-outline-primary,
+    .table .btn-outline-danger {
+        border: none;
+        border-radius: 8px;
+        padding: .35rem .65rem;
+        font-weight: 500;
+    }
+    .table .btn-outline-primary {
+        background-color: rgba(37, 99, 235, .12);
+        color: #2563EB;
+    }
+    .table .btn-outline-primary:hover,
+    .table .btn-outline-primary:focus {
+        background-color: rgba(37, 99, 235, .2);
+        color: #2563EB;
+    }
+    html[data-bs-theme="dark"] .table .btn-outline-primary,
+    html[data-bs-theme="dark"] .table .btn-outline-primary:hover,
+    html[data-bs-theme="dark"] .table .btn-outline-primary:focus {
+        color: #3B82F6;
+    }
+    .table .btn-outline-danger,
+    .table .btn-outline-danger:hover,
+    .table .btn-outline-danger:focus {
+        background-color: rgba(239, 68, 68, .12);
+        color: #EF4444;
+    }
+    .table .btn-outline-danger:hover,
+    .table .btn-outline-danger:focus {
+        background-color: rgba(239, 68, 68, .2);
+    }
 
     /* Status indicator */
     .status-dot {

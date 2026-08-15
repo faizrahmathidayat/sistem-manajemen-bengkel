@@ -38,6 +38,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <h2 class="h6">Alokasi Invoice</h2>
+            <div class="table-responsive">
             <table class="table table-sm">
                 <thead><tr><th>No. Invoice</th><th>Nominal Dialokasikan</th></tr></thead>
                 <tbody>
@@ -49,6 +50,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 

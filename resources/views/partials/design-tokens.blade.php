@@ -529,7 +529,12 @@
         gap: 1rem;
         margin-bottom: 1.35rem;
     }
-    .page-heading h1 { font-weight: 800; letter-spacing: 0; }
+    .page-heading h1 {
+        font-weight: 800;
+        letter-spacing: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
     .page-heading-copy {
         display: flex;
         align-items: center;
@@ -537,6 +542,7 @@
         gap: 1rem;
         min-width: 0;
     }
+    .page-heading-copy > div { min-width: 0; }
     .eyebrow {
         color: var(--color-accent);
         font-size: .78rem;
@@ -737,5 +743,44 @@
         top: 1rem;
         right: 1rem;
         z-index: 10;
+    }
+
+    /* Responsive (adminHMD's own breakpoints — ported in full; previously
+       missing entirely, which let .page-heading/.heading-actions overlap
+       on narrow viewports instead of stacking). */
+    @media (max-width: 991.98px) {
+        .dashboard-content > .container-fluid { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+    }
+
+    @media (max-width: 767.98px) {
+        .navbar-actions { gap: .5rem; }
+        .icon-button, .profile-button, .sidebar-toggle { width: 40px; height: 40px; }
+        .profile-button { padding: .3rem; }
+        .page-heading-copy { align-items: flex-start; }
+        .panel-header { align-items: flex-start; }
+        .panel-header > .d-flex { width: 100%; }
+    }
+
+    @media (max-width: 575.98px) {
+        .page-heading,
+        .panel-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+        .page-heading-copy { width: 100%; }
+        .page-icon { width: 44px; height: 44px; }
+        .heading-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+        .heading-actions .btn { flex: 1 1 0; }
+        .panel-header .form-control,
+        .panel-header .form-select { width: 100%; }
+        .auth-page { padding: 1rem; }
+        .auth-card { padding: 1.15rem; }
+    }
+
+    @media (max-width: 420px) {
+        .stat-card { min-height: 146px; }
     }
 </style>

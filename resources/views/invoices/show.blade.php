@@ -77,6 +77,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <h2 class="h6">Baris Invoice</h2>
+            <div class="table-responsive">
             <table class="table table-sm">
                 <thead><tr><th>Tipe</th><th>Kode</th><th>Deskripsi</th><th>Qty</th><th>Harga</th><th>Diskon</th><th>Total</th></tr></thead>
                 <tbody>
@@ -95,6 +96,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 
@@ -116,6 +118,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <h2 class="h6">Riwayat Pembayaran</h2>
+            <div class="table-responsive">
             <table class="table table-sm">
                 <thead><tr><th>No. Pembayaran</th><th>Tanggal</th><th>Nominal Dialokasikan</th><th>Status</th></tr></thead>
                 <tbody>
@@ -137,6 +140,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 

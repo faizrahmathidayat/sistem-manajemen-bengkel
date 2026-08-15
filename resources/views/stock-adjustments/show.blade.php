@@ -74,6 +74,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <h2 class="h6">Baris Penyesuaian</h2>
+            <div class="table-responsive">
             <table class="table table-sm">
                 <thead><tr><th>Kode</th><th>Nama</th><th>Qty Sistem</th><th>Qty Fisik</th><th>Selisih</th><th>Alasan</th></tr></thead>
                 <tbody>
@@ -91,6 +92,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 

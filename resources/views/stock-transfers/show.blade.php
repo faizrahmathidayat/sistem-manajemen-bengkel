@@ -94,6 +94,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <h2 class="h6">Baris Sparepart</h2>
+            <div class="table-responsive">
             <table class="table table-sm">
                 <thead><tr><th>Kode</th><th>Nama</th><th>Qty</th></tr></thead>
                 <tbody>
@@ -108,6 +109,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 

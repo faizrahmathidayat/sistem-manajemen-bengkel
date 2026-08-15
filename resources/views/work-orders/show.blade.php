@@ -1,9 +1,15 @@
 @extends('layouts.app')
 @section('title', 'Detail PKB')
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-clipboard-check me-2"></i>{{ $workOrder->number }}</h1>
-        <div class="d-flex gap-2">
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-clipboard-check"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Perintah Kerja Bengkel</p>
+                <h1 class="h3 mb-1">{{ $workOrder->number }}</h1>
+            </div>
+        </div>
+        <div class="heading-actions">
             @can('confirm', $workOrder)
                 <form method="POST" action="{{ route('work-orders.confirm', $workOrder) }}" class="d-inline">
                     @csrf

@@ -1,9 +1,15 @@
 @extends('layouts.app')
 @section('title', 'Detail Transfer Stock')
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-arrow-left-right me-2"></i>{{ $stockTransfer->number }}</h1>
-        <div class="d-flex gap-2">
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-arrow-left-right"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Transfer Stock</p>
+                <h1 class="h3 mb-1">{{ $stockTransfer->number }}</h1>
+            </div>
+        </div>
+        <div class="heading-actions">
             @can('update', $stockTransfer)
                 <a href="{{ route('stock-transfers.edit', $stockTransfer) }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-pencil"></i> Ubah

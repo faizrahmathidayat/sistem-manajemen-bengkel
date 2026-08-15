@@ -1,8 +1,14 @@
 @extends('layouts.app')
 @section('title', 'Detail Pembayaran')
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-cash-coin me-2"></i>{{ $paymentReceipt->number }}</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-cash-coin"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Penerimaan Pembayaran</p>
+                <h1 class="h3 mb-1">{{ $paymentReceipt->number }}</h1>
+            </div>
+        </div>
     </div>
 
     <div class="card mb-3">

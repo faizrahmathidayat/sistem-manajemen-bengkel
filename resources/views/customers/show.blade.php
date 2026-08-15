@@ -1,21 +1,27 @@
 @extends('layouts.app')
 @section('title', 'Detail Customer')
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h4 mb-1"><i class="bi bi-person-badge me-2"></i>{{ $customer->name }}</h1>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-muted small">{{ $customer->customer_type === 'COMPANY' ? 'Perusahaan' : 'Perorangan' }}</span>
-                @if ($customer->is_active)
-                    <span class="status-dot status-active">Aktif</span>
-                @else
-                    <span class="status-dot status-inactive">Nonaktif</span>
-                @endif
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-person-badge"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Customer</p>
+                <h1 class="h3 mb-1">{{ $customer->name }}</h1>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted small">{{ $customer->customer_type === 'COMPANY' ? 'Perusahaan' : 'Perorangan' }}</span>
+                    @if ($customer->is_active)
+                        <span class="status-dot status-active">Aktif</span>
+                    @else
+                        <span class="status-dot status-inactive">Nonaktif</span>
+                    @endif
+                </div>
             </div>
         </div>
-        <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Kembali
-        </a>
+        <div class="heading-actions">
+            <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+        </div>
     </div>
 
     <ul class="nav nav-tabs mb-3" role="tablist">

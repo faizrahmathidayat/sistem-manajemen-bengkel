@@ -1,18 +1,24 @@
 @extends('layouts.app')
 @section('title', 'Detail Mekanik')
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h4 mb-1"><i class="bi bi-person-gear me-2"></i>{{ $mechanic->name }}</h1>
-            @if ($mechanic->is_active)
-                <span class="status-dot status-active">Aktif</span>
-            @else
-                <span class="status-dot status-inactive">Nonaktif</span>
-            @endif
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-person-gear"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Mekanik</p>
+                <h1 class="h3 mb-1">{{ $mechanic->name }}</h1>
+                @if ($mechanic->is_active)
+                    <span class="status-dot status-active">Aktif</span>
+                @else
+                    <span class="status-dot status-inactive">Nonaktif</span>
+                @endif
+            </div>
         </div>
-        <a href="{{ route('mechanics.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Kembali
-        </a>
+        <div class="heading-actions">
+            <a href="{{ route('mechanics.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+        </div>
     </div>
 
     <ul class="nav nav-tabs mb-3" role="tablist">

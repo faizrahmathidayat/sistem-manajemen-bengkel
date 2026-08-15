@@ -101,11 +101,25 @@ memperluas pola yang sudah ada di codebase.
   | `--color-success` / `--color-danger` / `--color-warning` | unchanged | unchanged (sudah cukup kontras di kedua tema) |
   | shadow card | `0 4px 20px rgba(0,0,0,.03)` | `0 4px 20px rgba(0,0,0,.35)` |
 
-- **Sidebar:** **tetap gelap permanen di kedua tema** (tidak ikut toggle) —
-  pola umum admin dashboard ("dark sidebar, adaptive content"), dan sudah
-  jadi identitas visual sidebar saat ini. Di mode gelap, warna sidebar
-  disamakan dengan `--color-surface` dark (`#1E293B`) supaya menyatu dengan
-  card, bukan malah kontras. → lihat §7 untuk konfirmasi.
+- **Sidebar mengikuti toggle Light/Dark** (bukan gelap permanen). Token
+  sidebar baru ditambahkan agar ikut berubah:
+
+  | Token | Light | Dark |
+  |---|---|---|
+  | `--color-sidebar` | `#FFFFFF` (`--color-surface`) | `#1E293B` (`--color-surface` dark) |
+  | `--color-sidebar-border` | `#E2E8F0` (border kanan pemisah dari konten) | `rgba(51,65,85,.6)` |
+  | `--color-sidebar-ink` | `#334155` (ink muted, kontras di atas putih) | `rgba(241,245,249,.68)` (unchanged) |
+  | `--color-sidebar-ink-active` | `#0F172A` | `#FFFFFF` (unchanged) |
+  | `--color-sidebar-heading` | `rgba(15,23,42,.45)` | `rgba(241,245,249,.4)` (unchanged) |
+
+  Item aktif (`.nav-link.active`) **tetap** gradient biru + glow
+  (`linear-gradient(135deg, #3B82F6, #2563EB)` + `box-shadow`) di kedua
+  tema — sudah kontras baik di atas putih maupun gelap, tidak perlu variasi
+  per tema. `#sidebar` di `design-tokens.blade.php` diubah dari hardcode
+  `background-color: var(--color-sidebar)` (yang sebelumnya selalu gelap)
+  menjadi ikut redefinisi token per-tema di atas, ditambah
+  `border-right: 1px solid var(--color-sidebar-border)` supaya sidebar
+  putih tidak menyatu tanpa batas dengan konten saat mode Light.
 
 ### 3.2 Global Page Loading Overlay
 
@@ -147,13 +161,13 @@ memperluas pola yang sudah ada di codebase.
 
 ### 3.3 Navbar Redesign
 
-- Badge kode permission (`topbar-permission-badge`) dipindahkan **dari**
-  langsung terlihat di topbar **ke dalam dropdown profil** (supaya topbar
-  tidak padat) — trigger dropdown adalah avatar-inisial + nama user.
-  Dropdown berisi: daftar penuh kode permission user (bukan cuma 3 pertama +
-  "+N lainnya" — karena sekarang di dalam dropdown, tidak perlu dipotong),
-  lalu divider, lalu tombol Logout (form yang sama, dipindah ke dalam
-  dropdown-item).
+- Badge kode permission (`topbar-permission-badge`) **dihapus sepenuhnya**
+  dari navbar — tidak dipindah ke dropdown, tidak ditampilkan di mana pun di
+  topbar. Blok `@if (count($permissionCodes) > 0) ... @endif` beserta
+  variabel `$permissionCodes` di `app.blade.php` (baris 23-38) dihapus.
+  Trigger dropdown adalah avatar-inisial + nama user. Dropdown berisi:
+  tombol Logout saja (form yang sama, dipindah ke dalam dropdown-item) —
+  tidak ada lagi konten permission di dalamnya.
 - Elemen baru di navbar kanan (urutan kiri→kanan sebelum dropdown profil):
   teks Hari/Tanggal berjalan (mis. "Sabtu, 15 Agustus 2026", dihitung dari
   server via Carbon, bukan JS `Date()`, supaya konsisten dengan timezone
@@ -196,7 +210,7 @@ memperluas pola yang sudah ada di codebase.
 |---|---|
 | `resources/views/partials/design-tokens.blade.php` | + dark-mode token block, + palet warna baru, + global overlay style (blur, neon spinner), + `.line-row-enter` keyframe, + style dropdown profil/badge/theme-toggle/date |
 | `resources/views/layouts/app.blade.php` | + inline anti-FOUC script di `<head>`, navbar direstruktur (date + theme toggle + dropdown profil menggantikan badge-inline lama), + global overlay markup, + 1 script global (theme toggle handler + link/submit listener) |
-| `resources/views/partials/sidebar.blade.php` | Tidak ada perubahan struktural (permission gating utuh) — hanya kemungkinan penyesuaian kecil markup jika diperlukan untuk active-indicator (dicek ulang saat implementasi, style-only) |
+| `resources/views/partials/sidebar.blade.php` | Tidak ada perubahan struktural (permission gating utuh) — style-only, mengikuti token sidebar baru yang sudah reaktif ke tema |
 | `resources/views/invoices/show.blade.php` | **Hapus** blok `.page-loading-overlay` + script `sendEmailForm` khusus (baris 165-179) — digantikan mekanisme global |
 | `resources/views/work-orders/_line_item_scripts.blade.php` | + `classList.add('line-row-enter')` di titik append (2 fungsi) |
 | `resources/views/invoices/_line_item_scripts.blade.php` | + `classList.add('line-row-enter')` di titik append (2 fungsi) |
@@ -230,21 +244,21 @@ Blade), strategi testing:
   fade-in terlihat, cek responsif di mobile width (sidebar offcanvas +
   dropdown profil tidak pecah layout).
 
-## 7. Keputusan Perlu Konfirmasi
+## 7. Keputusan Terkonfirmasi
 
 1. **Default tema saat kunjungan pertama (belum ada di localStorage):**
-   selalu **Light** (predictable untuk shared-computer bengkel) — bukan
-   mengikuti preferensi OS (`prefers-color-scheme`).
-2. **Sidebar tetap gelap permanen** di kedua tema (tidak ikut toggle
-   Light/Dark) — hanya warnanya disesuaikan sedikit agar menyatu dengan
-   card di mode gelap.
+   selalu **Light** — bukan mengikuti preferensi OS
+   (`prefers-color-scheme`).
+2. **Sidebar ikut toggle Light/Dark** (bukan gelap permanen) — putih/terang
+   di mode Light dengan border pemisah, gelap menyatu dengan card di mode
+   Dark. Lihat palet token di §3.1.
 3. **Overlay Kirim Email lama dikonsolidasi ke overlay global** — kode
    khusus per-halaman di `invoices/show.blade.php` (dari commit `940a539`)
    dihapus, digantikan mekanisme global yang otomatis berlaku ke seluruh
    aplikasi.
-4. **Badge permission dipindah total ke dalam dropdown profil** (tidak lagi
-   tampil sebagian langsung di topbar) — daftar lengkap, tidak dipotong ke
-   3 item pertama lagi.
+4. **Badge permission dihapus sepenuhnya dari navbar** — tidak dipindah ke
+   dropdown, tidak ditampilkan di mana pun lagi. Dropdown profil hanya
+   berisi Logout.
 
 ## 8. Di Luar Scope
 

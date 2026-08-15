@@ -1,66 +1,81 @@
 @extends('layouts.app')
 @section('title', 'Transfer Stock Baru')
 @section('content')
-    <div class="mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-arrow-left-right me-2"></i>Transfer Stock Baru</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-arrow-left-right"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Transfer Stock</p>
+                <h1 class="h3 mb-1">Transfer Stock Baru</h1>
+            </div>
+        </div>
+        <div class="heading-actions">
+            <a href="{{ route('stock-transfers.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a>
+        </div>
     </div>
+
     <form method="POST" action="{{ route('stock-transfers.store') }}" id="stockTransferForm">
         @csrf
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Cabang Asal</label>
-                        <select name="from_branch_id" id="fromBranchSelect" class="form-select @error('from_branch_id') is-invalid @enderror" required>
-                            <option value="">-- Pilih Cabang Asal --</option>
-                            @foreach ($fromBranches as $branch)
-                                <option value="{{ $branch->id }}" {{ (int) old('from_branch_id') === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('from_branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Cabang Tujuan</label>
-                        <select name="to_branch_id" id="toBranchSelect" class="form-select @error('to_branch_id') is-invalid @enderror" required>
-                            <option value="">-- Pilih Cabang Tujuan --</option>
-                            @foreach ($allBranches as $branch)
-                                <option value="{{ $branch->id }}" {{ (int) old('to_branch_id') === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('to_branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Tanggal Transfer</label>
-                        <input type="date" name="transfer_date" value="{{ old('transfer_date', now()->format('Y-m-d')) }}" class="form-control @error('transfer_date') is-invalid @enderror" required>
-                        @error('transfer_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-12">
-                        <label class="form-label">Catatan</label>
-                        <textarea name="notes" class="form-control @error('notes') is-invalid @enderror" rows="1">{{ old('notes') }}</textarea>
-                        @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <div>
+                    <h2 class="h5 mb-1 section-title"><i class="bi bi-info-circle"></i><span>Informasi Transfer</span></h2>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Cabang Asal</label>
+                    <select name="from_branch_id" id="fromBranchSelect" class="form-select @error('from_branch_id') is-invalid @enderror" required>
+                        <option value="">-- Pilih Cabang Asal --</option>
+                        @foreach ($fromBranches as $branch)
+                            <option value="{{ $branch->id }}" {{ (int) old('from_branch_id') === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('from_branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Cabang Tujuan</label>
+                    <select name="to_branch_id" id="toBranchSelect" class="form-select @error('to_branch_id') is-invalid @enderror" required>
+                        <option value="">-- Pilih Cabang Tujuan --</option>
+                        @foreach ($allBranches as $branch)
+                            <option value="{{ $branch->id }}" {{ (int) old('to_branch_id') === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('to_branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tanggal Transfer</label>
+                    <input type="date" name="transfer_date" value="{{ old('transfer_date', now()->format('Y-m-d')) }}" class="form-control @error('transfer_date') is-invalid @enderror" required>
+                    @error('transfer_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Catatan</label>
+                    <textarea name="notes" class="form-control @error('notes') is-invalid @enderror" rows="1">{{ old('notes') }}</textarea>
+                    @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
         </div>
 
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h2 class="h6 mb-0">Baris Sparepart</h2>
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="addStockTransferLine" disabled>+ Tambah Sparepart</button>
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <div>
+                    <h2 class="h5 mb-1 section-title"><i class="bi bi-nut"></i><span>Baris Sparepart</span></h2>
                 </div>
-                <div class="row g-2 mb-1 text-muted small">
-                    <div class="col-md-6">Sparepart</div>
-                    <div class="col-md-2">Stok Tersedia</div>
-                    <div class="col-md-3">Qty</div>
-                </div>
-                <div id="stockTransferLines"></div>
-                @error('lines')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addStockTransferLine" disabled>+ Tambah Sparepart</button>
             </div>
+            <div class="row g-2 mb-1 text-muted small">
+                <div class="col-md-6">Sparepart</div>
+                <div class="col-md-2">Stok Tersedia</div>
+                <div class="col-md-3">Qty</div>
+            </div>
+            <div id="stockTransferLines"></div>
+            @error('lines')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
         </div>
 
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>
-        <a href="{{ route('stock-transfers.index') }}" class="btn btn-outline-secondary">Batal</a>
+        <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+            <a href="{{ route('stock-transfers.index') }}" class="btn btn-outline-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>
+        </div>
     </form>
 
     @include('stock-transfers._line_item_scripts')

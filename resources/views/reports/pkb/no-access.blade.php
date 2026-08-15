@@ -1,8 +1,14 @@
 @extends('layouts.app')
 @section('title', 'Laporan PKB')
 @section('content')
-    <div class="mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-file-earmark-bar-graph me-2"></i>Laporan PKB</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-file-earmark-bar-graph"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Reporting</p>
+                <h1 class="h3 mb-1">Laporan PKB</h1>
+            </div>
+        </div>
     </div>
     <div class="card">
         <div class="card-body text-center py-5">

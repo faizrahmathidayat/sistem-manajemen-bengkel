@@ -1,8 +1,14 @@
 @extends('layouts.app')
 @section('title', 'Stock Adjustment')
 @section('content')
-    <div class="mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-sliders me-2"></i>Stock Adjustment</h1>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-sliders"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Persediaan</p>
+                <h1 class="h3 mb-1">Stock Adjustment</h1>
+            </div>
+        </div>
     </div>
     <div class="card">
         <div class="card-body text-center text-muted py-5">

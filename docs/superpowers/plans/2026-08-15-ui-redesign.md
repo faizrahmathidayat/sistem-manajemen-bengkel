@@ -1113,7 +1113,7 @@ git commit -m "feat: make sidebar theme-aware, add stat-icon badges and row-ente
 **Interfaces:**
 - Consumes: all markup/CSS produced by Tasks 1–4 (`#themeToggleBtn`, `#profileDropdownToggle`, `#globalLoadingOverlay`, `--color-sidebar-border`, anti-FOUC script, dark-mode token block).
 
-- [ ] **Step 1: Remove the two obsolete overlay tests from `InvoicePrintEmailTest.php`**
+- [x] **Step 1: Remove the two obsolete overlay tests from `InvoicePrintEmailTest.php`**
 
 Find:
 
@@ -1161,12 +1161,12 @@ Replace with:
 
 (These asserted on the per-page `#sendEmailOverlay` markup deleted in Task 3. Global-overlay coverage now lives in `GlobalLoadingOverlayTest` and the new cross-cutting test below.)
 
-- [ ] **Step 2: Run it to confirm the suite is green again**
+- [x] **Step 2: Run it to confirm the suite is green again**
 
 Run: `php artisan test --filter=InvoicePrintEmailTest`
 Expected: PASS (all remaining tests — the 2 obsolete ones are gone, nothing else references the deleted markup)
 
-- [ ] **Step 3: Write the cross-cutting layout test**
+- [x] **Step 3: Write the cross-cutting layout test**
 
 Create `tests/Feature/UiRedesignLayoutTest.php`:
 
@@ -1304,17 +1304,17 @@ class UiRedesignLayoutTest extends TestCase
 }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `php artisan test --filter=UiRedesignLayoutTest`
 Expected: PASS (3/3)
 
-- [ ] **Step 5: Run the full test suite**
+- [x] **Step 5: Run the full test suite**
 
 Run: `php artisan test`
 Expected: PASS — 0 failures across the whole suite.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/Feature/InvoicePrintEmailTest.php tests/Feature/UiRedesignLayoutTest.php

@@ -6,8 +6,8 @@
        variable names keep the --color-* convention already used across this file
        and asserted by feature tests; values are copied from docs/adminhmd/assets/css/style.css. */
     :root {
-        --sidebar-width: 260px;
-        --sidebar-mini-width: 84px;
+        --sidebar-width: 280px;
+        --sidebar-mini-width: 88px;
         --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
         --color-bg: #F5F7FB;
@@ -222,13 +222,16 @@
         flex-direction: column;
         overflow-x: hidden;
         overflow-y: auto;
-        scrollbar-gutter: stable;
+        scrollbar-width: thin;
         background-color: var(--color-sidebar) !important;
         border-right: 1px solid var(--color-sidebar-border);
         box-shadow: var(--color-sidebar-shadow);
         transform: translateX(0);
         transition: width .2s ease, transform .2s ease;
     }
+    #sidebar::-webkit-scrollbar { width: 6px; }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--color-sidebar-border); border-radius: 999px; }
+    #sidebar::-webkit-scrollbar-track { background: transparent; }
     .sidebar-header {
         padding: 1.35rem 1.25rem 1.15rem;
         border-bottom: 1px solid var(--color-sidebar-border);
@@ -256,6 +259,8 @@
     .sidebar-footer-text {
         min-width: 0;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         transition: opacity .16s ease, width .16s ease;
     }
     .brand-title { display: block; font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
@@ -263,8 +268,9 @@
 
     #sidebar .sidebar-nav {
         display: grid;
-        gap: .45rem;
-        padding: 1.1rem 1rem;
+        gap: .35rem;
+        padding: 1.1rem .75rem;
+        min-width: 0;
     }
     #sidebar .sidebar-heading {
         color: var(--color-sidebar-heading);
@@ -275,13 +281,16 @@
     #sidebar .nav-link {
         display: flex;
         align-items: center;
-        gap: .75rem;
+        gap: .6rem;
         min-height: 48px;
+        min-width: 0;
+        overflow: hidden;
         color: var(--color-sidebar-ink);
         border-left: 3px solid transparent;
         border-radius: 8px;
-        padding: .6rem .75rem;
+        padding: .6rem .65rem;
         font-weight: 700;
+        font-size: .92rem;
         transition: background .16s ease, color .16s ease, transform .16s ease;
     }
     #sidebar .nav-link:hover,
@@ -371,8 +380,10 @@
             overflow: hidden;
         }
         body.sidebar-mini .sidebar-header,
-        body.sidebar-mini .sidebar-footer { margin-inline: 1rem; padding-inline: 0; }
-        body.sidebar-mini #sidebar .nav-link { justify-content: center; padding-inline: .65rem; }
+        body.sidebar-mini .sidebar-footer { margin-inline: .75rem; padding-inline: 0; }
+        body.sidebar-mini #sidebar .sidebar-nav { padding-inline: .5rem; }
+        body.sidebar-mini #sidebar .nav-link { justify-content: center; gap: 0; padding: .65rem .5rem; }
+        body.sidebar-mini #sidebar .sidebar-heading { padding-inline: 0; text-align: center; font-size: 0; }
         body.sidebar-mini .sidebar-user { display: none; }
     }
 

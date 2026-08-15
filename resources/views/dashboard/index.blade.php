@@ -3,12 +3,16 @@
 @section('title', 'Dashboard')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
-        <div>
-            <h1 class="h4 mb-1">Dashboard</h1>
-            <p class="mb-0" style="color: var(--color-ink-muted);">Selamat datang kembali, {{ auth()->user()->name }}.</p>
+    <div class="page-heading">
+        <div class="page-heading-copy">
+            <span class="page-icon"><i class="bi bi-grid-1x2-fill"></i></span>
+            <div>
+                <p class="eyebrow mb-1">Overview</p>
+                <h1 class="h3 mb-1">Dashboard</h1>
+                <p class="text-muted mb-0">Selamat datang kembali, {{ auth()->user()->name }}.</p>
+            </div>
         </div>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="heading-actions">
             @include('partials.branch-multiselect-filter')
             @if (auth()->user()->branchesWithPermission('sparepart.create')->isNotEmpty())
                 <a href="{{ route('sparepart-branches.create') }}" class="btn btn-primary btn-sm">
@@ -72,19 +76,23 @@
         <div class="dashboard-loading-overlay d-none"><div class="spinner-border text-primary" role="status"></div></div>
         <div class="row g-3 mb-4">
             <div class="col-lg-7">
-                <div class="card">
-                    <div class="card-body">
-                        <h2 class="h6 mb-3">Tren PKB vs Invoice Posted Mingguan</h2>
-                        <canvas id="trendChart" height="220"></canvas>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="h5 mb-1 section-title"><i class="bi bi-graph-up-arrow"></i><span>Tren PKB vs Invoice Posted Mingguan</span></h2>
+                        </div>
                     </div>
+                    <canvas id="trendChart" height="220"></canvas>
                 </div>
             </div>
             <div class="col-lg-5">
-                <div class="card">
-                    <div class="card-body">
-                        <h2 class="h6 mb-3">Komposisi Status Piutang</h2>
-                        <canvas id="receivablesChart" height="220"></canvas>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="h5 mb-1 section-title"><i class="bi bi-pie-chart"></i><span>Komposisi Status Piutang</span></h2>
+                        </div>
                     </div>
+                    <canvas id="receivablesChart" height="220"></canvas>
                 </div>
             </div>
         </div>
@@ -92,9 +100,8 @@
 
     <div class="dashboard-loading-parent" id="tabsSection">
         <div class="dashboard-loading-overlay d-none"><div class="spinner-border text-primary" role="status"></div></div>
-        <div class="card">
-            <div class="card-body">
-                <ul class="nav nav-tabs mb-3" role="tablist">
+        <div class="panel">
+            <ul class="nav nav-tabs mb-3" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-pkb-invoice" type="button" role="tab">Status PKB & Invoice</button>
                     </li>
@@ -120,7 +127,6 @@
                         </div>
                     @endif
                 </div>
-            </div>
         </div>
     </div>
 @endsection

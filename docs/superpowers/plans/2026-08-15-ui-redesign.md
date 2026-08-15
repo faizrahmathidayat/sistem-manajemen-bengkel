@@ -283,7 +283,7 @@ git commit -m "feat: add dark mode design tokens and theme toggle foundation"
 - Consumes: `#themeToggleBtn` handler script from Task 1 (button markup added here activates it — no JS changes needed in this task).
 - Produces: `#themeToggleBtn` button element, `#profileDropdownToggle` dropdown trigger — no later task depends on new names beyond what's already used here.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Feature/NavbarRedesignTest.php`:
 
@@ -344,12 +344,12 @@ class NavbarRedesignTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `php artisan test --filter=NavbarRedesignTest`
 Expected: FAIL — old badge markup still present, new elements missing.
 
-- [ ] **Step 3: Restructure the navbar in `layouts/app.blade.php`**
+- [x] **Step 3: Restructure the navbar in `layouts/app.blade.php`**
 
 Find:
 
@@ -414,7 +414,7 @@ Replace with:
         </div>
 ```
 
-- [ ] **Step 4: Replace the now-dead permission-badge CSS with `.topbar-avatar` in `design-tokens.blade.php`**
+- [x] **Step 4: Replace the now-dead permission-badge CSS with `.topbar-avatar` in `design-tokens.blade.php`**
 
 Find:
 
@@ -451,12 +451,12 @@ Replace with:
     }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `php artisan test --filter=NavbarRedesignTest`
 Expected: PASS (4/4)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add resources/views/layouts/app.blade.php resources/views/partials/design-tokens.blade.php tests/Feature/NavbarRedesignTest.php

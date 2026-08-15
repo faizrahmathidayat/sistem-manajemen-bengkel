@@ -92,6 +92,7 @@
         wrapper.querySelector('.remove-line').addEventListener('click', function () {
             wrapper.remove();
         });
+        wrapper.classList.add('line-row-enter');
         document.getElementById('serviceLines').appendChild(wrapper);
     }
 
@@ -108,6 +109,7 @@
             if ($(select).data('select2')) $(select).select2('destroy');
             wrapper.remove();
         });
+        wrapper.classList.add('line-row-enter');
         document.getElementById('sparepartLines').appendChild(wrapper);
 
         initAjaxSelect(select, {

@@ -10,9 +10,12 @@
         --color-ink: #0F172A;
         --color-ink-muted: #64748B;
         --color-border: #E2E8F0;
-        --color-sidebar: #0F172A;
-        --color-sidebar-ink: rgba(241, 245, 249, .68);
-        --color-sidebar-ink-active: #FFFFFF;
+        --color-sidebar: #FFFFFF;
+        --color-sidebar-border: #E2E8F0;
+        --color-sidebar-ink: #334155;
+        --color-sidebar-ink-active: #0F172A;
+        --color-sidebar-heading: rgba(15, 23, 42, .45);
+        --color-sidebar-ink-disabled: rgba(15, 23, 42, .35);
         --color-accent: #2563EB;
         --color-accent-dark: #1D4ED8;
         --color-success: #10B981;
@@ -28,6 +31,12 @@
         --color-border: rgba(51, 65, 85, .6);
         --color-accent: #3B82F6;
         --color-accent-dark: #2563EB;
+        --color-sidebar: #1E293B;
+        --color-sidebar-border: rgba(51, 65, 85, .6);
+        --color-sidebar-ink: rgba(241, 245, 249, .68);
+        --color-sidebar-ink-active: #FFFFFF;
+        --color-sidebar-heading: rgba(241, 245, 249, .4);
+        --color-sidebar-ink-disabled: rgba(241, 245, 249, .35);
     }
 
     html[data-bs-theme="dark"] .card {
@@ -98,9 +107,9 @@
 
 
     /* Sidebar */
-    #sidebar { width: 260px; flex-shrink: 0; background-color: var(--color-sidebar) !important; }
+    #sidebar { width: 260px; flex-shrink: 0; background-color: var(--color-sidebar) !important; border-right: 1px solid var(--color-sidebar-border); }
     #sidebar .sidebar-heading {
-        color: rgba(241, 245, 249, .4);
+        color: var(--color-sidebar-heading);
         font-size: .7rem;
         letter-spacing: .08em;
         font-weight: 600;
@@ -113,7 +122,7 @@
         border-radius: 0;
         padding: .5rem .75rem;
     }
-    #sidebar .nav-link:hover { color: var(--color-sidebar-ink-active); background-color: rgba(255, 255, 255, .04); }
+    #sidebar .nav-link:hover { color: var(--color-sidebar-ink-active); background-color: color-mix(in srgb, var(--color-sidebar-ink-active) 8%, transparent); }
     #sidebar .nav-link.active {
         color: var(--color-sidebar-ink-active);
         background: linear-gradient(135deg, #3B82F6, #2563EB);
@@ -122,11 +131,11 @@
     }
     #sidebar .nav-link.nav-link-disabled {
         cursor: not-allowed;
-        color: rgba(241, 245, 249, .35);
+        color: var(--color-sidebar-ink-disabled);
     }
     #sidebar .nav-link.nav-link-disabled:hover {
         background-color: transparent;
-        color: rgba(241, 245, 249, .35);
+        color: var(--color-sidebar-ink-disabled);
     }
     .badge-soon {
         font-family: var(--font-mono);
@@ -176,7 +185,7 @@
         box-shadow: 0 0 16px rgba(37, 99, 235, .45);
         animation: loadingSpin .7s linear infinite;
     }
-    @keyframes loadingSpin {
+    @@keyframes loadingSpin {
         to { transform: rotate(360deg); }
     }
     .page-loading-overlay .loading-text {
@@ -184,6 +193,14 @@
         font-size: .8rem;
         color: var(--color-ink-muted);
         letter-spacing: .04em;
+    }
+
+    @@keyframes rowFadeSlideIn {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .line-row-enter {
+        animation: rowFadeSlideIn .2s ease-out;
     }
 
     .app-body { align-items: stretch; }
@@ -225,7 +242,7 @@
         color: var(--color-ink-muted);
         font-weight: 600;
         border-bottom: none;
-        background: #F8FAFC;
+        background: var(--color-bg);
     }
     .table td { vertical-align: middle; }
     .table-hover { --bs-table-hover-bg: #F8FAFC; }
@@ -267,7 +284,18 @@
     }
     .stat-card .stat-value { font-family: var(--font-mono); font-size: 2rem; font-weight: 600; line-height: 1; color: var(--color-ink); }
     .stat-card .stat-label { font-size: .76rem; color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: .05em; margin-top: .4rem; }
-    .stat-card .stat-icon { color: var(--color-accent); font-size: 1.4rem; }
+    .stat-card .stat-icon {
+        color: var(--color-accent);
+        font-size: 1.1rem;
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+        flex: none;
+    }
 
     /* Tabs (user detail) */
     .nav-tabs { border-bottom: 1px solid var(--color-border); }

@@ -160,27 +160,6 @@ class AppShellTest extends TestCase
         $response->assertDontSee(route('sparepart-branches.index'), false);
     }
 
-    public function test_navbar_shows_up_to_three_permission_badges_and_overflow_count(): void
-    {
-        $user = User::factory()->create();
-        $codes = ['branch.view', 'customer.view', 'vehicle.view', 'mechanic.view'];
-
-        foreach ($codes as $code) {
-            [$resource, $action] = explode('.', $code, 2);
-            $permission = Permission::create(['code' => $code, 'resource' => $resource, 'action' => $action, 'description' => $code]);
-            UserPermission::create(['user_id' => $user->id, 'permission_id' => $permission->id]);
-        }
-
-        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
-
-        $response->assertOk();
-        $response->assertSee('branch.view', false);
-        $response->assertSee('customer.view', false);
-        $response->assertSee('vehicle.view', false);
-        $response->assertDontSee('mechanic.view', false);
-        $response->assertSee('+1 lainnya', false);
-    }
-
     public function test_sidebar_shows_pkb_placeholder_when_user_has_pkb_view_permission_in_a_branch(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

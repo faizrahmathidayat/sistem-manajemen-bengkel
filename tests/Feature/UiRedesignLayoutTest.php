@@ -105,13 +105,13 @@ class UiRedesignLayoutTest extends TestCase
         $response->assertSee('--color-sidebar-border', false);
     }
 
-    public function test_guest_login_layout_includes_anti_fouc_script_without_theme_toggle_button(): void
+    public function test_guest_login_layout_includes_anti_fouc_script_and_theme_toggle_button(): void
     {
         $response = $this->get(route('login'));
 
         $response->assertOk();
         $response->assertSee("localStorage.getItem('theme')", false);
-        $response->assertDontSee('id="themeToggleBtn"', false);
+        $response->assertSee('id="themeToggleBtn"', false);
     }
 
     public function test_invoice_show_page_no_longer_has_page_specific_overlay_markup(): void

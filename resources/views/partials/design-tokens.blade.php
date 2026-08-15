@@ -6,6 +6,8 @@
        variable names keep the --color-* convention already used across this file
        and asserted by feature tests; values are copied from docs/adminhmd/assets/css/style.css. */
     :root {
+        --sidebar-width: 260px;
+        --sidebar-mini-width: 84px;
         --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
         --color-bg: #F5F7FB;
@@ -72,16 +74,35 @@
         background: linear-gradient(180deg, #111827 0%, var(--color-bg) 48%, #0B1120 100%);
     }
 
-    /* App shell (authenticated layout only) — keeps the sidebar's dark
-       background reaching the bottom of the viewport even when page
-       content is shorter than the screen, while still growing taller
-       than the viewport for long pages (see .app-body below). */
-    body.app-shell {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
+    /* App shell (authenticated layout only, adminHMD .admin-shell) */
+    body.app-shell { min-height: 100vh; }
+    .admin-shell { min-height: 100vh; }
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1030;
+        display: none;
+        background: rgba(15, 23, 42, .5);
     }
-    .app-body { flex: 1 1 auto; }
+    .admin-main {
+        width: auto;
+        min-width: 0;
+        min-height: 100vh;
+        margin-left: var(--sidebar-width);
+        transition: margin-left .2s ease;
+    }
+    .dashboard-content { min-height: calc(100vh - 72px); }
+    .admin-footer {
+        padding: 1.1rem 0 1.35rem;
+        color: var(--color-ink-muted);
+        font-size: .9rem;
+    }
+    .admin-footer .container-fluid {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
 
     code, .font-mono { font-family: var(--font-mono); }
 
@@ -126,16 +147,124 @@
         color: #fff;
         font-weight: 600;
         font-size: .8rem;
+        flex: 0 0 auto;
     }
 
+    /* Navbar controls (adminHMD .sidebar-toggle / .icon-button / .profile-button) */
+    .navbar-actions { display: flex; align-items: center; gap: .75rem; }
+    .sidebar-toggle {
+        width: 42px;
+        height: 42px;
+        display: inline-grid;
+        place-items: center;
+        gap: 4px;
+        padding: 9px;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background: var(--color-surface);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
+        transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+    .sidebar-toggle:hover,
+    .sidebar-toggle:focus {
+        border-color: #93C5FD;
+        background: var(--color-sidebar-icon-bg);
+        box-shadow: var(--color-ring);
+    }
+    .sidebar-toggle span {
+        width: 18px;
+        height: 2px;
+        display: block;
+        background: var(--color-ink);
+        border-radius: 999px;
+    }
+    .icon-button,
+    .profile-button {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        color: var(--color-ink);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
+        transition: border-color .16s ease, box-shadow .16s ease;
+    }
+    .icon-button:hover,
+    .icon-button:focus,
+    .profile-button:hover,
+    .profile-button:focus {
+        border-color: #93C5FD;
+        box-shadow: var(--color-ring);
+    }
+    .icon-button {
+        position: relative;
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        font-weight: 800;
+        display: inline-grid;
+        place-items: center;
+    }
+    .profile-button {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .35rem .65rem;
+        border-radius: 8px;
+        font-weight: 700;
+    }
 
     /* Sidebar (adminHMD .admin-sidebar / .sidebar-nav) */
     #sidebar {
-        width: 260px;
-        flex-shrink: 0;
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 1040;
+        width: var(--sidebar-width);
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
         background-color: var(--color-sidebar) !important;
         border-right: 1px solid var(--color-sidebar-border);
         box-shadow: var(--color-sidebar-shadow);
+        transform: translateX(0);
+        transition: width .2s ease, transform .2s ease;
+    }
+    .sidebar-header {
+        padding: 1.35rem 1.25rem 1.15rem;
+        border-bottom: 1px solid var(--color-sidebar-border);
+    }
+    .brand-mark {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        min-width: 0;
+        color: var(--color-sidebar-ink-active) !important;
+        text-decoration: none;
+    }
+    .brand-icon {
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--color-accent), var(--color-success));
+        overflow: hidden;
+    }
+    .brand-copy,
+    .nav-text,
+    .sidebar-footer-text {
+        min-width: 0;
+        white-space: nowrap;
+        transition: opacity .16s ease, width .16s ease;
+    }
+    .brand-title { display: block; font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
+    .brand-subtitle { display: block; font-size: .78rem; line-height: 1.2; color: var(--color-sidebar-heading); }
+
+    #sidebar .sidebar-nav {
+        display: grid;
+        gap: .45rem;
+        padding: 1.1rem 1rem;
     }
     #sidebar .sidebar-heading {
         color: var(--color-sidebar-heading);
@@ -147,6 +276,7 @@
         display: flex;
         align-items: center;
         gap: .75rem;
+        min-height: 48px;
         color: var(--color-sidebar-ink);
         border-left: 3px solid transparent;
         border-radius: 8px;
@@ -174,6 +304,84 @@
         background-color: transparent;
         color: var(--color-sidebar-ink-disabled);
         transform: none;
+    }
+    .nav-icon {
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--color-sidebar-icon-bg);
+        color: var(--color-sidebar-icon);
+        font-size: .8rem;
+    }
+    #sidebar .nav-link.active .nav-icon {
+        background: rgba(255, 255, 255, .18);
+        color: #fff;
+    }
+
+    .sidebar-user {
+        margin: auto 1rem 1rem;
+        padding: .85rem;
+        display: grid;
+        justify-items: center;
+        gap: .22rem;
+        border: 1px solid var(--color-sidebar-border);
+        border-radius: 8px;
+        background: var(--color-sidebar-soft);
+        text-align: center;
+    }
+    .sidebar-user-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 1.1rem;
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px var(--color-success);
+    }
+    .sidebar-user strong { color: var(--color-sidebar-ink-active); font-size: 1rem; line-height: 1.1; }
+    .sidebar-user small { color: var(--color-sidebar-ink); font-size: .84rem; }
+
+    .sidebar-footer {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        margin-inline: 1.25rem;
+        padding: 1rem 0;
+        color: var(--color-sidebar-ink);
+        border-top: 1px solid var(--color-sidebar-border);
+        font-size: .9rem;
+    }
+    .app-status-dot {
+        width: 9px;
+        height: 9px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--color-success);
+    }
+
+    @media (min-width: 992px) {
+        body.sidebar-mini #sidebar { width: var(--sidebar-mini-width); }
+        body.sidebar-mini .admin-main { margin-left: var(--sidebar-mini-width); }
+        body.sidebar-mini .brand-copy,
+        body.sidebar-mini .nav-text,
+        body.sidebar-mini .sidebar-footer-text {
+            width: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        body.sidebar-mini .sidebar-header,
+        body.sidebar-mini .sidebar-footer { margin-inline: 1rem; padding-inline: 0; }
+        body.sidebar-mini #sidebar .nav-link { justify-content: center; padding-inline: .65rem; }
+        body.sidebar-mini .sidebar-user { display: none; }
+    }
+
+    @media (max-width: 991.98px) {
+        #sidebar { width: min(var(--sidebar-width), calc(100vw - 48px)); transform: translateX(-100%); }
+        .admin-main { margin-left: 0; }
+        body.sidebar-open { overflow: hidden; }
+        body.sidebar-open #sidebar { transform: translateX(0); }
+        body.sidebar-open .sidebar-backdrop { display: block; }
     }
     .badge-soon {
         font-family: var(--font-mono);
@@ -486,4 +694,43 @@
     /* Accordion (permission tab) */
     .accordion-button:not(.collapsed) { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); color: var(--color-ink); box-shadow: none; }
     .accordion-button:focus { box-shadow: none; border-color: var(--color-border); }
+
+    /* Auth pages (adminHMD .auth-body / .auth-card / .auth-brand) */
+    .auth-body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #F8FBFF 0%, #EAF2FF 44%, #EEF8F6 100%);
+    }
+    html[data-bs-theme="dark"] .auth-body {
+        background: linear-gradient(135deg, #0B1120 0%, #111827 48%, #10201F 100%);
+    }
+    .auth-page {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+    }
+    .auth-card {
+        width: min(100%, 420px);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background: var(--color-surface);
+        box-shadow: var(--color-shadow-lg);
+        padding: 1.5rem;
+    }
+    .auth-brand {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: 1.5rem;
+        color: var(--color-ink) !important;
+        text-decoration: none;
+    }
+    .auth-brand span:last-child { display: grid; line-height: 1.2; }
+    .auth-brand small { color: var(--color-ink-muted); }
+    .auth-theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+    }
 </style>

@@ -21,65 +21,96 @@
         <div class="loading-text">Memuat...</div>
     </div>
 
-    <nav class="navbar topbar px-3 d-flex align-items-center gap-2">
-        <button class="btn btn-outline-light d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar">
-            <i class="bi bi-list"></i>
-        </button>
-        <a class="navbar-brand mb-0 d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
-            <img src="{{ asset('images/logo.png') }}" alt="JMS MOTOR" style="width: 28px; height: 28px; object-fit: contain;">
-            JMS MOTOR
-        </a>
+    <div class="admin-shell">
+        <div class="sidebar-backdrop" data-sidebar-close></div>
 
-        <div class="ms-auto d-flex align-items-center gap-3">
-            @auth
-                <span class="small d-none d-lg-inline" id="topbarDate" style="color: var(--color-ink-muted);">{{ now()->locale('id')->translatedFormat('l, d F Y') }}</span>
-
-                <button type="button" class="btn btn-outline-light btn-sm" id="themeToggleBtn" title="Mode Gelap">
-                    <i class="bi bi-moon-stars"></i>
-                </button>
-
-                <div class="dropdown">
-                    <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button" id="profileDropdownToggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <span class="topbar-avatar">{{ strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
-                        <span class="d-none d-sm-inline">{{ auth()->user()->name }}</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdownToggle">
-                        <li>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="dropdown-item">
-                                    <i class="bi bi-box-arrow-right me-2"></i> Logout
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
-            @endauth
-        </div>
-    </nav>
-
-    <div class="app-body d-flex">
-        <div class="offcanvas-lg offcanvas-start bg-dark text-white" tabindex="-1" id="sidebar">
-            <div class="offcanvas-header d-lg-none">
-                <h5 class="offcanvas-title">Menu</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebar"></button>
+        <aside class="admin-sidebar" id="sidebar" aria-label="Navigasi utama">
+            <div class="sidebar-header">
+                <a class="brand-mark" href="{{ route('dashboard') }}" aria-label="JMS MOTOR">
+                    <span class="brand-icon"><img src="{{ asset('images/logo.png') }}" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;"></span>
+                    <span class="brand-copy">
+                        <span class="brand-title">JMS MOTOR</span>
+                        <span class="brand-subtitle">Sistem Manajemen Bengkel</span>
+                    </span>
+                </a>
             </div>
-            <div class="offcanvas-body d-flex flex-column p-3">
+
+            <nav class="sidebar-nav">
                 @include('partials.sidebar')
+            </nav>
+
+            @auth
+            <div class="sidebar-user">
+                <span class="topbar-avatar sidebar-user-avatar">{{ strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
+                <strong>{{ auth()->user()->name }}</strong>
+                <small>{{ now()->locale('id')->translatedFormat('l, d F Y') }}</small>
             </div>
+            @endauth
+
+            <div class="sidebar-footer">
+                <span class="app-status-dot"></span>
+                <span class="sidebar-footer-text">JMS MOTOR v1.0</span>
+            </div>
+        </aside>
+
+        <div class="admin-main">
+            <nav class="navbar admin-navbar topbar navbar-expand bg-white">
+                <div class="container-fluid px-3 px-lg-4">
+                    <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-controls="sidebar" aria-expanded="true" aria-label="Buka/tutup sidebar">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+
+                    <div class="navbar-actions ms-auto">
+                        @auth
+                            <span class="small d-none d-lg-inline" id="topbarDate" style="color: var(--color-ink-muted);">{{ now()->locale('id')->translatedFormat('l, d F Y') }}</span>
+
+                            <button type="button" class="icon-button theme-toggle" id="themeToggleBtn" title="Mode Gelap">
+                                <i class="bi bi-moon-stars"></i>
+                            </button>
+
+                            <div class="dropdown">
+                                <button class="profile-button dropdown-toggle" type="button" id="profileDropdownToggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="topbar-avatar">{{ strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
+                                    <span class="profile-name d-none d-sm-inline">{{ auth()->user()->name }}</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdownToggle">
+                                    <li>
+                                        <form method="POST" action="{{ route('logout') }}">
+                                            @csrf
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="bi bi-box-arrow-right me-2"></i> Logout
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        @endauth
+                    </div>
+                </div>
+            </nav>
+
+            <main class="dashboard-content app-body">
+                <div class="container-fluid px-3 px-lg-4 py-4">
+                    @if (session('status'))
+                        <div class="alert alert-success">{{ session('status') }}</div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger">{{ session('error') }}</div>
+                    @endif
+
+                    @yield('content')
+                </div>
+            </main>
+
+            <footer class="admin-footer">
+                <div class="container-fluid px-3 px-lg-4">
+                    <span>JMS MOTOR &mdash; Sistem Manajemen Bengkel</span>
+                </div>
+            </footer>
         </div>
-
-        <main class="app-main flex-grow-1 py-4 px-3 px-lg-4">
-            @if (session('status'))
-                <div class="alert alert-success">{{ session('status') }}</div>
-            @endif
-
-            @if (session('error'))
-                <div class="alert alert-danger">{{ session('error') }}</div>
-            @endif
-
-            @yield('content')
-        </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -114,6 +145,59 @@
                 applyTheme(current === 'dark' ? 'light' : 'dark');
             });
         }
+    })();
+    </script>
+    <script>
+    (function () {
+        var MINI_KEY = 'sidebarMini';
+        var body = document.body;
+        var sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+        var closeButtons = document.querySelectorAll('[data-sidebar-close]');
+        var sidebarLinks = document.querySelectorAll('#sidebar .nav-link');
+        var desktopQuery = window.matchMedia('(min-width: 992px)');
+
+        function isDesktop() {
+            return desktopQuery.matches;
+        }
+
+        if (isDesktop() && localStorage.getItem(MINI_KEY) === 'true') {
+            body.classList.add('sidebar-mini');
+        }
+
+        function closeMobileSidebar() {
+            body.classList.remove('sidebar-open');
+        }
+
+        function toggleSidebar() {
+            if (isDesktop()) {
+                body.classList.toggle('sidebar-mini');
+                localStorage.setItem(MINI_KEY, body.classList.contains('sidebar-mini'));
+            } else {
+                body.classList.toggle('sidebar-open');
+            }
+        }
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', toggleSidebar);
+        }
+
+        Array.prototype.forEach.call(closeButtons, function (el) {
+            el.addEventListener('click', closeMobileSidebar);
+        });
+
+        Array.prototype.forEach.call(sidebarLinks, function (link) {
+            link.addEventListener('click', function () {
+                if (!isDesktop()) closeMobileSidebar();
+            });
+        });
+
+        desktopQuery.addEventListener('change', function (event) {
+            if (event.matches) {
+                body.classList.remove('sidebar-open');
+            } else {
+                body.classList.remove('sidebar-mini');
+            }
+        });
     })();
     </script>
     <script>

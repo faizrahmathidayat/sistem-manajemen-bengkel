@@ -704,7 +704,7 @@ Expected: PASS (3/3)
 
 Note: `php artisan test --filter=InvoicePrintEmailTest` will now show 2 failures (`test_show_page_includes_send_email_loading_overlay_and_script_when_permitted`, `test_show_page_hides_send_email_loading_overlay_without_email_permission`) — expected, fixed in Task 5.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add resources/views/partials/design-tokens.blade.php resources/views/layouts/app.blade.php resources/views/invoices/show.blade.php tests/Feature/GlobalLoadingOverlayTest.php

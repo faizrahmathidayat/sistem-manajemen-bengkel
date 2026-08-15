@@ -56,7 +56,7 @@
 **Interfaces:**
 - Produces: CSS custom properties `--color-bg`, `--color-surface`, `--color-ink`, `--color-ink-muted`, `--color-border`, `--color-accent`, `--color-accent-dark` redefined inside a `html[data-bs-theme="dark"] { ... }` block — Task 4 appends more properties into this same block. Produces DOM attribute `<html data-bs-theme="light|dark">` and `localStorage.theme`, which Task 2's toggle button reads/writes via `#themeToggleBtn` (looked up defensively — `if (toggleBtn) { ... }` — since the button doesn't exist until Task 2).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Feature/ThemeSwitcherTest.php`:
 
@@ -118,12 +118,12 @@ class ThemeSwitcherTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `php artisan test --filter=ThemeSwitcherTest`
 Expected: FAIL — none of the new markup/CSS exists yet.
 
-- [ ] **Step 3: Add dark-mode CSS tokens to `design-tokens.blade.php`**
+- [x] **Step 3: Add dark-mode CSS tokens to `design-tokens.blade.php`**
 
 Find (end of the existing `:root { ... }` block, right before `body {`):
 
@@ -161,7 +161,7 @@ Replace with:
     body {
 ```
 
-- [ ] **Step 4: Add the anti-FOUC script to `layouts/app.blade.php`**
+- [x] **Step 4: Add the anti-FOUC script to `layouts/app.blade.php`**
 
 Find:
 
@@ -183,7 +183,7 @@ Replace with:
     <title>@yield('title', 'Sistem Manajemen Bengkel')</title>
 ```
 
-- [ ] **Step 5: Add the same anti-FOUC script to `layouts/guest.blade.php`**
+- [x] **Step 5: Add the same anti-FOUC script to `layouts/guest.blade.php`**
 
 Find:
 
@@ -205,7 +205,7 @@ Replace with:
     <title>@yield('title', 'Sistem Manajemen Bengkel')</title>
 ```
 
-- [ ] **Step 6: Add the theme-toggle handler script to `layouts/app.blade.php`**
+- [x] **Step 6: Add the theme-toggle handler script to `layouts/app.blade.php`**
 
 Find:
 
@@ -258,12 +258,12 @@ Replace with:
 </html>
 ```
 
-- [ ] **Step 7: Run test to verify it passes**
+- [x] **Step 7: Run test to verify it passes**
 
 Run: `php artisan test --filter=ThemeSwitcherTest`
 Expected: PASS (4/4)
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add resources/views/partials/design-tokens.blade.php resources/views/layouts/app.blade.php resources/views/layouts/guest.blade.php tests/Feature/ThemeSwitcherTest.php

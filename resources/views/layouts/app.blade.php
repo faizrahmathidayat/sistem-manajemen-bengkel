@@ -204,27 +204,38 @@
     (function () {
         var overlay = document.getElementById('globalLoadingOverlay');
         var appBody = document.querySelector('.app-body');
+        var sidebarNav = document.getElementById('sidebar');
         if (!overlay || !appBody) return;
 
         function showOverlay() {
             overlay.classList.remove('d-none');
         }
 
-        appBody.addEventListener('click', function (event) {
+        function handleLinkClick(event) {
+            var container = event.currentTarget;
             var link = event.target.closest('a[href]');
-            if (!link || !appBody.contains(link)) return;
+            if (!link || !container.contains(link)) return;
             if (link.target === '_blank') return;
             if (link.hasAttribute('download')) return;
             if (link.hasAttribute('data-no-loading')) return;
             var href = link.getAttribute('href');
             if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
             showOverlay();
-        });
+        }
 
+        appBody.addEventListener('click', handleLinkClick);
         appBody.addEventListener('submit', function (event) {
             if (event.target.hasAttribute('data-no-loading')) return;
             showOverlay();
         });
+
+        // The sidebar lives outside .app-body (it's a sibling of .admin-main,
+        // not a descendant), so without this, navigating via the sidebar —
+        // the only way to move between pages on mobile after opening the
+        // hamburger menu — never triggered the loading spinner.
+        if (sidebarNav) {
+            sidebarNav.addEventListener('click', handleLinkClick);
+        }
     })();
     </script>
     @stack('scripts')

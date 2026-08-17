@@ -521,6 +521,80 @@
     }
     .form-control::placeholder { color: var(--color-ink-muted); }
 
+    /* Select2 (vendor CSS from CDN is hardcoded light-only and loads after
+       this stylesheet via the page's pushed scripts stack, so it wins the
+       cascade on equal specificity — !important on the theme-critical
+       properties is the only reliable way to keep the picker readable in
+       dark mode). */
+    .select2-container--default .select2-selection--single,
+    .select2-container--default .select2-selection--multiple {
+        background-color: var(--color-surface) !important;
+        border-color: var(--color-border) !important;
+        border-radius: 6px !important;
+        min-height: 38px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--color-ink) !important;
+        line-height: 36px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__placeholder,
+    .select2-container--default .select2-selection--multiple .select2-selection__placeholder {
+        color: var(--color-ink-muted) !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: var(--color-ink-muted) transparent transparent transparent !important;
+    }
+    .select2-container--default.select2-container--open .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--multiple {
+        border-color: #93C5FD !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: var(--color-sidebar-soft) !important;
+        border-color: var(--color-border) !important;
+        color: var(--color-ink) !important;
+        border-radius: 6px !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: var(--color-ink-muted) !important;
+    }
+    .select2-dropdown {
+        background-color: var(--color-surface) !important;
+        border-color: var(--color-border) !important;
+        box-shadow: var(--color-shadow-lg);
+    }
+    .select2-search--dropdown {
+        background-color: var(--color-surface) !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        background-color: var(--color-surface) !important;
+        border-color: var(--color-border) !important;
+        color: var(--color-ink) !important;
+        border-radius: 6px !important;
+    }
+    .select2-search--dropdown .select2-search__field::placeholder {
+        color: var(--color-ink-muted) !important;
+    }
+    .select2-results__options {
+        background-color: var(--color-surface) !important;
+    }
+    .select2-results__option {
+        color: var(--color-ink) !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--color-accent) !important;
+        color: #fff !important;
+    }
+    .select2-container--default .select2-results__option[aria-selected="true"]:not(.select2-results__option--highlighted) {
+        background-color: var(--color-sidebar-soft) !important;
+        color: var(--color-ink) !important;
+    }
+    .select2-results__message {
+        color: var(--color-ink-muted) !important;
+    }
+
     /* Page heading (adminHMD .page-heading) */
     .page-heading {
         display: flex;

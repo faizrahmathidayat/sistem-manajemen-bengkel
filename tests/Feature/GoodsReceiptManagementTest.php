@@ -282,7 +282,7 @@ class GoodsReceiptManagementTest extends TestCase
 
         $response->assertSee('<div class="col-md-5">Sparepart</div>', false);
         $response->assertSee('<div class="col-md-3">Qty</div>', false);
-        $response->assertSee('<div class="col-md-3">Harga Satuan</div>', false);
+        $response->assertSee('<div class="col-md-3">Harga HPP</div>', false);
 
         preg_match('/<input[^>]*goods-receipt-qty[^>]*>/', $content, $qtyMatch);
         $this->assertNotEmpty($qtyMatch, 'Input qty baris sparepart tidak ditemukan.');
@@ -315,7 +315,7 @@ class GoodsReceiptManagementTest extends TestCase
 
         $response->assertSee('<div class="col-md-5">Sparepart</div>', false);
         $response->assertSee('<div class="col-md-3">Qty</div>', false);
-        $response->assertSee('<div class="col-md-3">Harga Satuan</div>', false);
+        $response->assertSee('<div class="col-md-3">Harga HPP</div>', false);
 
         preg_match('/<input[^>]*goods-receipt-qty[^>]*>/', $content, $qtyMatch);
         $this->assertNotEmpty($qtyMatch, 'Input qty baris sparepart tidak ditemukan.');

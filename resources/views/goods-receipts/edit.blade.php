@@ -53,7 +53,7 @@
             <div class="row g-2 small text-muted mb-1">
                 <div class="col-md-5">Sparepart</div>
                 <div class="col-md-3">Qty</div>
-                <div class="col-md-3">Harga Satuan</div>
+                <div class="col-md-3">Harga HPP</div>
                 <div class="col-md-1"></div>
             </div>
             <div id="goodsReceiptLines"></div>

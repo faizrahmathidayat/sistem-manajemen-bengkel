@@ -18,7 +18,8 @@
         'branchFilterBranches' => null,
         'branchFilterSelected' => [],
         'actionsHtml' => auth()->user()->can('service.create')
-            ? '<a href="' . route('service-catalogs.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Tambah Jasa</a>'
+            ? '<a href="' . route('service-catalogs.import') . '" class="btn btn-outline-secondary btn-sm ms-2"><i class="bi bi-file-earmark-arrow-up"></i> Import Jasa</a>'
+                . '<a href="' . route('service-catalogs.create') . '" class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Tambah Jasa</a>'
             : '',
     ])
 

@@ -114,6 +114,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [ServiceCatalogController::class, 'index'])->name('index');
         Route::get('/create', [ServiceCatalogController::class, 'create'])->name('create');
         Route::post('/', [ServiceCatalogController::class, 'store'])->name('store');
+        Route::get('/import', [ServiceCatalogController::class, 'importPage'])->name('import');
+        Route::get('/import-template', [ServiceCatalogController::class, 'downloadImportTemplate'])->name('import-template');
+        Route::post('/import-lines', [ServiceCatalogController::class, 'importLines'])->name('import-lines');
+        Route::post('/import', [ServiceCatalogController::class, 'storeBulk'])->name('import-store');
         Route::get('/{serviceCatalog}/edit', [ServiceCatalogController::class, 'edit'])->name('edit');
         Route::put('/{serviceCatalog}', [ServiceCatalogController::class, 'update'])->name('update');
     });

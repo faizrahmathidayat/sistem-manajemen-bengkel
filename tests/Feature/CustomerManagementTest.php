@@ -65,7 +65,25 @@ class CustomerManagementTest extends TestCase
         ]);
 
         $response->assertRedirect('/customers');
-        $this->assertDatabaseHas('customers', ['name' => 'Budi Santoso']);
+        $this->assertDatabaseHas('customers', ['name' => 'BUDI SANTOSO']);
+    }
+
+    public function test_store_uppercases_name_and_stnk_name(): void
+    {
+        $user = $this->userWithPermissions(['customer.create']);
+
+        $response = $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'budi santoso',
+            'stnk_name' => 'Budi Santoso Wijaya',
+            'is_active' => '1',
+        ]);
+
+        $response->assertRedirect('/customers');
+        $this->assertDatabaseHas('customers', [
+            'name' => 'BUDI SANTOSO',
+            'stnk_name' => 'BUDI SANTOSO WIJAYA',
+        ]);
     }
 
     public function test_store_validates_required_fields(): void
@@ -129,7 +147,7 @@ class CustomerManagementTest extends TestCase
         $response->assertRedirect("/customers/{$customer->id}");
         $this->assertDatabaseHas('customers', [
             'id' => $customer->id,
-            'name' => 'Budi Santoso Edited',
+            'name' => 'BUDI SANTOSO EDITED',
             'is_active' => false,
         ]);
     }

@@ -157,6 +157,86 @@ class WorkOrderPrintTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_print_estimate_returns_pdf_with_ppn_for_draft_work_order(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $this->assertSame(\App\Support\WorkOrderStatus::DRAFT, $workOrder->status);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.print');
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}/print-estimate");
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+
+        $content = $this->extractPdfText($response->getContent());
+        $this->assertStringContainsString('ESTIMASI', $content);
+        // service total 50.000, sparepart total 120.000 -> subtotal 170.000, PPN 11% = 18.700
+        $this->assertStringContainsString('18.700', $content);
+        $this->assertStringContainsString('188.700', $content);
+    }
+
+    public function test_print_estimate_is_forbidden_when_work_order_is_not_draft(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.print');
+        $this->grantBranchPermission($user, $branch, 'pkb.confirm');
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/confirm");
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}/print-estimate");
+
+        $response->assertForbidden();
+    }
+
+    public function test_print_estimate_is_forbidden_without_pkb_print_permission(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}/print-estimate");
+
+        $response->assertForbidden();
+    }
+
+    public function test_show_page_displays_print_estimate_button_only_when_draft(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.view');
+        $this->grantBranchPermission($user, $branch, 'pkb.print');
+        $this->grantBranchPermission($user, $branch, 'pkb.confirm');
+
+        $draftResponse = $this->actingAs($user)->get("/work-orders/{$workOrder->id}");
+        $draftResponse->assertOk();
+        $draftResponse->assertSee(route('work-orders.print-estimate', $workOrder), false);
+        $draftResponse->assertSee('Cetak Estimasi');
+
+        $this->actingAs($user)->patch("/work-orders/{$workOrder->id}/confirm");
+
+        $confirmedResponse = $this->actingAs($user)->get("/work-orders/{$workOrder->id}");
+        $confirmedResponse->assertOk();
+        $confirmedResponse->assertDontSee('Cetak Estimasi');
+    }
+
+    public function test_regular_print_does_not_include_ppn(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $workOrder = $this->makeWorkOrder($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.print');
+
+        $response = $this->actingAs($user)->get("/work-orders/{$workOrder->id}/print");
+
+        $content = $this->extractPdfText($response->getContent());
+        $this->assertStringNotContainsString('ESTIMASI', $content);
+        $this->assertStringNotContainsString('PPN', $content);
+    }
+
     public function test_show_page_displays_print_button_with_permission(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

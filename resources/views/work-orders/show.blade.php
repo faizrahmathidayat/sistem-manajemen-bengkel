@@ -41,6 +41,11 @@
                     <i class="bi bi-printer"></i> Cetak PKB
                 </a>
             @endcan
+            @can('printEstimate', $workOrder)
+                <a href="{{ route('work-orders.print-estimate', $workOrder) }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-printer"></i> Cetak Estimasi
+                </a>
+            @endcan
         </div>
     </div>
 

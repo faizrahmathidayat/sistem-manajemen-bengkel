@@ -50,4 +50,10 @@ class WorkOrderPolicy
     {
         return $user->hasPermissionToInBranch('pkb.print', $workOrder->branch_id);
     }
+
+    public function printEstimate(User $user, WorkOrder $workOrder): bool
+    {
+        return $workOrder->status === WorkOrderStatus::DRAFT
+            && $user->hasPermissionToInBranch('pkb.print', $workOrder->branch_id);
+    }
 }

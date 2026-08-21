@@ -344,9 +344,20 @@ class WorkOrderController extends Controller
 
         $workOrder->load(['branch', 'customer', 'vehicle.brand', 'vehicle.type', 'mechanic', 'serviceLines', 'sparepartLines.reservations']);
 
-        $pdf = Pdf::loadView('work-orders.print-pdf', ['workOrder' => $workOrder])->setPaper('a4', 'portrait');
+        $pdf = Pdf::loadView('work-orders.print-pdf', ['workOrder' => $workOrder, 'isEstimate' => false])->setPaper('a4', 'portrait');
 
         return $pdf->stream('pkb-' . $workOrder->number . '.pdf');
+    }
+
+    public function printEstimatePdf(WorkOrder $workOrder)
+    {
+        $this->authorize('printEstimate', $workOrder);
+
+        $workOrder->load(['branch', 'customer', 'vehicle.brand', 'vehicle.type', 'mechanic', 'serviceLines', 'sparepartLines.reservations']);
+
+        $pdf = Pdf::loadView('work-orders.print-pdf', ['workOrder' => $workOrder, 'isEstimate' => true])->setPaper('a4', 'portrait');
+
+        return $pdf->stream('estimasi-pkb-' . $workOrder->number . '.pdf');
     }
 
     protected function syncServiceLines(WorkOrder $workOrder, array $lines): void

@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>PKB {{ $workOrder->number }}</title>
+    <title>{{ ($isEstimate ?? false) ? 'ESTIMASI PKB' : 'PKB' }} {{ $workOrder->number }}</title>
     <style>
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1a1a1a; margin: 0; padding: 24px; }
         .pkb-header { width: 100%; margin-bottom: 14px; border-bottom: 2px solid #1a1a1a; padding-bottom: 10px; }
@@ -44,7 +44,7 @@
                     </p>
                 </td>
                 <td>
-                    <div class="doc-title">PERINTAH KERJA BENGKEL</div>
+                    <div class="doc-title">{{ ($isEstimate ?? false) ? 'ESTIMASI PERINTAH KERJA BENGKEL' : 'PERINTAH KERJA BENGKEL' }}</div>
                     <div class="doc-number">No. {{ $workOrder->number }}</div>
                 </td>
             </tr>
@@ -106,10 +106,18 @@
         </tbody>
     </table>
 
+    @php
+        $subtotal = $workOrder->serviceLines->sum('line_total') + $workOrder->sparepartLines->sum('line_total');
+        $ppn = ($isEstimate ?? false) ? round($subtotal * 0.11) : 0;
+    @endphp
     <table class="summary-table">
         <tr><td>Total Jasa</td><td class="num">{{ number_format($workOrder->serviceLines->sum('line_total'), 0, ',', '.') }}</td></tr>
         <tr><td>Total Sparepart</td><td class="num">{{ number_format($workOrder->sparepartLines->sum('line_total'), 0, ',', '.') }}</td></tr>
-        <tr class="grand-total"><td>Total Keseluruhan</td><td class="num">{{ number_format($workOrder->serviceLines->sum('line_total') + $workOrder->sparepartLines->sum('line_total'), 0, ',', '.') }}</td></tr>
+        @if ($isEstimate ?? false)
+            <tr><td>Subtotal</td><td class="num">{{ number_format($subtotal, 0, ',', '.') }}</td></tr>
+            <tr><td>PPN 11%</td><td class="num">{{ number_format($ppn, 0, ',', '.') }}</td></tr>
+        @endif
+        <tr class="grand-total"><td>Total Keseluruhan</td><td class="num">{{ number_format($subtotal + $ppn, 0, ',', '.') }}</td></tr>
     </table>
 
     <table class="signature-table">

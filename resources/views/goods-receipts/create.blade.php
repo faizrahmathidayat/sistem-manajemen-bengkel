@@ -58,7 +58,7 @@
                     <p class="text-muted mb-0 small">Maksimal 100 baris per import.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{{ route('goods-receipts.import-template') }}" class="btn btn-outline-secondary btn-sm">
+                    <a href="{{ route('goods-receipts.import-template') }}" download class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-download"></i> Download Template
                     </a>
                     <button type="button" class="btn btn-outline-primary btn-sm" id="importGoodsReceiptButton" disabled>

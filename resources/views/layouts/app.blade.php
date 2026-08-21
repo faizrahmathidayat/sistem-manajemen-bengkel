@@ -211,6 +211,20 @@
             overlay.classList.remove('d-none');
         }
 
+        function hideOverlay() {
+            overlay.classList.add('d-none');
+        }
+
+        // Clicking any link shows the overlay right before the browser navigates away.
+        // If the user later hits the back/forward button to return to *this* page, most
+        // browsers restore it from bfcache instead of reloading it — which resumes the
+        // exact in-memory DOM state from the moment it was left, overlay still visible
+        // included, since bfcache restoration re-shows the page without rerunning any
+        // load-time script. `pageshow` fires on every such restore (and harmlessly on a
+        // normal fresh load too, where the overlay is already hidden), so hiding it here
+        // is what makes back/forward navigation land on a page that isn't stuck loading.
+        window.addEventListener('pageshow', hideOverlay);
+
         function handleLinkClick(event) {
             var container = event.currentTarget;
             var link = event.target.closest('a[href]');

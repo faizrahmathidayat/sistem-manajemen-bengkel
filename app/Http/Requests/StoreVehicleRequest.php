@@ -13,6 +13,15 @@ class StoreVehicleRequest extends FormRequest
         return $this->user()->can('vehicle.create');
     }
 
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'plate_number' => is_string($this->plate_number) ? mb_strtoupper($this->plate_number) : $this->plate_number,
+            'frame_number' => is_string($this->frame_number) ? mb_strtoupper($this->frame_number) : $this->frame_number,
+            'engine_number' => is_string($this->engine_number) ? mb_strtoupper($this->engine_number) : $this->engine_number,
+        ]);
+    }
+
     public function rules()
     {
         return [

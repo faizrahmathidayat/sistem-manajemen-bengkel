@@ -119,6 +119,34 @@ class CustomerManagementTest extends TestCase
         ]);
     }
 
+    public function test_store_uppercases_bundled_vehicle_plate_frame_and_engine_numbers(): void
+    {
+        $user = $this->userWithPermissions(['customer.create', 'vehicle.create']);
+        $category = VehicleCategory::create(['name' => 'Mobil']);
+        $brand = VehicleBrand::create(['category_id' => $category->id, 'name' => 'Toyota']);
+        $type = VehicleType::create(['brand_id' => $brand->id, 'name' => 'Avanza']);
+
+        $response = $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+            'is_active' => '1',
+            'vehicle_category_id' => $category->id,
+            'vehicle_brand_id' => $brand->id,
+            'vehicle_type_id' => $type->id,
+            'vehicle_plate_number' => 'b 1234 xyz',
+            'vehicle_frame_number' => 'mhk1234frame',
+            'vehicle_engine_number' => 'eng5678number',
+        ]);
+
+        $response->assertRedirect('/customers');
+        $this->assertDatabaseHas('vehicles', [
+            'plate_number' => 'B 1234 XYZ',
+            'frame_number' => 'MHK1234FRAME',
+            'engine_number' => 'ENG5678NUMBER',
+        ]);
+    }
+
     public function test_store_without_vehicle_fields_creates_no_vehicle(): void
     {
         $user = $this->userWithPermissions(['customer.create', 'vehicle.create']);

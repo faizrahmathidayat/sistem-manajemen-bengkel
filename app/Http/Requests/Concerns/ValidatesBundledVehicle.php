@@ -8,6 +8,15 @@ use Illuminate\Validation\Validator;
 
 trait ValidatesBundledVehicle
 {
+    protected function uppercaseBundledVehicleFields(): void
+    {
+        $this->merge([
+            'vehicle_plate_number' => is_string($this->vehicle_plate_number) ? mb_strtoupper($this->vehicle_plate_number) : $this->vehicle_plate_number,
+            'vehicle_frame_number' => is_string($this->vehicle_frame_number) ? mb_strtoupper($this->vehicle_frame_number) : $this->vehicle_frame_number,
+            'vehicle_engine_number' => is_string($this->vehicle_engine_number) ? mb_strtoupper($this->vehicle_engine_number) : $this->vehicle_engine_number,
+        ]);
+    }
+
     protected function bundledVehicleRules(): array
     {
         return [

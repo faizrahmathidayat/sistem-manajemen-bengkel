@@ -107,6 +107,61 @@ class VehicleManagementTest extends TestCase
         $this->assertDatabaseHas('vehicles', ['plate_number' => 'B 1234 XYZ', 'year' => 2020]);
     }
 
+    public function test_store_uppercases_plate_frame_and_engine_numbers(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        $user = $this->userWithPermissions(['vehicle.create']);
+
+        $response = $this->actingAs($user)->post('/vehicles', [
+            'customer_id' => $customer->id,
+            'category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'type_id' => $type->id,
+            'plate_number' => 'b 1234 xyz',
+            'frame_number' => 'mhk1234frame',
+            'engine_number' => 'eng5678number',
+            'is_active' => '1',
+        ]);
+
+        $response->assertRedirect('/vehicles');
+        $this->assertDatabaseHas('vehicles', [
+            'plate_number' => 'B 1234 XYZ',
+            'frame_number' => 'MHK1234FRAME',
+            'engine_number' => 'ENG5678NUMBER',
+        ]);
+    }
+
+    public function test_update_uppercases_plate_frame_and_engine_numbers(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);
+        ['category' => $category, 'brand' => $brand, 'type' => $type] = $this->makeHierarchy();
+        $vehicle = Vehicle::create([
+            'customer_id' => $customer->id, 'category_id' => $category->id,
+            'brand_id' => $brand->id, 'type_id' => $type->id, 'plate_number' => 'B 1234 XYZ',
+        ]);
+        $user = $this->userWithPermissions(['vehicle.edit']);
+
+        $response = $this->actingAs($user)->put("/vehicles/{$vehicle->id}", [
+            'customer_id' => $customer->id,
+            'category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'type_id' => $type->id,
+            'plate_number' => 'b 5678 upd',
+            'frame_number' => 'framelower',
+            'engine_number' => 'enginelower',
+            'is_active' => '1',
+        ]);
+
+        $response->assertRedirect('/vehicles');
+        $this->assertDatabaseHas('vehicles', [
+            'id' => $vehicle->id,
+            'plate_number' => 'B 5678 UPD',
+            'frame_number' => 'FRAMELOWER',
+            'engine_number' => 'ENGINELOWER',
+        ]);
+    }
+
     public function test_store_rejects_year_outside_valid_range(): void
     {
         $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi', 'stnk_name' => 'Budi']);

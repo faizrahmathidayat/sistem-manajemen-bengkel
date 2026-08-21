@@ -21,6 +21,7 @@ class StoreCustomerRequest extends FormRequest
             'name' => is_string($this->name) ? mb_strtoupper($this->name) : $this->name,
             'stnk_name' => is_string($this->stnk_name) ? mb_strtoupper($this->stnk_name) : $this->stnk_name,
         ]);
+        $this->uppercaseBundledVehicleFields();
     }
 
     public function rules()

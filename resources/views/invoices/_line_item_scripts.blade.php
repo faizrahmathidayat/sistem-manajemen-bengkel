@@ -12,7 +12,7 @@
             </select>
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.001" min="0.001" class="form-control service-qty" value="1">
+            <input type="number" step="1" min="1" class="form-control service-qty" value="1">
         </div>
         <div class="col-md-1">
             <input type="number" step="0.01" min="0" class="form-control service-unit-price">
@@ -37,7 +37,7 @@
             </select>
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.001" min="0.001" class="form-control sparepart-qty" value="1">
+            <input type="number" step="1" min="1" class="form-control sparepart-qty" value="1">
         </div>
         <div class="col-md-1">
             <input type="number" step="0.01" min="0" class="form-control sparepart-unit-price">

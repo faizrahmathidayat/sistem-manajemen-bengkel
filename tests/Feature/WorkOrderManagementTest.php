@@ -102,6 +102,36 @@ class WorkOrderManagementTest extends TestCase
         $this->assertSame(120000.0, (float) $workOrder->sparepartLines->first()->line_total);
     }
 
+    public function test_store_rejects_decimal_qty_on_service_line(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['services'][0]['qty'] = 1.5;
+
+        $response = $this->actingAs(User::find($user->id))->post('/work-orders', $payload);
+
+        $response->assertSessionHasErrors(['services.0.qty']);
+        $this->assertSame(0, WorkOrder::count());
+    }
+
+    public function test_store_rejects_decimal_qty_on_sparepart_line(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $scenario = $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+        $payload = $this->baseStorePayload($branch, $scenario);
+        $payload['spareparts'][0]['qty'] = 2.5;
+
+        $response = $this->actingAs(User::find($user->id))->post('/work-orders', $payload);
+
+        $response->assertSessionHasErrors(['spareparts.0.qty']);
+        $this->assertSame(0, WorkOrder::count());
+    }
+
     public function test_store_recomputes_line_total_server_side_ignoring_client_value(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

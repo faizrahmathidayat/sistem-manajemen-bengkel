@@ -33,7 +33,7 @@ class StoreStockTransferRequest extends FormRequest
             'lines' => ['required', 'array', 'min:1'],
             'lines.*' => ['array'],
             'lines.*.sparepart_id' => ['required', 'integer', 'exists:spareparts,id', 'distinct'],
-            'lines.*.qty' => ['required', 'numeric', 'min:0.001'],
+            'lines.*.qty' => ['required', 'integer', 'min:1'],
         ];
     }
 

@@ -230,6 +230,26 @@ class GoodsReceiptImportTest extends TestCase
         $response->assertJsonFragment(['errors' => ['Baris 2: Qty harus lebih besar dari 0.']]);
     }
 
+    public function test_import_lines_rejects_decimal_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeSparepartBranch($branch, 'OLI-01');
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+
+        $file = $this->makeUploadedXlsx([
+            ['OLI-01', 2.5, 25000],
+        ]);
+
+        $response = $this->actingAs($user)->post('/goods-receipts/import-lines', [
+            'branch_id' => $branch->id,
+            'file' => $file,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonFragment(['errors' => ['Baris 2: Qty harus berupa bilangan bulat, tidak boleh desimal.']]);
+    }
+
     public function test_import_lines_rejects_negative_qty(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

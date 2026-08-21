@@ -33,7 +33,7 @@ class StoreStockAdjustmentRequest extends FormRequest
             'lines' => ['required', 'array', 'min:1'],
             'lines.*' => ['array'],
             'lines.*.sparepart_branch_id' => ['required', 'integer', 'exists:sparepart_branches,id', 'distinct'],
-            'lines.*.physical_qty' => ['required', 'numeric', 'min:0'],
+            'lines.*.physical_qty' => ['required', 'integer', 'min:0'],
             'lines.*.reason' => ['required', 'string', 'max:255'],
         ];
     }

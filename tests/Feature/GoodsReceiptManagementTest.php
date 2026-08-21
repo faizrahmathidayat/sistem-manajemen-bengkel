@@ -68,6 +68,21 @@ class GoodsReceiptManagementTest extends TestCase
         $this->assertSame(0.0, (float) $stock->on_hand_qty, 'Creating a DRAFT receipt must not touch stock.');
     }
 
+    public function test_store_rejects_decimal_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $payload = $this->baseStorePayload($branch, $sparepartBranch);
+        $payload['lines'][0]['qty'] = 2.5;
+
+        $response = $this->actingAs(User::find($user->id))->post('/goods-receipts', $payload);
+
+        $response->assertSessionHasErrors(['lines.0.qty']);
+        $this->assertSame(0, GoodsReceipt::count());
+    }
+
     public function test_store_recomputes_line_total_server_side(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

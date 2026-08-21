@@ -53,6 +53,19 @@ class StockAdjustmentManagementTest extends TestCase
         ];
     }
 
+    public function test_store_rejects_decimal_physical_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'stock_adjustment.create');
+
+        $response = $this->actingAs(User::find($user->id))->post('/stock-adjustments', $this->baseStorePayload($branch, $sparepartBranch, 8.5));
+
+        $response->assertSessionHasErrors(['lines.0.physical_qty']);
+        $this->assertSame(0, StockAdjustment::count());
+    }
+
     public function test_store_creates_stock_adjustment_with_lines_and_captures_system_qty(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

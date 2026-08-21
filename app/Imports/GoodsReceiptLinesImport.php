@@ -11,7 +11,7 @@ class GoodsReceiptLinesImport implements ToCollection, WithHeadingRow
 {
     public const MAX_ROWS = 100;
 
-    /** @var array<int, array{sparepart_branch_id:int, sparepart_code:string, sparepart_name:string, qty:float, purchase_price:float}> */
+    /** @var array<int, array{sparepart_branch_id:int, sparepart_code:string, sparepart_name:string, qty:int, purchase_price:float}> */
     public array $lines = [];
 
     /** @var array<int, string> */
@@ -72,7 +72,12 @@ class GoodsReceiptLinesImport implements ToCollection, WithHeadingRow
 
                 continue;
             }
-            if ((float) $qtyRaw <= 0) {
+            if ((float) $qtyRaw != (int) $qtyRaw) {
+                $this->errors[] = "Baris {$rowNumber}: Qty harus berupa bilangan bulat, tidak boleh desimal.";
+
+                continue;
+            }
+            if ((int) $qtyRaw <= 0) {
                 $this->errors[] = "Baris {$rowNumber}: Qty harus lebih besar dari 0.";
 
                 continue;
@@ -110,7 +115,7 @@ class GoodsReceiptLinesImport implements ToCollection, WithHeadingRow
                 'sparepart_branch_id' => $sparepartBranch->id,
                 'sparepart_code' => $sparepartBranch->sparepart->code,
                 'sparepart_name' => $sparepartBranch->sparepart->name,
-                'qty' => (float) $qtyRaw,
+                'qty' => (int) $qtyRaw,
                 'purchase_price' => (float) $priceRaw,
             ];
         }

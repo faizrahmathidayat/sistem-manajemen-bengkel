@@ -7,10 +7,10 @@
             <input type="hidden" class="sparepart-id-hidden">
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.001" class="form-control stock-transfer-on-hand-qty" readonly tabindex="-1">
+            <input type="number" step="1" class="form-control stock-transfer-on-hand-qty" readonly tabindex="-1">
         </div>
         <div class="col-md-3">
-            <input type="number" step="0.001" min="0.001" class="form-control stock-transfer-qty" value="1">
+            <input type="number" step="1" min="1" class="form-control stock-transfer-qty" value="1">
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-stock-transfer-line">&times;</button>

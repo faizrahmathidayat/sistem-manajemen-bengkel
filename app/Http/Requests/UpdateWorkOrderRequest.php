@@ -40,12 +40,12 @@ class UpdateWorkOrderRequest extends FormRequest
             'services.*' => ['array'],
             'services.*.service_catalog_id' => ['required_with:services.*.qty', 'integer', 'exists:service_catalogs,id'],
             'services.*.description' => ['required_with:services.*.qty', 'string', 'max:255'],
-            'services.*.qty' => ['required_with:services.*.description', 'numeric', 'min:0.001'],
+            'services.*.qty' => ['required_with:services.*.description', 'integer', 'min:1'],
             'services.*.unit_price' => ['required_with:services.*.description', 'numeric', 'min:0'],
             'spareparts' => ['nullable', 'array'],
             'spareparts.*' => ['array'],
             'spareparts.*.sparepart_branch_id' => ['required_with:spareparts.*.qty', 'integer', 'exists:sparepart_branches,id'],
-            'spareparts.*.qty' => ['required_with:spareparts.*.sparepart_branch_id', 'numeric', 'min:0.001'],
+            'spareparts.*.qty' => ['required_with:spareparts.*.sparepart_branch_id', 'integer', 'min:1'],
             'spareparts.*.unit_price' => ['required_with:spareparts.*.sparepart_branch_id', 'numeric', 'min:0'],
         ];
     }

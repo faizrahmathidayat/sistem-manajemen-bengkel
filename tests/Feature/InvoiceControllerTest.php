@@ -343,6 +343,35 @@ class InvoiceControllerTest extends TestCase
         $this->assertSame(170000.0, (float) $invoice->grand_total);
     }
 
+    public function test_update_rejects_decimal_qty(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $response = $this->actingAs($user)->put("/invoices/{$invoice->id}", [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => 'Ganti Oli',
+                'qty' => 1.5,
+                'unit_price' => 100000,
+            ]],
+            'spareparts' => [[
+                'work_order_sparepart_line_id' => $sparepartDetail->work_order_sparepart_line_id,
+                'sparepart_branch_id' => $sparepartDetail->sparepart_branch_id,
+                'qty' => 2,
+                'unit_price' => 50000,
+            ]],
+        ]);
+
+        $response->assertSessionHasErrors(['services.0.qty']);
+    }
+
     public function test_update_defaults_discount_percent_to_zero_when_omitted(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

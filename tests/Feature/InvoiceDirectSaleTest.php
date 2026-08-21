@@ -145,6 +145,27 @@ class InvoiceDirectSaleTest extends TestCase
         $this->assertStringStartsWith('DS/', $invoice->number);
     }
 
+    public function test_store_direct_rejects_decimal_qty(): void
+    {
+        [$branch, $customer] = $this->makeBranchAndCustomer();
+        $catalog = ServiceCatalog::create(['code' => 'SVC-CUCI', 'name' => 'Cuci Mobil', 'default_price' => 40000]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->post('/invoices/direct', [
+            'branch_id' => $branch->id,
+            'customer_id' => $customer->id,
+            'invoice_date' => now()->toDateString(),
+            'services' => [
+                ['description' => $catalog->name, 'qty' => 1.5, 'unit_price' => 40000],
+            ],
+            'spareparts' => [],
+        ]);
+
+        $response->assertSessionHasErrors(['services.0.qty']);
+        $this->assertSame(0, \App\Models\Invoice::count());
+    }
+
     public function test_store_direct_rejects_empty_line_items(): void
     {
         [$branch, $customer] = $this->makeBranchAndCustomer();

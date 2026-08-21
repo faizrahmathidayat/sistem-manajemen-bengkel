@@ -6,10 +6,10 @@
             </select>
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.001" class="form-control stock-adjustment-system-qty" readonly tabindex="-1">
+            <input type="number" step="1" class="form-control stock-adjustment-system-qty" readonly tabindex="-1">
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.001" min="0" required class="form-control stock-adjustment-physical-qty">
+            <input type="number" step="1" min="0" required class="form-control stock-adjustment-physical-qty">
         </div>
         <div class="col-md-3">
             <input type="text" required class="form-control stock-adjustment-reason" placeholder="Alasan baris ini">

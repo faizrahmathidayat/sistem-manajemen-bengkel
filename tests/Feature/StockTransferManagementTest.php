@@ -68,6 +68,20 @@ class StockTransferManagementTest extends TestCase
         $this->assertSame(5.0, (float) $stockTransfer->lines->first()->qty);
     }
 
+    public function test_store_rejects_decimal_qty(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepart = $this->makeSparepartAtBranches($from, $to);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $from, 'stock_transfer.create');
+
+        $response = $this->actingAs(User::find($user->id))->post('/stock-transfers', $this->baseStorePayload($from, $to, $sparepart, 2.5));
+
+        $response->assertSessionHasErrors(['lines.0.qty']);
+        $this->assertSame(0, StockTransfer::count());
+    }
+
     public function test_store_is_forbidden_without_stock_transfer_create_permission(): void
     {
         $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

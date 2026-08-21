@@ -6,7 +6,7 @@
             </select>
         </div>
         <div class="col-md-3">
-            <input type="number" step="0.001" min="0.001" required class="form-control goods-receipt-qty" value="1">
+            <input type="number" step="1" min="1" required class="form-control goods-receipt-qty" value="1">
         </div>
         <div class="col-md-3">
             <input type="number" step="0.01" min="0" required class="form-control goods-receipt-purchase-price">

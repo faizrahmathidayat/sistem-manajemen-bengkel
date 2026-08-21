@@ -6,9 +6,39 @@ use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\Vehicle;
+use App\Models\VehicleCategory;
 
 class CustomerController extends Controller
 {
+    protected const VEHICLE_FIELDS = [
+        'vehicle_category_id', 'vehicle_brand_id', 'vehicle_type_id',
+        'vehicle_plate_number', 'vehicle_frame_number', 'vehicle_engine_number', 'vehicle_year',
+    ];
+
+    protected function createVehicleForCustomer(Customer $customer, array $data): void
+    {
+        if (! auth()->user()->can('vehicle.create')) {
+            return;
+        }
+
+        $vehicleData = collect($data)->only(self::VEHICLE_FIELDS)->filter(fn ($value) => filled($value));
+
+        if ($vehicleData->isEmpty()) {
+            return;
+        }
+
+        Vehicle::create([
+            'customer_id' => $customer->id,
+            'category_id' => $data['vehicle_category_id'],
+            'brand_id' => $data['vehicle_brand_id'],
+            'type_id' => $data['vehicle_type_id'],
+            'plate_number' => $data['vehicle_plate_number'] ?? null,
+            'frame_number' => $data['vehicle_frame_number'] ?? null,
+            'engine_number' => $data['vehicle_engine_number'] ?? null,
+            'year' => $data['vehicle_year'] ?? null,
+        ]);
+    }
     public function index()
     {
         $this->authorize('customer.view');
@@ -52,8 +82,9 @@ class CustomerController extends Controller
         $this->authorize('customer.create');
 
         $customer = new Customer();
+        $categories = VehicleCategory::where('is_active', true)->orderBy('name')->get();
 
-        return view('customers.create', compact('customer'));
+        return view('customers.create', compact('customer', 'categories'));
     }
 
     public function store(StoreCustomerRequest $request)
@@ -61,7 +92,8 @@ class CustomerController extends Controller
         $data = $request->validated();
         $data['is_active'] = $request->boolean('is_active');
 
-        Customer::create($data);
+        $customer = Customer::create(collect($data)->except(self::VEHICLE_FIELDS)->all());
+        $this->createVehicleForCustomer($customer, $data);
 
         return redirect()->route('customers.index')->with('status', 'Customer berhasil ditambahkan.');
     }
@@ -72,8 +104,9 @@ class CustomerController extends Controller
 
         $customer->load(['customerBranches', 'vehicles.category', 'vehicles.brand', 'vehicles.type']);
         $allBranches = Branch::orderBy('name')->get();
+        $categories = VehicleCategory::where('is_active', true)->orderBy('name')->get();
 
-        return view('customers.show', compact('customer', 'allBranches'));
+        return view('customers.show', compact('customer', 'allBranches', 'categories'));
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer)
@@ -81,7 +114,8 @@ class CustomerController extends Controller
         $data = $request->validated();
         $data['is_active'] = $request->boolean('is_active');
 
-        $customer->update($data);
+        $customer->update(collect($data)->except(self::VEHICLE_FIELDS)->all());
+        $this->createVehicleForCustomer($customer, $data);
 
         return redirect()->route('customers.show', $customer)->with('status', 'Customer berhasil diperbarui.');
     }

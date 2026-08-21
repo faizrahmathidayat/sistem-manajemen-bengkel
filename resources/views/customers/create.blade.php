@@ -15,8 +15,9 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('customers.store') }}" class="panel">
+    <form method="POST" action="{{ route('customers.store') }}">
         @csrf
+        <div class="panel mb-3">
         <div class="panel-header">
             <div>
                 <h2 class="h5 mb-1 section-title"><i class="bi bi-person-badge"></i><span>Detail Customer</span></h2>
@@ -69,6 +70,12 @@
                 </div>
             </div>
         </div>
+        </div>
+
+        @can('vehicle.create')
+            @include('customers._vehicle_fields')
+        @endcan
+
         <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
             <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary">Batal</a>
             <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>

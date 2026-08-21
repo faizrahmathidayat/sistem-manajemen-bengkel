@@ -8,6 +8,10 @@ use App\Models\CustomerBranch;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\UserPermission;
+use App\Models\Vehicle;
+use App\Models\VehicleBrand;
+use App\Models\VehicleCategory;
+use App\Models\VehicleType;
 use App\Services\UserBranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -83,6 +87,110 @@ class CustomerManagementTest extends TestCase
         $this->assertDatabaseHas('customers', [
             'name' => 'BUDI SANTOSO',
             'stnk_name' => 'BUDI SANTOSO WIJAYA',
+        ]);
+    }
+
+    public function test_store_creates_customer_with_bundled_vehicle(): void
+    {
+        $user = $this->userWithPermissions(['customer.create', 'vehicle.create']);
+        $category = VehicleCategory::create(['name' => 'Mobil']);
+        $brand = VehicleBrand::create(['category_id' => $category->id, 'name' => 'Toyota']);
+        $type = VehicleType::create(['brand_id' => $brand->id, 'name' => 'Avanza']);
+
+        $response = $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+            'is_active' => '1',
+            'vehicle_category_id' => $category->id,
+            'vehicle_brand_id' => $brand->id,
+            'vehicle_type_id' => $type->id,
+            'vehicle_plate_number' => 'B 1234 XYZ',
+        ]);
+
+        $response->assertRedirect('/customers');
+        $customer = Customer::where('name', 'BUDI SANTOSO')->firstOrFail();
+        $this->assertDatabaseHas('vehicles', [
+            'customer_id' => $customer->id,
+            'category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'type_id' => $type->id,
+            'plate_number' => 'B 1234 XYZ',
+        ]);
+    }
+
+    public function test_store_without_vehicle_fields_creates_no_vehicle(): void
+    {
+        $user = $this->userWithPermissions(['customer.create', 'vehicle.create']);
+
+        $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+            'is_active' => '1',
+        ]);
+
+        $this->assertSame(0, Vehicle::count());
+    }
+
+    public function test_store_requires_full_vehicle_details_when_partially_filled(): void
+    {
+        $user = $this->userWithPermissions(['customer.create', 'vehicle.create']);
+
+        $response = $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+            'vehicle_plate_number' => 'B 1234 XYZ',
+        ]);
+
+        $response->assertSessionHasErrors(['vehicle_category_id', 'vehicle_brand_id', 'vehicle_type_id']);
+        $this->assertSame(0, Customer::count());
+    }
+
+    public function test_store_does_not_create_vehicle_without_vehicle_create_permission(): void
+    {
+        $user = $this->userWithPermissions(['customer.create']);
+        $category = VehicleCategory::create(['name' => 'Mobil']);
+        $brand = VehicleBrand::create(['category_id' => $category->id, 'name' => 'Toyota']);
+        $type = VehicleType::create(['brand_id' => $brand->id, 'name' => 'Avanza']);
+
+        $this->actingAs($user)->post('/customers', [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+            'vehicle_category_id' => $category->id,
+            'vehicle_brand_id' => $brand->id,
+            'vehicle_type_id' => $type->id,
+        ]);
+
+        $this->assertSame(0, Vehicle::count());
+    }
+
+    public function test_update_can_add_new_vehicle_to_existing_customer(): void
+    {
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $user = $this->userWithPermissions(['customer.edit', 'vehicle.create']);
+        $category = VehicleCategory::create(['name' => 'Mobil']);
+        $brand = VehicleBrand::create(['category_id' => $category->id, 'name' => 'Toyota']);
+        $type = VehicleType::create(['brand_id' => $brand->id, 'name' => 'Avanza']);
+
+        $response = $this->actingAs($user)->put("/customers/{$customer->id}", [
+            'customer_type' => 'INDIVIDUAL',
+            'name' => 'Budi Santoso',
+            'stnk_name' => 'Budi Santoso',
+            'is_active' => '1',
+            'vehicle_category_id' => $category->id,
+            'vehicle_brand_id' => $brand->id,
+            'vehicle_type_id' => $type->id,
+        ]);
+
+        $response->assertRedirect("/customers/{$customer->id}");
+        $this->assertDatabaseHas('vehicles', [
+            'customer_id' => $customer->id,
+            'category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'type_id' => $type->id,
         ]);
     }
 

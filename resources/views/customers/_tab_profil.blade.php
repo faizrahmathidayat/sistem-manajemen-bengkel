@@ -49,6 +49,10 @@
                 <label for="is_active" class="form-check-label">Aktif</label>
             </div>
 
+            @can('vehicle.create')
+                @include('customers._vehicle_fields')
+            @endcan
+
             <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>
         </form>
     </div>

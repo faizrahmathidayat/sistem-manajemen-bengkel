@@ -1,12 +1,12 @@
 @extends('layouts.app')
-@section('title', 'Laporan Sparepart')
+@section('title', 'Laporan Stok')
 @section('content')
     <div class="page-heading">
         <div class="page-heading-copy">
             <span class="page-icon"><i class="bi bi-file-earmark-spreadsheet"></i></span>
             <div>
                 <p class="eyebrow mb-1">Reporting</p>
-                <h1 class="h3 mb-1">Laporan Sparepart</h1>
+                <h1 class="h3 mb-1">Laporan Stok</h1>
                 <p class="text-muted mb-0">Pantau stok sparepart per cabang.</p>
             </div>
         </div>

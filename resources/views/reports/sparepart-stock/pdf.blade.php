@@ -1,5 +1,5 @@
 @extends('layouts.print')
-@section('report-title', 'Laporan Sparepart / Stok')
+@section('report-title', 'Laporan Stok')
 @section('filter-summary', $filterSummary)
 @section('note')
     @if ($truncated)

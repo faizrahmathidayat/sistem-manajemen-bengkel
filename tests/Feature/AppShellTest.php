@@ -439,6 +439,6 @@ class AppShellTest extends TestCase
         $response->assertDontSee('Laporan Invoice', false);
         $response->assertDontSee('Laporan Performance Bengkel', false);
         $response->assertDontSee('bi-bar-chart-steps', false);
-        $response->assertDontSee('Laporan Sparepart', false);
+        $response->assertDontSee('Laporan Stok', false);
     }
 }

@@ -280,7 +280,7 @@ class MenuPermissionSeeder extends Seeder
             ],
             [
                 'code' => 'reporting.sparepart',
-                'name' => 'Laporan Sparepart',
+                'name' => 'Laporan Stok',
                 'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'report.sparepart.view', 'resource' => 'report', 'action' => 'sparepart.view', 'description' => 'Melihat laporan sparepart'],

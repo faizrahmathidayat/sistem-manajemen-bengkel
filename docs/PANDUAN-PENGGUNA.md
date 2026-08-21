@@ -279,7 +279,7 @@ Menu **Kartu Stok** menampilkan riwayat pergerakan `on_hand_qty` untuk **satu sp
 | **Laporan Invoice** | Daftar invoice per cabang/status/periode, export Excel & PDF. |
 | **Laporan Piutang** | Invoice yang masih punya sisa piutang (Posted/Dibayar Sebagian), untuk penagihan. |
 | **PKB vs Invoice** | Selisih antara PKB yang sudah Selesai tapi belum diinvoice — untuk mengejar PKB yang "kelewat" belum ditagihkan. |
-| **Laporan Sparepart/Stok** | Kondisi stok terkini semua sparepart per cabang, termasuk status Kritis (di bawah stok minimum), Habis, Tersedia, dan total nilai inventaris. |
+| **Laporan Stok** | Kondisi stok terkini semua sparepart per cabang, termasuk status Kritis (di bawah stok minimum), Habis, Tersedia, dan total nilai inventaris. |
 | **Audit Log** | Jejak perubahan data penting sistem (siapa mengubah apa, kapan) — untuk keperluan audit internal. |
 
 Semua laporan tunduk pada cabang yang Anda punya akses `report.*.view` untuk laporan terkait — laporan hanya menampilkan data dari cabang yang diizinkan.

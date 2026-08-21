@@ -158,7 +158,7 @@
     @if ($user->branchesWithPermission('report.sparepart.view')->isNotEmpty())
         <a href="{{ route('reports.sparepart-stock.index') }}" class="nav-link {{ request()->routeIs('reports.sparepart-stock.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-file-earmark-spreadsheet"></i></span>
-            <span class="nav-text">Laporan Sparepart</span>
+            <span class="nav-text">Laporan Stok</span>
         </a>
     @endif
 @endif

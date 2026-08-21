@@ -55,9 +55,21 @@
             <div class="panel-header">
                 <div>
                     <h2 class="h5 mb-1 section-title"><i class="bi bi-nut"></i><span>Baris Sparepart</span></h2>
+                    <p class="text-muted mb-0 small">Maksimal 100 baris per import.</p>
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="addGoodsReceiptLine" disabled>+ Tambah Sparepart</button>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('goods-receipts.import-template') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-download"></i> Download Template
+                    </a>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="importGoodsReceiptButton" disabled>
+                        <span class="spinner-border spinner-border-sm d-none" id="importGoodsReceiptSpinner" role="status" aria-hidden="true"></span>
+                        <i class="bi bi-upload" id="importGoodsReceiptIcon"></i> Import Baris
+                    </button>
+                    <input type="file" id="importGoodsReceiptFile" accept=".xlsx,.xls" class="d-none">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="addGoodsReceiptLine" disabled>+ Tambah Sparepart</button>
+                </div>
             </div>
+            <div class="alert alert-danger d-none" id="importGoodsReceiptErrors"></div>
             <div class="row g-2 small text-muted mb-1">
                 <div class="col-md-5">Sparepart</div>
                 <div class="col-md-3">Qty</div>
@@ -89,6 +101,11 @@
     (function () {
         const branchSelect = document.getElementById('branchSelect');
         const addButton = document.getElementById('addGoodsReceiptLine');
+        const importButton = document.getElementById('importGoodsReceiptButton');
+        const importFile = document.getElementById('importGoodsReceiptFile');
+        const importSpinner = document.getElementById('importGoodsReceiptSpinner');
+        const importIcon = document.getElementById('importGoodsReceiptIcon');
+        const importErrors = document.getElementById('importGoodsReceiptErrors');
         let currentBranchId = branchSelect.value || null;
         window.currentGoodsReceiptBranchId = currentBranchId;
 
@@ -96,10 +113,62 @@
             currentBranchId = branchId || null;
             window.currentGoodsReceiptBranchId = currentBranchId;
             addButton.disabled = !currentBranchId;
+            importButton.disabled = !currentBranchId;
         }
 
         branchSelect.addEventListener('change', function () {
             handleBranchChange(this.value);
+        });
+
+        importButton.addEventListener('click', function () {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', async function () {
+            const file = importFile.files[0];
+            importFile.value = '';
+            if (!file || !currentBranchId) return;
+
+            importErrors.classList.add('d-none');
+            importErrors.innerHTML = '';
+            importButton.disabled = true;
+            importIcon.classList.add('d-none');
+            importSpinner.classList.remove('d-none');
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                const formData = new FormData();
+                formData.append('branch_id', currentBranchId);
+                formData.append('file', file);
+
+                const response = await fetch(@json(route('goods-receipts.import-lines')), {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: formData,
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const messages = data.errors && Array.isArray(data.errors) ? data.errors : [data.message || 'Import gagal.'];
+                    importErrors.innerHTML = '<ul class="mb-0">' + messages.map(function (m) { return '<li>' + m + '</li>'; }).join('') + '</ul>';
+                    importErrors.classList.remove('d-none');
+                    return;
+                }
+
+                for (const line of data.lines) {
+                    const row = GoodsReceiptLineItems.addLine(currentBranchId);
+                    row.querySelector('.goods-receipt-qty').value = line.qty;
+                    row.querySelector('.goods-receipt-purchase-price').value = line.purchase_price;
+                    await GoodsReceiptLineItems.preselectLine(row, line.sparepart_branch_id, currentBranchId);
+                }
+            } catch (error) {
+                importErrors.innerHTML = '<ul class="mb-0"><li>Gagal menghubungi server. Silakan coba lagi.</li></ul>';
+                importErrors.classList.remove('d-none');
+            } finally {
+                importButton.disabled = !currentBranchId;
+                importIcon.classList.remove('d-none');
+                importSpinner.classList.add('d-none');
+            }
         });
 
         // Validation-error round-trip: replay the sparepart line rows submitted

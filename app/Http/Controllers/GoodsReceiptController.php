@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\GoodsReceiptLineImportTemplateExport;
+use App\Http\Requests\ImportGoodsReceiptLinesRequest;
 use App\Http\Requests\StoreGoodsReceiptRequest;
 use App\Http\Requests\UpdateGoodsReceiptRequest;
+use App\Imports\GoodsReceiptLinesImport;
 use App\Models\Branch;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptLine;
@@ -13,6 +16,7 @@ use App\Services\DocumentNumberGenerator;
 use App\Support\GoodsReceiptStatus;
 use App\Support\InventoryMovementType;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class GoodsReceiptController extends Controller
 {
@@ -61,6 +65,27 @@ class GoodsReceiptController extends Controller
         }
 
         return view('goods-receipts.create', compact('branches'));
+    }
+
+    public function downloadImportTemplate()
+    {
+        abort_if(auth()->user()->branchesWithPermission('receipt.create')->isEmpty(), 403);
+
+        return Excel::download(new GoodsReceiptLineImportTemplateExport(), 'template-import-sparepart-penerimaan-barang.xlsx');
+    }
+
+    public function importLines(ImportGoodsReceiptLinesRequest $request)
+    {
+        $data = $request->validated();
+
+        $import = new GoodsReceiptLinesImport((int) $data['branch_id']);
+        Excel::import($import, $data['file']);
+
+        if (! empty($import->errors)) {
+            return response()->json(['errors' => $import->errors], 422);
+        }
+
+        return response()->json(['lines' => $import->lines]);
     }
 
     public function store(StoreGoodsReceiptRequest $request)

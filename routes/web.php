@@ -168,6 +168,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {
         Route::get('/', [GoodsReceiptController::class, 'index'])->name('index');
         Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+        Route::get('/import-template', [GoodsReceiptController::class, 'downloadImportTemplate'])->name('import-template');
+        Route::post('/import-lines', [GoodsReceiptController::class, 'importLines'])->name('import-lines');
         Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
         Route::get('/{goodsReceipt}', [GoodsReceiptController::class, 'show'])->name('show');
         Route::get('/{goodsReceipt}/edit', [GoodsReceiptController::class, 'edit'])->name('edit');

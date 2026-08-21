@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Permission;
+use App\Models\Rack;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\User;
@@ -35,7 +36,8 @@ class SparepartStockReportControllerTest extends TestCase
         float $onHand,
         float $reserved,
         float $minimumStock,
-        float $sellingPrice
+        float $sellingPrice,
+        ?Rack $rack = null
     ): SparepartBranch {
         $sparepart = Sparepart::create(['code' => $code, 'name' => $name]);
         $sparepartBranch = SparepartBranch::create([
@@ -43,6 +45,7 @@ class SparepartStockReportControllerTest extends TestCase
             'branch_id' => $branch->id,
             'selling_price' => $sellingPrice,
             'minimum_stock' => $minimumStock,
+            'rack_id' => optional($rack)->id,
         ]);
         DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->update([
             'on_hand_qty' => $onHand,
@@ -367,11 +370,56 @@ class SparepartStockReportControllerTest extends TestCase
         $response->assertOk();
         $response->assertSee('Reserved');
         $response->assertSee('Available');
-        $response->assertSee('Harga Satuan');
+        $response->assertSee('Harga Jual');
         $response->assertSee('Nilai Total');
         // available = 847 - 212 = 635; nilai total = 847 * 17000 = 14.399.000
         $response->assertSee('635');
         $response->assertSee('14.399.000');
+    }
+
+    public function test_index_detail_mode_shows_rack_code(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $rack = Rack::create(['code' => 'A1']);
+        $this->makeSparepartBranch($branch, 'OLI-001', 'Oli Mesin', 10, 0, 5, 50000, $rack);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock?mode=detail');
+
+        $response->assertOk();
+        $response->assertSee('Rak');
+        $response->assertSee('>A1<', false);
+    }
+
+    public function test_index_rekap_mode_shows_rack_code_and_selling_price(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $rack = Rack::create(['code' => 'B2']);
+        $this->makeSparepartBranch($branch, 'OLI-001', 'Oli Mesin', 10, 0, 5, 50000, $rack);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock');
+
+        $response->assertOk();
+        $response->assertSee('Rak');
+        $response->assertSee('Harga Jual');
+        $response->assertSee('>B2<', false);
+        $response->assertSee('50.000');
+    }
+
+    public function test_index_shows_dash_when_sparepart_has_no_rack(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeSparepartBranch($branch, 'OLI-001', 'Oli Mesin', 10, 0, 5, 50000);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.sparepart.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/sparepart-stock');
+
+        $response->assertOk();
+        $response->assertSee('<td>-</td>', false);
     }
 
     public function test_index_rekap_mode_does_not_show_detail_columns(): void

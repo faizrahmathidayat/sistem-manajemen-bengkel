@@ -37,8 +37,8 @@ class SparepartStockReportExport implements FromQuery, WithHeadings, WithMapping
     public function headings(): array
     {
         return $this->mode === 'detail'
-            ? ['Kode', 'Nama Sparepart', 'Cabang', 'Stok Min', 'On-Hand', 'Reserved', 'Available', 'Harga Satuan', 'Nilai Total', 'Status']
-            : ['Kode', 'Nama Sparepart', 'Cabang', 'Stok Min', 'Stok On-Hand', 'Nilai Inventaris', 'Status'];
+            ? ['Kode', 'Nama Sparepart', 'Cabang', 'Rak', 'Stok Min', 'On-Hand', 'Reserved', 'Available', 'Harga Jual', 'Nilai Total', 'Status']
+            : ['Kode', 'Nama Sparepart', 'Cabang', 'Rak', 'Stok Min', 'Stok On-Hand', 'Harga Jual', 'Nilai Inventaris', 'Status'];
     }
 
     public function map($sparepartBranch): array
@@ -48,6 +48,7 @@ class SparepartStockReportExport implements FromQuery, WithHeadings, WithMapping
         $available = $onHand - $reserved;
         $minimumStock = (float) $sparepartBranch->minimum_stock;
         $sellingPrice = (float) $sparepartBranch->selling_price;
+        $rackCode = optional($sparepartBranch->rack)->code ?? '-';
 
         if ($onHand == 0.0) {
             $status = 'Habis';
@@ -62,8 +63,10 @@ class SparepartStockReportExport implements FromQuery, WithHeadings, WithMapping
                 $sparepartBranch->sparepart->code,
                 $sparepartBranch->sparepart->name,
                 $sparepartBranch->branch->name,
+                $rackCode,
                 $minimumStock,
                 $onHand,
+                $sellingPrice,
                 $onHand * $sellingPrice,
                 $status,
             ];
@@ -73,6 +76,7 @@ class SparepartStockReportExport implements FromQuery, WithHeadings, WithMapping
             $sparepartBranch->sparepart->code,
             $sparepartBranch->sparepart->name,
             $sparepartBranch->branch->name,
+            $rackCode,
             $minimumStock,
             $onHand,
             $reserved,

@@ -101,11 +101,12 @@
                         <th>Kode</th>
                         <th>Nama Sparepart</th>
                         <th>Cabang</th>
+                        <th>Rak</th>
                         <th>Stok Min</th>
                         <th>On-Hand</th>
                         <th>Reserved</th>
                         <th>Available</th>
-                        <th>Harga Satuan</th>
+                        <th>Harga Jual</th>
                         <th>Nilai Total</th>
                         <th>Status</th>
                     </tr>
@@ -132,6 +133,7 @@
                             <td><code>{{ $sparepartBranch->sparepart->code }}</code></td>
                             <td>{{ $sparepartBranch->sparepart->name }}</td>
                             <td>{{ $sparepartBranch->branch->name }}</td>
+                            <td>{{ optional($sparepartBranch->rack)->code ?? '-' }}</td>
                             <td>{{ number_format($minimumStock, 0, ',', '.') }}</td>
                             <td>{{ number_format($onHand, 0, ',', '.') }}</td>
                             <td>{{ number_format($reserved, 0, ',', '.') }}</td>
@@ -142,7 +144,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="p-0">
+                            <td colspan="11" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-spreadsheet',
                                     'title' => 'Belum ada data sparepart',
@@ -163,8 +165,10 @@
                         <th>Kode</th>
                         <th>Nama Sparepart</th>
                         <th>Cabang</th>
+                        <th>Rak</th>
                         <th>Stok Min</th>
                         <th>Stok On-Hand</th>
+                        <th>Harga Jual</th>
                         <th>Nilai Inventaris</th>
                         <th>Status</th>
                     </tr>
@@ -191,14 +195,16 @@
                             <td><code>{{ $sparepartBranch->sparepart->code }}</code></td>
                             <td>{{ $sparepartBranch->sparepart->name }}</td>
                             <td>{{ $sparepartBranch->branch->name }}</td>
+                            <td>{{ optional($sparepartBranch->rack)->code ?? '-' }}</td>
                             <td>{{ number_format($minimumStock, 0, ',', '.') }}</td>
                             <td>{{ number_format($onHand, 0, ',', '.') }}</td>
+                            <td>{{ number_format($sellingPrice, 0, ',', '.') }}</td>
                             <td>{{ number_format($nilaiInventaris, 0, ',', '.') }}</td>
                             <td>{!! $statusBadge !!}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="p-0">
+                            <td colspan="9" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-spreadsheet',
                                     'title' => 'Belum ada data sparepart',

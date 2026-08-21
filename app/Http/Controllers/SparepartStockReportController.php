@@ -35,7 +35,7 @@ class SparepartStockReportController extends Controller
 
         $sparepartBranches = $query->select('sparepart_branches.*')
             ->addSelect(['sparepart_branch_stocks.on_hand_qty', 'sparepart_branch_stocks.reserved_qty'])
-            ->with(['sparepart', 'branch'])
+            ->with(['sparepart', 'branch', 'rack'])
             ->orderBy('sparepart_branches.branch_id')
             ->orderBy('sparepart_branches.id')
             ->simplePaginate(15)
@@ -62,7 +62,7 @@ class SparepartStockReportController extends Controller
         $query = $this->applyStockStatus($this->buildBaseQuery($filters, $permittedBranches), $filters['stockStatus'])
             ->select('sparepart_branches.*')
             ->addSelect(['sparepart_branch_stocks.on_hand_qty', 'sparepart_branch_stocks.reserved_qty'])
-            ->with(['sparepart', 'branch']);
+            ->with(['sparepart', 'branch', 'rack']);
 
         return Excel::download(
             new SparepartStockReportExport($query, $filters['mode'], $this->filterSummaryText($filters)),
@@ -90,7 +90,7 @@ class SparepartStockReportController extends Controller
         $query = $this->applyStockStatus($this->buildBaseQuery($filters, $permittedBranches), $filters['stockStatus'])
             ->select('sparepart_branches.*')
             ->addSelect(['sparepart_branch_stocks.on_hand_qty', 'sparepart_branch_stocks.reserved_qty'])
-            ->with(['sparepart', 'branch']);
+            ->with(['sparepart', 'branch', 'rack']);
 
         $rows = $query->orderBy('sparepart_branches.branch_id')->orderBy('sparepart_branches.id')->limit(1001)->get();
         [$rows, $truncated] = $this->capRows($rows);

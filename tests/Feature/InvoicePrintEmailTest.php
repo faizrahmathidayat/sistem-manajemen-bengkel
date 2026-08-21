@@ -129,7 +129,7 @@ class InvoicePrintEmailTest extends TestCase
         $this->assertStringContainsString("B 1234 {$branch->code}", $content);
     }
 
-    public function test_print_payment_history_only_includes_posted_receipts(): void
+    public function test_print_does_not_show_payment_or_outstanding_info(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $invoice = $this->makePostedInvoice($branch);
@@ -137,7 +137,7 @@ class InvoicePrintEmailTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'invoice.print');
 
         $paymentService = new PaymentService();
-        $postedReceipt = $paymentService->createPaymentReceipt([
+        $receipt = $paymentService->createPaymentReceipt([
             'branch_id' => $branch->id,
             'customer_id' => $invoice->customer_id,
             'payment_date' => now()->toDateString(),
@@ -147,23 +147,14 @@ class InvoicePrintEmailTest extends TestCase
             'notes' => null,
             'allocations' => [['invoice_id' => $invoice->id, 'allocated_amount' => 30000]],
         ]);
-        $voidedReceipt = $paymentService->createPaymentReceipt([
-            'branch_id' => $branch->id,
-            'customer_id' => $invoice->customer_id,
-            'payment_date' => now()->toDateString(),
-            'payment_method' => 'cash',
-            'reference_number' => null,
-            'amount' => 20000,
-            'notes' => null,
-            'allocations' => [['invoice_id' => $invoice->id, 'allocated_amount' => 20000]],
-        ]);
-        $paymentService->voidPaymentReceipt($voidedReceipt, 'Kesalahan input.');
 
         $response = $this->actingAs($user)->get("/invoices/{$invoice->id}/print");
 
         $content = $this->extractPdfText($response->getContent());
-        $this->assertStringContainsString($postedReceipt->number, $content);
-        $this->assertStringNotContainsString($voidedReceipt->number, $content);
+        $this->assertStringNotContainsString($receipt->number, $content);
+        $this->assertStringNotContainsString('Sisa Piutang', $content);
+        $this->assertStringNotContainsString('Sudah Dibayar', $content);
+        $this->assertStringNotContainsString('Pembayaran', $content);
     }
 
     public function test_print_is_forbidden_for_draft_invoice(): void

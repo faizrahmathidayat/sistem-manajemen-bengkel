@@ -27,10 +27,6 @@
         table.summary-table td.num { text-align: right; }
         table.summary-table tr.grand-total td { font-weight: bold; font-size: 12px; border-top: 1px solid #1a1a1a; }
 
-        table.payment-table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 14px; }
-        table.payment-table th, table.payment-table td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
-        table.payment-table th { background: #eee; font-weight: bold; }
-
         .signature-table { width: 100%; margin-top: 40px; font-size: 10px; }
         .signature-table td { width: 50%; text-align: center; }
         .signature-space { height: 50px; }
@@ -115,26 +111,7 @@
             <tr><td>PPN ({{ number_format($invoice->tax_percent, 2, ',', '.') }}%)</td><td class="num">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td></tr>
         @endif
         <tr class="grand-total"><td>Grand Total</td><td class="num">{{ number_format($invoice->grand_total, 0, ',', '.') }}</td></tr>
-        <tr><td>Sudah Dibayar</td><td class="num">{{ number_format($invoice->paid_amount, 0, ',', '.') }}</td></tr>
-        <tr><td>Sisa Piutang</td><td class="num">{{ number_format($invoice->outstanding_amount, 0, ',', '.') }}</td></tr>
     </table>
-
-    @if ($invoice->allocations->isNotEmpty())
-        <table class="payment-table">
-            <thead>
-                <tr><th>No. Pembayaran</th><th>Tanggal</th><th>Nominal Dialokasikan</th></tr>
-            </thead>
-            <tbody>
-                @foreach ($invoice->allocations as $allocation)
-                    <tr>
-                        <td>{{ $allocation->paymentReceipt->number }}</td>
-                        <td>{{ $allocation->paymentReceipt->payment_date->format('d/m/Y') }}</td>
-                        <td>{{ number_format($allocation->allocated_amount, 0, ',', '.') }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
 
     <table class="signature-table">
         <tr>

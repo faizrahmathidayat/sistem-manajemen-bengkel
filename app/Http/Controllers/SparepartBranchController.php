@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\SparepartMasterImportTemplateExport;
+use App\Http\Requests\ImportSparepartMasterLinesRequest;
+use App\Http\Requests\StoreSparepartMasterBulkRequest;
 use App\Http\Requests\StoreSparepartRequest;
 use App\Http\Requests\StoreSparepartToBranchRequest;
 use App\Http\Requests\UpdateSparepartBranchRequest;
+use App\Imports\SparepartMasterLinesImport;
 use App\Models\Branch;
 use App\Models\Rack;
 use App\Models\Sparepart;
@@ -12,6 +16,7 @@ use App\Models\SparepartBranch;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SparepartBranchController extends Controller
 {
@@ -86,6 +91,69 @@ class SparepartBranchController extends Controller
         });
 
         return redirect()->route('sparepart-branches.index')->with('status', 'Sparepart berhasil ditambahkan.');
+    }
+
+    public function importPage()
+    {
+        $branches = auth()->user()->branchesWithPermission('sparepart.create');
+
+        if ($branches->isEmpty()) {
+            return view('sparepart-branches.no-access');
+        }
+
+        $currentBranchId = session('current_sparepart_branch_id');
+        $selectedBranch = $branches->firstWhere('id', $currentBranchId) ?? $branches->first();
+        $racks = Rack::where('is_active', true)->orderBy('code')->get();
+
+        return view('sparepart-branches.import', compact('branches', 'selectedBranch', 'racks'));
+    }
+
+    public function downloadImportTemplate()
+    {
+        abort_if(auth()->user()->branchesWithPermission('sparepart.create')->isEmpty(), 403);
+
+        return Excel::download(new SparepartMasterImportTemplateExport(), 'template-import-master-sparepart.xlsx');
+    }
+
+    public function importLines(ImportSparepartMasterLinesRequest $request)
+    {
+        $data = $request->validated();
+
+        $import = new SparepartMasterLinesImport();
+        Excel::import($import, $data['file']);
+
+        if (! empty($import->errors)) {
+            return response()->json(['errors' => $import->errors], 422);
+        }
+
+        return response()->json(['lines' => $import->lines]);
+    }
+
+    public function storeBulk(StoreSparepartMasterBulkRequest $request)
+    {
+        $branch = Branch::findOrFail((int) $request->input('branch_id'));
+        $data = $request->validated();
+
+        $count = DB::transaction(function () use ($data, $branch) {
+            foreach ($data['lines'] as $line) {
+                $sparepart = Sparepart::create([
+                    'code' => $line['code'],
+                    'name' => $line['name'],
+                ]);
+
+                SparepartBranch::create([
+                    'sparepart_id' => $sparepart->id,
+                    'branch_id' => $branch->id,
+                    'rack_id' => $line['rack_id'] ?? null,
+                    'selling_price' => $line['selling_price'],
+                    'minimum_stock' => $line['minimum_stock'] ?? 0,
+                ]);
+            }
+
+            return count($data['lines']);
+        });
+
+        return redirect()->route('sparepart-branches.index')->with('status', "{$count} sparepart berhasil diimport.");
     }
 
     public function createExisting()

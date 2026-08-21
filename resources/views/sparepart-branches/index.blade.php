@@ -17,6 +17,9 @@
                 </a>
             @endif
             @if (auth()->user()->branchesWithPermission('sparepart.create')->isNotEmpty())
+                <a href="{{ route('sparepart-branches.import') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-file-earmark-arrow-up"></i> Import Sparepart
+                </a>
                 <a href="{{ route('sparepart-branches.create') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-lg"></i> Sparepart Baru
                 </a>

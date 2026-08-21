@@ -133,6 +133,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create-existing', [SparepartBranchController::class, 'createExisting'])->name('createExisting');
         Route::get('/lookup/unconfigured', [SparepartBranchController::class, 'lookupUnconfigured'])->name('lookup.unconfigured');
         Route::post('/existing', [SparepartBranchController::class, 'storeExisting'])->name('storeExisting');
+        Route::get('/import', [SparepartBranchController::class, 'importPage'])->name('import');
+        Route::get('/import-template', [SparepartBranchController::class, 'downloadImportTemplate'])->name('import-template');
+        Route::post('/import-lines', [SparepartBranchController::class, 'importLines'])->name('import-lines');
+        Route::post('/import', [SparepartBranchController::class, 'storeBulk'])->name('import-store');
         Route::get('/{sparepartBranch}/edit', [SparepartBranchController::class, 'edit'])->name('edit');
         Route::put('/{sparepartBranch}', [SparepartBranchController::class, 'update'])->name('update');
         Route::patch('/{sparepartBranch}/deactivate', [SparepartBranchController::class, 'deactivate'])->name('deactivate');

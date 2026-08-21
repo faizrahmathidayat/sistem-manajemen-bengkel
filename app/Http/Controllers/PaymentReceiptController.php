@@ -66,7 +66,18 @@ class PaymentReceiptController extends Controller
         try {
             $receipt = (new PaymentService())->createPaymentReceipt($request->validated());
         } catch (DomainException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return redirect()->route('payment-receipts.create')->withInput()->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Pembayaran berhasil dicatat.',
+                'redirect' => route('payment-receipts.show', $receipt),
+            ]);
         }
 
         return redirect()->route('payment-receipts.show', $receipt)->with('status', 'Pembayaran berhasil dicatat.');

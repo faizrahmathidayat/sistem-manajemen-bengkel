@@ -62,4 +62,11 @@ class InvoicePolicy
         return in_array($invoice->status, [InvoiceStatus::POSTED, InvoiceStatus::PARTIALLY_PAID, InvoiceStatus::PAID], true)
             && $user->hasPermissionToInBranch('invoice.share_whatsapp', $invoice->branch_id);
     }
+
+    public function pay(User $user, Invoice $invoice): bool
+    {
+        return in_array($invoice->status, [InvoiceStatus::POSTED, InvoiceStatus::PARTIALLY_PAID], true)
+            && $invoice->outstanding_amount > 0
+            && $user->hasPermissionToInBranch('payment.create', $invoice->branch_id);
+    }
 }

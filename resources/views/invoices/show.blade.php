@@ -42,6 +42,11 @@
                     </a>
                 @endif
             @endcan
+            @can('pay', $invoice)
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#payInvoiceModal">
+                    <i class="bi bi-cash-coin"></i> Bayar
+                </button>
+            @endcan
         </div>
     </div>
 
@@ -171,5 +176,153 @@
     @endif
 
     <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
+
+    @can('pay', $invoice)
+        <div class="modal fade" id="payInvoiceModal" tabindex="-1" aria-labelledby="payInvoiceModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="payInvoiceForm">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="payInvoiceModalLabel">Bayar Invoice {{ $invoice->number }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger d-none" id="payInvoiceGeneralError"></div>
+
+                            <input type="hidden" name="branch_id" value="{{ $invoice->branch_id }}">
+                            <input type="hidden" name="customer_id" value="{{ $invoice->customer_id }}">
+                            <input type="hidden" name="allocations[0][invoice_id]" value="{{ $invoice->id }}">
+                            <input type="hidden" name="allocations[0][allocated_amount]" id="payInvoiceAllocatedAmount" value="{{ $invoice->outstanding_amount }}">
+
+                            <div class="mb-3">
+                                <label class="form-label">Sisa Piutang</label>
+                                <input type="text" class="form-control" value="{{ number_format($invoice->outstanding_amount, 0, ',', '.') }}" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payInvoiceDate" class="form-label">Tanggal Bayar</label>
+                                <input type="date" name="payment_date" id="payInvoiceDate" class="form-control" value="{{ now()->format('Y-m-d') }}" required>
+                                <div class="invalid-feedback" data-error-for="payment_date"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payInvoiceMethod" class="form-label">Metode</label>
+                                <select name="payment_method" id="payInvoiceMethod" class="form-select" required>
+                                    @foreach ($paymentMethods as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="invalid-feedback" data-error-for="payment_method"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payInvoiceReference" class="form-label">No. Referensi</label>
+                                <input type="text" name="reference_number" id="payInvoiceReference" class="form-control">
+                                <div class="invalid-feedback" data-error-for="reference_number"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payInvoiceAmount" class="form-label">Nominal Dibayar</label>
+                                <input type="number" step="0.01" min="0.01" max="{{ $invoice->outstanding_amount }}" name="amount" id="payInvoiceAmount" class="form-control" value="{{ $invoice->outstanding_amount }}" required>
+                                <div class="invalid-feedback" data-error-for="amount"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payInvoiceNotes" class="form-label">Catatan</label>
+                                <textarea name="notes" id="payInvoiceNotes" class="form-control" rows="2"></textarea>
+                                <div class="invalid-feedback" data-error-for="notes"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary" id="payInvoiceSubmit">
+                                <span class="spinner-border spinner-border-sm d-none" id="payInvoiceSpinner" role="status" aria-hidden="true"></span>
+                                Simpan Pembayaran
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        @push('scripts')
+        <script>
+        (function () {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            const modalEl = document.getElementById('payInvoiceModal');
+            const form = document.getElementById('payInvoiceForm');
+            const generalError = document.getElementById('payInvoiceGeneralError');
+            const amountInput = document.getElementById('payInvoiceAmount');
+            const allocatedAmountInput = document.getElementById('payInvoiceAllocatedAmount');
+            const submitButton = document.getElementById('payInvoiceSubmit');
+            const spinner = document.getElementById('payInvoiceSpinner');
+
+            amountInput.addEventListener('input', function () {
+                allocatedAmountInput.value = amountInput.value;
+            });
+
+            function clearErrors() {
+                generalError.classList.add('d-none');
+                generalError.textContent = '';
+                form.querySelectorAll('.is-invalid').forEach(function (el) {
+                    el.classList.remove('is-invalid');
+                });
+                form.querySelectorAll('[data-error-for]').forEach(function (el) {
+                    el.textContent = '';
+                });
+            }
+
+            function showErrors(errors) {
+                Object.keys(errors).forEach(function (key) {
+                    const message = errors[key][0];
+                    const target = form.querySelector(`[data-error-for="${key}"]`);
+                    if (target) {
+                        target.textContent = message;
+                        const input = form.querySelector(`[name="${key}"]`) || document.getElementById('payInvoiceAmount');
+                        if (input) input.classList.add('is-invalid');
+                    } else {
+                        generalError.textContent = generalError.textContent ? generalError.textContent + ' ' + message : message;
+                        generalError.classList.remove('d-none');
+                    }
+                });
+            }
+
+            modalEl.addEventListener('show.bs.modal', clearErrors);
+
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                clearErrors();
+                submitButton.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    const response = await fetch(@json(route('payment-receipts.store')), {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: new FormData(form),
+                    });
+                    const data = await response.json();
+
+                    if (response.status === 422 && data.errors) {
+                        showErrors(data.errors);
+                        return;
+                    }
+                    if (!response.ok) {
+                        generalError.textContent = data.message || 'Terjadi kesalahan.';
+                        generalError.classList.remove('d-none');
+                        return;
+                    }
+
+                    window.location.reload();
+                } catch (error) {
+                    generalError.textContent = 'Gagal menghubungi server. Silakan coba lagi.';
+                    generalError.classList.remove('d-none');
+                } finally {
+                    submitButton.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+        })();
+        </script>
+        @endpush
+    @endcan
 
 @endsection

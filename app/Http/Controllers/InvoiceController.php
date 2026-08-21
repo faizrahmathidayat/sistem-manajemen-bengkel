@@ -15,6 +15,7 @@ use App\Models\WorkOrder;
 use App\Services\InvoiceService;
 use App\Support\InvoiceDetailItemType;
 use App\Support\InvoicePdfBuilder;
+use App\Support\PaymentMethod;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -100,7 +101,8 @@ class InvoiceController extends Controller
 
         $invoice->load(['branch', 'customer', 'workOrder', 'details', 'allocations.paymentReceipt']);
 
-        return view('invoices.show', compact('invoice'));
+        return view('invoices.show', compact('invoice'))
+            ->with('paymentMethods', PaymentMethod::LABELS);
     }
 
     public function edit(Invoice $invoice)

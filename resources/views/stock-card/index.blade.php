@@ -27,7 +27,7 @@
                 </div>
                 <div class="col-md-5">
                     <label class="form-label small mb-1">Sparepart</label>
-                    <select name="sparepart_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="sparepart_id" id="sparepartSelect" class="form-select form-select-sm" onchange="this.form.submit()">
                         @forelse ($spareparts as $sparepart)
                             <option value="{{ $sparepart->id }}" {{ $selectedSparepart && $sparepart->id === $selectedSparepart->id ? 'selected' : '' }}>
                                 {{ $sparepart->code }} &mdash; {{ $sparepart->name }}
@@ -40,6 +40,27 @@
             </form>
         </div>
     </div>
+
+    @push('scripts')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+    (function () {
+        const sparepartSelect = document.getElementById('sparepartSelect');
+        $(sparepartSelect).select2({ placeholder: '-- Pilih Sparepart --', width: '100%' });
+
+        // Select2 replaces the native <select>'s change semantics with its own jQuery
+        // events — a Select2-driven selection never fires a native `change` event, so
+        // the inline onchange="this.form.submit()" attribute on this element would
+        // silently never run. Re-trigger it explicitly, matching the same pattern
+        // already used in payment-receipts/create.blade.php for its own Select2 picker.
+        $(sparepartSelect).on('select2:select', function () {
+            sparepartSelect.dispatchEvent(new Event('change'));
+        });
+    })();
+    </script>
+    @endpush
 
     @if ($selectedSparepart)
         <div class="row g-3 mb-3">

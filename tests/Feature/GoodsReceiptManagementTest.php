@@ -187,6 +187,51 @@ class GoodsReceiptManagementTest extends TestCase
         $this->assertSame(2, \DB::table('inventory_movements')->count());
     }
 
+    public function test_post_sets_average_cost_to_purchase_price_for_first_receipt(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $this->grantBranchPermission($user, $branch, 'receipt.post');
+        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $goodsReceipt = GoodsReceipt::first();
+
+        $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
+
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
+        $this->assertSame(40000.0, (float) $stock->average_cost);
+    }
+
+    public function test_post_blends_average_cost_across_two_receipts(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'receipt.create');
+        $this->grantBranchPermission($user, $branch, 'receipt.post');
+
+        // Receipt 1: 10 @ 40000
+        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $firstReceipt = GoodsReceipt::first();
+        $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$firstReceipt->id}/post");
+
+        // Receipt 2: 5 @ 55000 -> expected avg (10*40000 + 5*55000) / 15 = 45000
+        $this->actingAs(User::find($user->id))->post('/goods-receipts', [
+            'branch_id' => $branch->id,
+            'receipt_date' => now()->format('Y-m-d'),
+            'lines' => [
+                ['sparepart_branch_id' => $sparepartBranch->id, 'qty' => 5, 'purchase_price' => 55000],
+            ],
+        ]);
+        $secondReceipt = GoodsReceipt::latest('id')->first();
+        $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$secondReceipt->id}/post");
+
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
+        $this->assertSame(15.0, (float) $stock->on_hand_qty);
+        $this->assertEqualsWithDelta(45000.0, (float) $stock->average_cost, 0.01);
+    }
+
     public function test_post_is_forbidden_without_receipt_post_permission(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

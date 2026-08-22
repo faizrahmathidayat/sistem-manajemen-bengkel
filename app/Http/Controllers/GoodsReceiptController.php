@@ -13,6 +13,7 @@ use App\Models\GoodsReceiptLine;
 use App\Models\InventoryMovement;
 use App\Models\SparepartBranchStock;
 use App\Services\DocumentNumberGenerator;
+use App\Services\InventoryCostService;
 use App\Support\GoodsReceiptStatus;
 use App\Support\InventoryMovementType;
 use Illuminate\Support\Facades\DB;
@@ -176,6 +177,10 @@ class GoodsReceiptController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
+                $qtyBefore = (float) $stock->on_hand_qty;
+                $stock->average_cost = app(InventoryCostService::class)->recalculateOnReceipt(
+                    $qtyBefore, (float) $stock->average_cost, (float) $line->qty, (float) $line->purchase_price
+                );
                 $stock->on_hand_qty += $line->qty;
                 $stock->save();
 

@@ -425,6 +425,9 @@ class InvoiceService
                         }
                     }
 
+                    $detail->hpp_snapshot = (float) $stock->average_cost;
+                    $detail->save();
+
                     $stock->on_hand_qty -= $detail->qty;
                     $stock->save();
 

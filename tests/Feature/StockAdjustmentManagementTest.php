@@ -572,6 +572,29 @@ class StockAdjustmentManagementTest extends TestCase
         $this->assertNull($movement->notes);
     }
 
+    public function test_post_with_positive_delta_does_not_change_average_cost(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch, '', 10);
+        \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->update(['average_cost' => 42000]);
+        $poster = User::factory()->create();
+        $this->grantBranchPermission($poster, $branch, 'stock_adjustment.post');
+        $stockAdjustment = StockAdjustment::create([
+            'number' => 'SA/JKT/202608/00001', 'branch_id' => $branch->id, 'adjustment_date' => now()->format('Y-m-d'),
+            'reason' => 'Opname', 'status' => StockAdjustmentStatus::APPROVED,
+        ]);
+        \App\Models\StockAdjustmentLine::create([
+            'stock_adjustment_id' => $stockAdjustment->id, 'sparepart_branch_id' => $sparepartBranch->id,
+            'system_qty' => 10, 'physical_qty' => 15, 'adjustment_qty' => 5, 'reason' => 'Ditemukan lebih',
+        ]);
+
+        $this->actingAs(User::find($poster->id))->patch("/stock-adjustments/{$stockAdjustment->id}/post");
+
+        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
+        $this->assertSame(15.0, (float) $stock->on_hand_qty, 'qty harus berubah sesuai physical_qty');
+        $this->assertSame(42000.0, (float) $stock->average_cost, 'average_cost TIDAK boleh berubah oleh Stock Adjustment positif (spec §3.3)');
+    }
+
     public function test_post_decreases_stock_when_physical_qty_is_lower_and_writes_adjustment_out_movement(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

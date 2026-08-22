@@ -579,6 +579,28 @@ class StockTransferManagementTest extends TestCase
         $this->assertSame(11.0, (float) $movement->balance_after);
     }
 
+    public function test_receive_does_not_change_average_cost_at_destination(): void
+    {
+        $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $to = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepart = $this->makeSparepartAtBranches($from, $to);
+        $toSparepartBranch = SparepartBranch::where('sparepart_id', $sparepart->id)->where('branch_id', $to->id)->first();
+        $toSparepartBranch->stock()->update(['on_hand_qty' => 3, 'average_cost' => 33000]);
+        $receiver = User::factory()->create();
+        $this->grantBranchPermission($receiver, $to, 'stock_transfer.receive');
+        $stockTransfer = StockTransfer::create([
+            'number' => 'ST/JKT/202608/00001', 'from_branch_id' => $from->id, 'to_branch_id' => $to->id,
+            'transfer_date' => now()->format('Y-m-d'), 'status' => TransferStatus::DISPATCHED,
+        ]);
+        \App\Models\StockTransferLine::create(['stock_transfer_id' => $stockTransfer->id, 'sparepart_id' => $sparepart->id, 'qty' => 8]);
+
+        $this->actingAs(User::find($receiver->id))->patch("/stock-transfers/{$stockTransfer->id}/receive");
+
+        $toStock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $toSparepartBranch->id)->first();
+        $this->assertSame(11.0, (float) $toStock->on_hand_qty);
+        $this->assertSame(33000.0, (float) $toStock->average_cost, 'average_cost TIDAK boleh berubah oleh Stock Transfer masuk (spec §3.3)');
+    }
+
     public function test_receive_rejects_when_destination_sparepart_branch_was_deactivated_after_dispatch(): void
     {
         $from = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

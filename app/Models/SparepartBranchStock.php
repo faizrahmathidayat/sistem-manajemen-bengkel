@@ -14,11 +14,12 @@ class SparepartBranchStock extends Model
 
     const CREATED_AT = null;
 
-    protected $fillable = ['sparepart_branch_id', 'on_hand_qty', 'reserved_qty'];
+    protected $fillable = ['sparepart_branch_id', 'on_hand_qty', 'reserved_qty', 'average_cost'];
 
     protected $casts = [
         'on_hand_qty' => 'decimal:3',
         'reserved_qty' => 'decimal:3',
+        'average_cost' => 'decimal:2',
     ];
 
     public function sparepartBranch()

@@ -90,4 +90,37 @@ class GrossProfitReportExportTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_export_excel_is_forbidden_without_permission(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/reports/gross-profit/export-excel')->assertForbidden();
+    }
+
+    public function test_export_excel_summary_returns_xlsx(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makePostedInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'report.gross_profit.view');
+
+        $response = $this->actingAs($user)->get('/reports/gross-profit/export-excel');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
+    public function test_export_excel_invoice_detail_returns_xlsx(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makePostedInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'report.gross_profit.view');
+
+        $response = $this->actingAs($user)->get('/reports/gross-profit/export-excel?view_type=invoice_detail');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
 }

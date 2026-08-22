@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\GrossProfitInvoiceDetailExport;
+use App\Exports\GrossProfitSummaryExport;
 use App\Http\Controllers\Concerns\HandlesReportExport;
 use App\Models\Invoice;
 use App\Support\InvoiceStatus;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class GrossProfitReportController extends Controller
 {
@@ -63,7 +66,27 @@ class GrossProfitReportController extends Controller
 
     public function exportExcel()
     {
-        abort(501, 'Belum diimplementasikan — lihat Task 9.');
+        $user = auth()->user();
+        $permittedBranches = $user->branchesWithPermission('report.gross_profit.view');
+        $this->authorizeExport($permittedBranches);
+
+        $filters = $this->resolveFilters($permittedBranches);
+
+        if ($filters['viewType'] === 'invoice_detail') {
+            $query = $this->buildInvoiceDetailQuery($filters, $permittedBranches)->with(['branch', 'customer']);
+
+            return Excel::download(
+                new GrossProfitInvoiceDetailExport($query, $this->filterSummaryText($filters)),
+                'laporan-laba-rugi-detail-' . now()->format('Ymd-His') . '.xlsx'
+            );
+        }
+
+        $query = $this->buildSummaryQuery($filters, $permittedBranches);
+
+        return Excel::download(
+            new GrossProfitSummaryExport($query, $this->filterSummaryText($filters)),
+            'laporan-laba-rugi-ringkasan-' . now()->format('Ymd-His') . '.xlsx'
+        );
     }
 
     public function previewPdf()

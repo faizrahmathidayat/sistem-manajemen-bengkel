@@ -287,6 +287,14 @@ class MenuPermissionSeeder extends Seeder
                     ['code' => 'report.export', 'resource' => 'report', 'action' => 'export', 'description' => 'Mengekspor laporan'],
                 ],
             ],
+            [
+                'code' => 'reporting.gross_profit',
+                'name' => 'Laporan Laba Rugi',
+                'is_branch_scoped' => true,
+                'permissions' => [
+                    ['code' => 'report.gross_profit.view', 'resource' => 'report', 'action' => 'gross_profit.view', 'description' => 'Melihat laporan laba rugi'],
+                ],
+            ],
         ];
     }
 }

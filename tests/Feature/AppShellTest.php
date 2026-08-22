@@ -383,6 +383,21 @@ class AppShellTest extends TestCase
         $response->assertDontSee('Segera Hadir', false);
     }
 
+    public function test_sidebar_links_directly_to_gross_profit_report_when_permitted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $permission = Permission::create(['code' => 'report.gross_profit.view', 'resource' => 'report', 'action' => 'gross_profit.view', 'description' => 'Melihat laporan laba rugi']);
+        $user = User::factory()->create();
+        (new UserBranchService())->assign($user, $branch);
+        UserBranchPermission::create(['user_id' => $user->id, 'branch_id' => $branch->id, 'permission_id' => $permission->id]);
+
+        $response = $this->actingAs(User::find($user->id))->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee(route('reports.gross-profit.index'), false);
+        $response->assertDontSee('Segera Hadir', false);
+    }
+
     public function test_sidebar_links_directly_to_invoice_pkb_gap_report_when_permitted(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

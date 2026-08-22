@@ -58,6 +58,14 @@ class MenuPermissionSeederTest extends TestCase
         $this->assertDatabaseHas('permissions', ['code' => 'report.workshop_performance.view']);
     }
 
+    public function test_seeder_creates_gross_profit_report_menu_and_permission(): void
+    {
+        $this->seed(MenuPermissionSeeder::class);
+
+        $this->assertDatabaseHas('menus', ['code' => 'reporting.gross_profit', 'is_branch_scoped' => true]);
+        $this->assertDatabaseHas('permissions', ['code' => 'report.gross_profit.view']);
+    }
+
     public function test_seeds_invoice_share_whatsapp_permission(): void
     {
         $this->seed(MenuPermissionSeeder::class);

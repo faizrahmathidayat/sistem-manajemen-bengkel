@@ -7,6 +7,7 @@ use App\Http\Controllers\CustomerBranchAssignmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoodsReceiptController;
+use App\Http\Controllers\GrossProfitReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoicePkbGapReportController;
 use App\Http\Controllers\InvoiceReportController;
@@ -262,6 +263,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/sparepart-stock/export-excel', [SparepartStockReportController::class, 'exportExcel'])->name('sparepart-stock.export-excel');
         Route::get('/sparepart-stock/pdf-preview', [SparepartStockReportController::class, 'previewPdf'])->name('sparepart-stock.pdf-preview');
         Route::get('/sparepart-stock/pdf-download', [SparepartStockReportController::class, 'downloadPdf'])->name('sparepart-stock.pdf-download');
+        Route::get('/gross-profit', [GrossProfitReportController::class, 'index'])->name('gross-profit.index');
+        Route::get('/gross-profit/export-excel', [GrossProfitReportController::class, 'exportExcel'])->name('gross-profit.export-excel');
+        Route::get('/gross-profit/pdf-preview', [GrossProfitReportController::class, 'previewPdf'])->name('gross-profit.pdf-preview');
+        Route::get('/gross-profit/pdf-download', [GrossProfitReportController::class, 'downloadPdf'])->name('gross-profit.pdf-download');
     });
 
     Route::prefix('users')->name('users.')->group(function () {

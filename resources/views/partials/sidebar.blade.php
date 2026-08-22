@@ -123,7 +123,7 @@
     @endcan
 @endif
 
-@if ($user && ($user->branchesWithPermission('report.pkb.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice.view')->isNotEmpty() || $user->branchesWithPermission('report.workshop_performance.view')->isNotEmpty() || $user->branchesWithPermission('report.receivable.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice_pkb_gap.view')->isNotEmpty() || $user->branchesWithPermission('report.sparepart.view')->isNotEmpty()))
+@if ($user && ($user->branchesWithPermission('report.pkb.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice.view')->isNotEmpty() || $user->branchesWithPermission('report.workshop_performance.view')->isNotEmpty() || $user->branchesWithPermission('report.receivable.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice_pkb_gap.view')->isNotEmpty() || $user->branchesWithPermission('report.sparepart.view')->isNotEmpty() || $user->branchesWithPermission('report.gross_profit.view')->isNotEmpty()))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Reporting</div>
     @if ($user->branchesWithPermission('report.pkb.view')->isNotEmpty())
         <a href="{{ route('reports.pkb.index') }}" class="nav-link {{ request()->routeIs('reports.pkb.*') ? 'active' : '' }}">
@@ -159,6 +159,12 @@
         <a href="{{ route('reports.sparepart-stock.index') }}" class="nav-link {{ request()->routeIs('reports.sparepart-stock.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-file-earmark-spreadsheet"></i></span>
             <span class="nav-text">Laporan Stok</span>
+        </a>
+    @endif
+    @if ($user->branchesWithPermission('report.gross_profit.view')->isNotEmpty())
+        <a href="{{ route('reports.gross-profit.index') }}" class="nav-link {{ request()->routeIs('reports.gross-profit.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-graph-up-arrow"></i></span>
+            <span class="nav-text">Laporan Laba Rugi</span>
         </a>
     @endif
 @endif

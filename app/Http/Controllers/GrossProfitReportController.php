@@ -68,12 +68,49 @@ class GrossProfitReportController extends Controller
 
     public function previewPdf()
     {
-        abort(501, 'Belum diimplementasikan — lihat Task 8.');
+        return $this->renderPdf('inline');
     }
 
     public function downloadPdf()
     {
-        abort(501, 'Belum diimplementasikan — lihat Task 8.');
+        return $this->renderPdf('attachment');
+    }
+
+    protected function renderPdf(string $disposition)
+    {
+        $user = auth()->user();
+        $permittedBranches = $user->branchesWithPermission('report.gross_profit.view');
+        $this->authorizeExport($permittedBranches);
+
+        $filters = $this->resolveFilters($permittedBranches);
+
+        if ($filters['viewType'] === 'invoice_detail') {
+            $rows = $this->buildInvoiceDetailQuery($filters, $permittedBranches)
+                ->with(['branch', 'customer'])
+                ->orderByDesc('invoice_date')->orderByDesc('id')
+                ->limit(1001)->get();
+            [$rows, $truncated] = $this->capRows($rows);
+
+            return $this->streamPdf('reports.gross-profit.pdf', [
+                'viewType' => $filters['viewType'],
+                'branches' => $permittedBranches,
+                'summaryRows' => collect(),
+                'invoices' => $rows,
+                'truncated' => $truncated,
+                'filterSummary' => $this->filterSummaryText($filters),
+            ], 'laporan-laba-rugi-detail', $disposition);
+        }
+
+        $rows = $this->buildSummaryQuery($filters, $permittedBranches)->get();
+
+        return $this->streamPdf('reports.gross-profit.pdf', [
+            'viewType' => $filters['viewType'],
+            'branches' => $permittedBranches,
+            'summaryRows' => $rows,
+            'invoices' => collect(),
+            'truncated' => false,
+            'filterSummary' => $this->filterSummaryText($filters),
+        ], 'laporan-laba-rugi-ringkasan', $disposition);
     }
 
     protected function resolveFilters(SupportCollection $permittedBranches): array

@@ -73,6 +73,8 @@
         wrapper.querySelector('.service-unit-price').name = `services[${index}][unit_price]`;
         wrapper.querySelector('.service-discount-percent').name = `services[${index}][discount_percent]`;
 
+        let catalogSelect = null;
+
         if (locked) {
             wrapper.querySelector('.service-item-locked').classList.remove('d-none');
             wrapper.querySelector('.service-item-free').classList.add('d-none');
@@ -84,7 +86,8 @@
             hiddenDescription.name = `services[${index}][description]`;
             wrapper.appendChild(hiddenDescription);
 
-            wrapper.querySelector('.service-catalog-select').addEventListener('change', function () {
+            catalogSelect = wrapper.querySelector('.service-catalog-select');
+            catalogSelect.addEventListener('change', function () {
                 const selected = this.selectedOptions[0];
                 hiddenDescription.value = this.value ? (selected.dataset.name || '') : '';
                 if (this.value) {
@@ -94,10 +97,24 @@
         }
 
         wrapper.querySelector('.remove-line').addEventListener('click', function () {
+            if (catalogSelect && $(catalogSelect).data('select2')) $(catalogSelect).select2('destroy');
             wrapper.remove();
         });
         wrapper.classList.add('line-row-enter');
         document.getElementById('invoiceServiceLines').appendChild(wrapper);
+
+        if (catalogSelect) {
+            $(catalogSelect).select2({ placeholder: '-- Manual --', width: '100%', allowClear: true });
+            // Select2 replaces the native <select>'s change semantics with its own jQuery
+            // events — a Select2-driven selection never fires a native `change` event, so
+            // the addEventListener('change', ...) handler above would silently never run.
+            // Re-trigger it explicitly, same bridge pattern used for work-orders' Katalog
+            // Jasa picker and the sparepart/vehicle/mechanic pickers elsewhere in this app.
+            $(catalogSelect).on('select2:select select2:clear', function () {
+                catalogSelect.dispatchEvent(new Event('change'));
+            });
+        }
+
         return wrapper;
     }
 

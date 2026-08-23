@@ -112,6 +112,33 @@ class InvoiceDirectSaleTest extends TestCase
         $response->assertSee('Invoice Langsung');
     }
 
+    public function test_create_direct_form_auto_selects_branch_when_user_has_only_one(): void
+    {
+        [$branch] = $this->makeBranchAndCustomer();
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $response = $this->actingAs($user)->get('/invoices/direct/create');
+
+        $response->assertOk();
+        $response->assertSee('<option value="' . $branch->id . '" selected', false);
+    }
+
+    public function test_create_direct_form_does_not_auto_select_branch_when_user_has_multiple(): void
+    {
+        [$branchA] = $this->makeBranchAndCustomer();
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'invoice.create');
+        $this->grantBranchPermission($user, $branchB, 'invoice.create');
+
+        $response = $this->actingAs($user)->get('/invoices/direct/create');
+
+        $response->assertOk();
+        $response->assertDontSee('<option value="' . $branchA->id . '" selected', false);
+        $response->assertDontSee('<option value="' . $branchB->id . '" selected', false);
+    }
+
     public function test_create_direct_form_shows_no_access_without_permission(): void
     {
         $user = User::factory()->create();

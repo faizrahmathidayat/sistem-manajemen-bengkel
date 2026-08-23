@@ -596,6 +596,35 @@ class WorkOrderManagementTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_create_form_auto_selects_branch_when_user_has_only_one(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $this->makeScenario($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'pkb.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/work-orders/create');
+
+        $response->assertOk();
+        $response->assertSee('<option value="' . $branch->id . '" selected', false);
+    }
+
+    public function test_create_form_does_not_auto_select_branch_when_user_has_multiple(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $this->makeScenario($branchA);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'pkb.create');
+        $this->grantBranchPermission($user, $branchB, 'pkb.create');
+
+        $response = $this->actingAs(User::find($user->id))->get('/work-orders/create');
+
+        $response->assertOk();
+        $response->assertDontSee('<option value="' . $branchA->id . '" selected', false);
+        $response->assertDontSee('<option value="' . $branchB->id . '" selected', false);
+    }
+
     public function test_edit_form_renders_for_a_user_with_pkb_edit_on_a_draft_work_order(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

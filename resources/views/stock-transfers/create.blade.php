@@ -25,10 +25,13 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Cabang Asal</label>
+                    @php
+                        $defaultFromBranchId = old('from_branch_id') ?: ($fromBranches->count() === 1 ? $fromBranches->first()->id : null);
+                    @endphp
                     <select name="from_branch_id" id="fromBranchSelect" class="form-select @error('from_branch_id') is-invalid @enderror" required>
                         <option value="">-- Pilih Cabang Asal --</option>
                         @foreach ($fromBranches as $branch)
-                            <option value="{{ $branch->id }}" {{ (int) old('from_branch_id') === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                            <option value="{{ $branch->id }}" {{ (int) $defaultFromBranchId === $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
                         @endforeach
                     </select>
                     @error('from_branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror

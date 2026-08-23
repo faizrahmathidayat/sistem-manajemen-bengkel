@@ -80,6 +80,33 @@ class PaymentReceiptControllerTest extends TestCase
         return (new InvoiceService())->postInvoice($invoice);
     }
 
+    public function test_create_form_auto_selects_branch_when_user_has_only_one(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'payment.create');
+
+        $response = $this->actingAs($user)->get('/payment-receipts/create');
+
+        $response->assertOk();
+        $response->assertSee('<option value="' . $branch->id . '" selected', false);
+    }
+
+    public function test_create_form_does_not_auto_select_branch_when_user_has_multiple(): void
+    {
+        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branchA, 'payment.create');
+        $this->grantBranchPermission($user, $branchB, 'payment.create');
+
+        $response = $this->actingAs($user)->get('/payment-receipts/create');
+
+        $response->assertOk();
+        $response->assertDontSee('<option value="' . $branchA->id . '" selected', false);
+        $response->assertDontSee('<option value="' . $branchB->id . '" selected', false);
+    }
+
     public function test_index_filters_by_status(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

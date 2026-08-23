@@ -202,7 +202,11 @@
                 WorkOrderLineItems.addServiceLine();
                 const rows = document.querySelectorAll('#serviceLines .service-line');
                 const row = rows[rows.length - 1];
-                if (line.service_catalog_id) row.querySelector('.service-catalog-select').value = line.service_catalog_id;
+                if (line.service_catalog_id) {
+                    const catalogSelect = row.querySelector('.service-catalog-select');
+                    catalogSelect.value = line.service_catalog_id;
+                    $(catalogSelect).trigger('change.select2');
+                }
                 row.querySelector('.service-description').value = line.description || '';
                 row.querySelector('.service-qty').value = line.qty || '';
                 row.querySelector('.service-unit-price').value = line.unit_price || '';

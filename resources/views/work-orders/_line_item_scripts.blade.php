@@ -76,11 +76,12 @@
         const clone = template.content.cloneNode(true);
         const wrapper = clone.querySelector('.service-line');
         const index = serviceLineCount++;
-        wrapper.querySelector('.service-catalog-select').name = `services[${index}][service_catalog_id]`;
+        const catalogSelect = wrapper.querySelector('.service-catalog-select');
+        catalogSelect.name = `services[${index}][service_catalog_id]`;
         wrapper.querySelector('.service-description').name = `services[${index}][description]`;
         wrapper.querySelector('.service-qty').name = `services[${index}][qty]`;
         wrapper.querySelector('.service-unit-price').name = `services[${index}][unit_price]`;
-        wrapper.querySelector('.service-catalog-select').addEventListener('change', function () {
+        catalogSelect.addEventListener('change', function () {
             const selected = this.selectedOptions[0];
             const description = wrapper.querySelector('.service-description');
             const unitPrice = wrapper.querySelector('.service-unit-price');
@@ -90,10 +91,21 @@
             }
         });
         wrapper.querySelector('.remove-line').addEventListener('click', function () {
+            if ($(catalogSelect).data('select2')) $(catalogSelect).select2('destroy');
             wrapper.remove();
         });
         wrapper.classList.add('line-row-enter');
         document.getElementById('serviceLines').appendChild(wrapper);
+
+        $(catalogSelect).select2({ placeholder: '-- Pilih Jasa --', width: '100%', allowClear: true });
+        // Select2 replaces the native <select>'s change semantics with its own jQuery
+        // events — a Select2-driven selection never fires a native `change` event, so
+        // the addEventListener('change', ...) handler above would silently never run.
+        // Re-trigger it explicitly, same bridge pattern used for the sparepart/vehicle/
+        // mechanic pickers elsewhere in this app.
+        $(catalogSelect).on('select2:select select2:clear', function () {
+            catalogSelect.dispatchEvent(new Event('change'));
+        });
     }
 
     function addSparepartLine(branchId) {

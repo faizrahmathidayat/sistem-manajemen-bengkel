@@ -503,6 +503,48 @@ class InvoicePkbGapReportControllerTest extends TestCase
         });
     }
 
+    public function test_index_detail_mode_categorizes_matching_line_with_invoice_discount_as_discounted(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        // PKB service line: 1 x Ganti Oli @ 100000, no discount concept at PKB level.
+        $pair = $this->makeGapPair($branch, $customer, 100000, 0, now()->toDateString(), null, false);
+        $serviceDetail = $pair['invoice']->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+
+        $viewer = User::factory()->create();
+        $editor = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice_pkb_gap.view');
+        $this->grantBranchPermission($editor, $branch, 'invoice.edit');
+
+        // Same qty and unit_price as the PKB line — only a 10% discount is added on the invoice.
+        $this->actingAs($editor)->put("/invoices/{$pair['invoice']->id}", [
+            'discount_percent' => 0, 'tax_percent' => 0,
+            'services' => [
+                [
+                    'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                    'description' => 'Ganti Oli',
+                    'qty' => 1,
+                    'unit_price' => 100000,
+                    'discount_percent' => 10,
+                ],
+            ],
+            'spareparts' => [],
+        ]);
+
+        $response = $this->actingAs($viewer)->get('/reports/invoice-pkb-gap?mode=detail&gap_status=semua');
+
+        $response->assertOk();
+        $response->assertViewHas('invoices', function ($invoices) {
+            $line = collect($invoices->first()->comparisonLines)->firstWhere('item_name', 'Ganti Oli');
+
+            return $line['category'] === 'discounted'
+                && (float) $line['invoice_discount_percent'] === 10.0
+                && (float) $line['invoice_discount_amount'] === 10000.0;
+        });
+        $response->assertSee('Diskon Invoice');
+        $response->assertSee('Ada Diskon');
+    }
+
     public function test_index_renders_filter_form_and_summary_cards(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

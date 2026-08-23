@@ -117,6 +117,7 @@
                         <th>Harga PKB</th>
                         <th>Qty Invoice</th>
                         <th>Harga Invoice</th>
+                        <th>Diskon Invoice</th>
                         <th>Kategori</th>
                     </tr>
                 </thead>
@@ -135,8 +136,18 @@
                                 <td>{{ $line['invoice_qty'] !== null ? number_format($line['invoice_qty'], 0, ',', '.') : '—' }}</td>
                                 <td>{{ $line['invoice_price'] !== null ? number_format($line['invoice_price'], 0, ',', '.') : '—' }}</td>
                                 <td>
+                                    @if (($line['invoice_discount_amount'] ?? 0) > 0)
+                                        {{ number_format($line['invoice_discount_amount'], 0, ',', '.') }}
+                                        <span class="text-muted small">({{ number_format($line['invoice_discount_percent'], 1, ',', '.') }}%)</span>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                <td>
                                     @if ($line['category'] === 'sesuai')
                                         <span class="status-dot status-active">Sesuai</span>
+                                    @elseif ($line['category'] === 'discounted')
+                                        <span class="status-dot status-warning">Ada Diskon</span>
                                     @elseif ($line['category'] === 'changed')
                                         <span class="status-dot status-warning">Berubah</span>
                                     @elseif ($line['category'] === 'removed')
@@ -152,12 +163,12 @@
                                 <td><a href="{{ route('invoices.show', $invoice) }}"><code>{{ $invoice->number }}</code></a></td>
                                 <td>{{ $invoice->invoice_date->format('d/m/Y') }}</td>
                                 <td>{{ $invoice->customer->name }}</td>
-                                <td colspan="7">&mdash;</td>
+                                <td colspan="8">&mdash;</td>
                             </tr>
                         @endforelse
                     @empty
                         <tr>
-                            <td colspan="11" class="p-0">
+                            <td colspan="12" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-bar-chart-steps',
                                     'title' => 'Belum ada data transaksi',

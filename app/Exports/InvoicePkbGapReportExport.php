@@ -39,7 +39,7 @@ class InvoicePkbGapReportExport implements FromQuery, WithHeadings, WithMapping,
     public function headings(): array
     {
         return $this->mode === 'detail'
-            ? ['No. PKB', 'No. Invoice', 'Tanggal', 'Customer', 'Tipe Item', 'Nama Item', 'Qty PKB', 'Harga PKB', 'Qty Invoice', 'Harga Invoice', 'Kategori']
+            ? ['No. PKB', 'No. Invoice', 'Tanggal', 'Customer', 'Tipe Item', 'Nama Item', 'Qty PKB', 'Harga PKB', 'Qty Invoice', 'Harga Invoice', 'Diskon Invoice', 'Kategori']
             : ['No. PKB', 'No. Invoice', 'Tanggal', 'Customer', 'Total PKB', 'Total Invoice', 'Selisih (Rp)', 'Status Gap'];
     }
 
@@ -64,11 +64,11 @@ class InvoicePkbGapReportExport implements FromQuery, WithHeadings, WithMapping,
             ];
         }
 
-        $categoryLabels = ['sesuai' => 'Sesuai', 'changed' => 'Berubah', 'removed' => 'Dihapus', 'added' => 'Ditambahkan'];
+        $categoryLabels = ['sesuai' => 'Sesuai', 'discounted' => 'Ada Diskon', 'changed' => 'Berubah', 'removed' => 'Dihapus', 'added' => 'Ditambahkan'];
         $lines = InvoicePkbGapComparator::build($invoice);
 
         if (empty($lines)) {
-            return [[$invoice->workOrder->number, $invoice->number, $invoice->invoice_date->format('Y-m-d'), $invoice->customer->name, '-', '-', null, null, null, null, '-']];
+            return [[$invoice->workOrder->number, $invoice->number, $invoice->invoice_date->format('Y-m-d'), $invoice->customer->name, '-', '-', null, null, null, null, null, '-']];
         }
 
         return array_map(function ($line) use ($invoice, $categoryLabels) {
@@ -83,6 +83,7 @@ class InvoicePkbGapReportExport implements FromQuery, WithHeadings, WithMapping,
                 $line['pkb_price'],
                 $line['invoice_qty'],
                 $line['invoice_price'],
+                $line['invoice_discount_amount'],
                 $categoryLabels[$line['category']],
             ];
         }, $lines);

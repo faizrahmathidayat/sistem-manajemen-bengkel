@@ -34,6 +34,8 @@ class InvoicePkbGapComparator
                 'pkb_price' => null,
                 'invoice_qty' => (float) $detail->qty,
                 'invoice_price' => (float) $detail->unit_price,
+                'invoice_discount_percent' => (float) $detail->discount_percent,
+                'invoice_discount_amount' => (float) $detail->discount_amount,
                 'category' => 'added',
             ];
         }
@@ -51,12 +53,24 @@ class InvoicePkbGapComparator
                 'pkb_price' => (float) $pkbLine->unit_price,
                 'invoice_qty' => null,
                 'invoice_price' => null,
+                'invoice_discount_percent' => null,
+                'invoice_discount_amount' => null,
                 'category' => 'removed',
             ];
         }
 
-        $unchanged = (float) $pkbLine->qty === (float) $detail->qty
+        $qtyAndPriceUnchanged = (float) $pkbLine->qty === (float) $detail->qty
             && (float) $pkbLine->unit_price === (float) $detail->unit_price;
+
+        // PKB (work_order_service_lines/work_order_sparepart_lines) has no discount concept at
+        // all — discount is only introduced once a line becomes an invoice_details row. So a line
+        // whose qty/harga satuan match the PKB exactly, but carries a nonzero invoice discount,
+        // is NOT "sesuai": its net value genuinely diverges from what the PKB planned, even though
+        // qty/price look identical at a glance.
+        $category = 'changed';
+        if ($qtyAndPriceUnchanged) {
+            $category = (float) $detail->discount_amount > 0 ? 'discounted' : 'sesuai';
+        }
 
         return [
             'item_type' => $itemType,
@@ -65,7 +79,9 @@ class InvoicePkbGapComparator
             'pkb_price' => (float) $pkbLine->unit_price,
             'invoice_qty' => (float) $detail->qty,
             'invoice_price' => (float) $detail->unit_price,
-            'category' => $unchanged ? 'sesuai' : 'changed',
+            'invoice_discount_percent' => (float) $detail->discount_percent,
+            'invoice_discount_amount' => (float) $detail->discount_amount,
+            'category' => $category,
         ];
     }
 }

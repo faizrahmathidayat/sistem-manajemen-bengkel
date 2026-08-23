@@ -10,11 +10,11 @@
     <table class="print-table">
         @if ($mode === 'detail')
             <thead>
-                <tr><th>No. PKB</th><th>No. Invoice</th><th>Tanggal</th><th>Customer</th><th>Tipe Item</th><th>Nama Item</th><th>Qty PKB</th><th>Harga PKB</th><th>Qty Invoice</th><th>Harga Invoice</th><th>Kategori</th></tr>
+                <tr><th>No. PKB</th><th>No. Invoice</th><th>Tanggal</th><th>Customer</th><th>Tipe Item</th><th>Nama Item</th><th>Qty PKB</th><th>Harga PKB</th><th>Qty Invoice</th><th>Harga Invoice</th><th>Diskon Invoice</th><th>Kategori</th></tr>
             </thead>
             <tbody>
                 @foreach ($invoices as $invoice)
-                    @php $categoryLabels = ['sesuai' => 'Sesuai', 'changed' => 'Berubah', 'removed' => 'Dihapus', 'added' => 'Ditambahkan']; @endphp
+                    @php $categoryLabels = ['sesuai' => 'Sesuai', 'discounted' => 'Ada Diskon', 'changed' => 'Berubah', 'removed' => 'Dihapus', 'added' => 'Ditambahkan']; @endphp
                     @forelse ($invoice->comparisonLines as $line)
                         <tr>
                             <td>{{ $invoice->workOrder->number }}</td><td>{{ $invoice->number }}</td><td>{{ $invoice->invoice_date->format('d/m/Y') }}</td><td>{{ $invoice->customer->name }}</td>
@@ -23,12 +23,13 @@
                             <td>{{ $line['pkb_price'] !== null ? number_format($line['pkb_price'], 0, ',', '.') : '—' }}</td>
                             <td>{{ $line['invoice_qty'] !== null ? number_format($line['invoice_qty'], 0, ',', '.') : '—' }}</td>
                             <td>{{ $line['invoice_price'] !== null ? number_format($line['invoice_price'], 0, ',', '.') : '—' }}</td>
+                            <td>{{ ($line['invoice_discount_amount'] ?? 0) > 0 ? number_format($line['invoice_discount_amount'], 0, ',', '.') . ' (' . number_format($line['invoice_discount_percent'], 1, ',', '.') . '%)' : '—' }}</td>
                             <td>{{ $categoryLabels[$line['category']] }}</td>
                         </tr>
                     @empty
                         <tr>
                             <td>{{ $invoice->workOrder->number }}</td><td>{{ $invoice->number }}</td><td>{{ $invoice->invoice_date->format('d/m/Y') }}</td><td>{{ $invoice->customer->name }}</td>
-                            <td colspan="7">&mdash;</td>
+                            <td colspan="8">&mdash;</td>
                         </tr>
                     @endforelse
                 @endforeach

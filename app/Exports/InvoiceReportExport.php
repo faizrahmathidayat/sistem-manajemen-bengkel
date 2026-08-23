@@ -39,7 +39,7 @@ class InvoiceReportExport implements FromQuery, WithHeadings, WithMapping, WithC
     {
         return $this->mode === 'detail'
             ? ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Status', 'Tipe Item', 'Nama Item', 'Qty', 'Harga Satuan', 'Diskon', 'Subtotal Line']
-            : ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Subtotal Jasa', 'Subtotal Sparepart', 'Discount', 'Grand Total', 'Terbayar', 'Sisa Piutang', 'Status'];
+            : ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Subtotal Jasa', 'Subtotal Sparepart', 'Discount', 'PPN', 'Grand Total', 'Terbayar', 'Sisa Piutang', 'Status'];
     }
 
     public function map($invoice): array
@@ -57,6 +57,7 @@ class InvoiceReportExport implements FromQuery, WithHeadings, WithMapping, WithC
                 (float) $invoice->subtotal_service,
                 (float) $invoice->subtotal_sparepart,
                 (float) $invoice->discount_amount,
+                (float) $invoice->tax_amount,
                 (float) $invoice->grand_total,
                 (float) $invoice->paid_amount,
                 (float) $invoice->outstanding_amount,

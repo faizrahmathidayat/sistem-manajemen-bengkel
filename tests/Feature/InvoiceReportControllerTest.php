@@ -352,6 +352,22 @@ class InvoiceReportControllerTest extends TestCase
         $response->assertSee('Diposting');
     }
 
+    public function test_index_rekap_mode_shows_ppn_column(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makeInvoice($branch, $customer, 100000, 0, now()->toDateString());
+        $invoice->update(['tax_percent' => 11, 'tax_amount' => 11000, 'grand_total' => 111000]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices');
+
+        $response->assertOk();
+        $response->assertSee('PPN');
+        $response->assertSee('11.000');
+    }
+
     public function test_index_rekap_mode_shows_branch_and_mechanic_columns(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

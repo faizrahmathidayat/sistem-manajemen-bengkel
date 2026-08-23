@@ -204,6 +204,7 @@
                         <th>Subtotal Jasa</th>
                         <th>Subtotal Sparepart</th>
                         <th>Discount</th>
+                        <th>PPN</th>
                         <th>Grand Total</th>
                         <th>Terbayar</th>
                         <th>Sisa Piutang</th>
@@ -221,6 +222,7 @@
                             <td>{{ number_format($invoice->subtotal_service, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->subtotal_sparepart, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->discount_amount, 0, ',', '.') }}</td>
+                            <td>{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->grand_total, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->paid_amount, 0, ',', '.') }}</td>
                             <td>{{ number_format($invoice->outstanding_amount, 0, ',', '.') }}</td>
@@ -240,7 +242,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="p-0">
+                            <td colspan="13" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-text',
                                     'title' => 'Belum ada data invoice',

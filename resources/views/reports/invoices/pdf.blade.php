@@ -34,7 +34,7 @@
             </tbody>
         @else
             <thead>
-                <tr><th>No. Invoice</th><th>Cabang</th><th>Tanggal</th><th>Customer</th><th>Mekanik</th><th>Subtotal Jasa</th><th>Subtotal Sparepart</th><th>Discount</th><th>Grand Total</th><th>Terbayar</th><th>Sisa Piutang</th><th>Status</th></tr>
+                <tr><th>No. Invoice</th><th>Cabang</th><th>Tanggal</th><th>Customer</th><th>Mekanik</th><th>Subtotal Jasa</th><th>Subtotal Sparepart</th><th>Discount</th><th>PPN</th><th>Grand Total</th><th>Terbayar</th><th>Sisa Piutang</th><th>Status</th></tr>
             </thead>
             <tbody>
                 @foreach ($invoices as $invoice)
@@ -42,7 +42,7 @@
                         <td>{{ $invoice->number }}</td><td>{{ $invoice->branch->name }}</td><td>{{ $invoice->invoice_date->format('d/m/Y') }}</td><td>{{ $invoice->customer->name }}</td>
                         <td>{{ optional(optional($invoice->workOrder)->mechanic)->display_label ?? '-' }}</td>
                         <td>{{ number_format($invoice->subtotal_service, 0, ',', '.') }}</td><td>{{ number_format($invoice->subtotal_sparepart, 0, ',', '.') }}</td>
-                        <td>{{ number_format($invoice->discount_amount, 0, ',', '.') }}</td><td>{{ number_format($invoice->grand_total, 0, ',', '.') }}</td>
+                        <td>{{ number_format($invoice->discount_amount, 0, ',', '.') }}</td><td>{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td><td>{{ number_format($invoice->grand_total, 0, ',', '.') }}</td>
                         <td>{{ number_format($invoice->paid_amount, 0, ',', '.') }}</td><td>{{ number_format($invoice->outstanding_amount, 0, ',', '.') }}</td><td>{{ $invoice->status }}</td>
                     </tr>
                 @endforeach

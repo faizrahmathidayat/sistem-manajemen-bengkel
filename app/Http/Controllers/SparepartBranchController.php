@@ -230,7 +230,15 @@ class SparepartBranchController extends Controller
 
     public function update(UpdateSparepartBranchRequest $request, SparepartBranch $sparepartBranch)
     {
-        $sparepartBranch->update($request->validated());
+        $data = $request->validated();
+
+        // "name" lives on the shared master Sparepart record, not on this branch-specific
+        // config row — updating it here deliberately propagates to every branch that
+        // configures this same sparepart (see docs/superpowers/specs for the design note).
+        $sparepartBranch->sparepart->update(['name' => $data['name']]);
+        unset($data['name']);
+
+        $sparepartBranch->update($data);
 
         return redirect()->route('sparepart-branches.index')->with('status', 'Konfigurasi sparepart berhasil diperbarui.');
     }

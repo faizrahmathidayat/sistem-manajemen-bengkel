@@ -7,7 +7,7 @@
             <div>
                 <p class="eyebrow mb-1">Sparepart</p>
                 <h1 class="h3 mb-1">Ubah {{ $sparepartBranch->sparepart->name }}</h1>
-                <p class="text-muted mb-0">Perbarui rak, harga jual, dan stok minimum sparepart ini.</p>
+                <p class="text-muted mb-0">Perbarui nama, rak, harga jual, dan stok minimum sparepart ini.</p>
             </div>
         </div>
         <div class="heading-actions">
@@ -21,13 +21,19 @@
         <div class="panel-header">
             <div>
                 <h2 class="h5 mb-1 section-title"><i class="bi bi-box-seam"></i><span>Detail Sparepart</span></h2>
-                <p class="text-muted mb-0">Lengkapi rak, harga jual, dan stok minimum di bawah ini.</p>
+                <p class="text-muted mb-0">Lengkapi nama, rak, harga jual, dan stok minimum di bawah ini.</p>
             </div>
         </div>
         <div class="row g-3">
             <div class="col-md-4">
                 <label class="form-label">Kode Sparepart</label>
                 <input type="text" value="{{ $sparepartBranch->sparepart->code }}" class="form-control" disabled>
+            </div>
+            <div class="col-md-4">
+                <label for="name" class="form-label">Nama Sparepart</label>
+                <input type="text" name="name" id="name" value="{{ old('name', $sparepartBranch->sparepart->name) }}" class="form-control @error('name') is-invalid @enderror" maxlength="150" required>
+                @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="form-text">Nama ini dishare ke semua cabang yang mengonfigurasi sparepart yang sama.</div>
             </div>
             <div class="col-md-4">
                 <label for="rack_id" class="form-label">Rak</label>

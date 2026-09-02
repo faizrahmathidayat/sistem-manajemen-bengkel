@@ -70,6 +70,7 @@ class SparepartBranchEditAndDeactivateTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'sparepart.edit');
 
         $response = $this->actingAs(User::find($user->id))->put("/sparepart-branches/{$sparepartBranch->id}", [
+            'name' => 'Ban Depan',
             'rack_id' => $rack->id,
             'selling_price' => 175000,
             'minimum_stock' => 4,
@@ -82,6 +83,62 @@ class SparepartBranchEditAndDeactivateTest extends TestCase
             'selling_price' => 175000,
             'is_active' => true,
         ]);
+    }
+
+    public function test_update_saves_sparepart_name_on_the_shared_master_record(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.edit');
+
+        $response = $this->actingAs(User::find($user->id))->put("/sparepart-branches/{$sparepartBranch->id}", [
+            'name' => 'Ban Depan Tubeless',
+            'selling_price' => 100000,
+        ]);
+
+        $response->assertRedirect('/sparepart-branches');
+        $this->assertDatabaseHas('spareparts', [
+            'id' => $sparepartBranch->sparepart_id,
+            'name' => 'Ban Depan Tubeless',
+        ]);
+    }
+
+    public function test_update_rejects_empty_name(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.edit');
+
+        $response = $this->actingAs(User::find($user->id))->put("/sparepart-branches/{$sparepartBranch->id}", [
+            'name' => '',
+            'selling_price' => 100000,
+        ]);
+
+        $response->assertSessionHasErrors(['name']);
+        $this->assertDatabaseHas('spareparts', ['id' => $sparepartBranch->sparepart_id, 'name' => 'Ban Depan']);
+    }
+
+    public function test_update_renaming_sparepart_also_reflects_in_another_branch_sharing_it(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $otherBranch = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
+        $sparepartBranch = $this->makeSparepartBranch($branch);
+        $otherSparepartBranch = SparepartBranch::create([
+            'sparepart_id' => $sparepartBranch->sparepart_id, 'branch_id' => $otherBranch->id, 'selling_price' => 90000,
+        ]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'sparepart.edit');
+
+        $this->actingAs(User::find($user->id))->put("/sparepart-branches/{$sparepartBranch->id}", [
+            'name' => 'Ban Depan Tubeless',
+            'selling_price' => 100000,
+        ]);
+
+        // Sengaja: nama sparepart adalah record master yang dishare — mengubahnya dari satu
+        // cabang otomatis berlaku juga untuk cabang lain yang mengonfigurasi sparepart yang sama.
+        $this->assertSame('Ban Depan Tubeless', $otherSparepartBranch->fresh()->sparepart->name);
     }
 
     public function test_edit_form_lists_only_active_racks_in_dropdown(): void

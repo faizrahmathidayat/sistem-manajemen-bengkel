@@ -55,7 +55,7 @@ class StockTransferController extends Controller
             })
             ->orderByDesc('transfer_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('stock-transfers.index', compact('stockTransfers'))

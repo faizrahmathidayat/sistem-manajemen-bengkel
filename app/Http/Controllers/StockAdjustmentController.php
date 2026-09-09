@@ -48,7 +48,7 @@ class StockAdjustmentController extends Controller
             })
             ->orderByDesc('adjustment_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('stock-adjustments.index', compact('stockAdjustments'))

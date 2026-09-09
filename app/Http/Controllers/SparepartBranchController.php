@@ -49,7 +49,7 @@ class SparepartBranchController extends Controller
                 });
             })
             ->orderBy('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('sparepart-branches.index', compact('sparepartBranches', 'allowedBranches', 'currentBranch'))->with('search', $search);

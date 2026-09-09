@@ -18,7 +18,7 @@ class RackController extends Controller
             ->when($search, function ($query, $q) {
                 $query->where('code', 'like', '%' . addcslashes($q, '%_\\') . '%');
             })
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('racks.index', compact('racks'))->with('search', $search);

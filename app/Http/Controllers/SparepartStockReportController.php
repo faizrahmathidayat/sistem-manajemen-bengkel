@@ -38,7 +38,7 @@ class SparepartStockReportController extends Controller
             ->with(['sparepart', 'branch', 'rack'])
             ->orderBy('sparepart_branches.branch_id')
             ->orderBy('sparepart_branches.id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('reports.sparepart-stock.index', [

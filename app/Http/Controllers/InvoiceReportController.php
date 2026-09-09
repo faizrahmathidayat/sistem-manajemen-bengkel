@@ -40,7 +40,7 @@ class InvoiceReportController extends Controller
 
         $invoices = $invoices->orderByDesc('invoice_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('reports.invoices.index', [

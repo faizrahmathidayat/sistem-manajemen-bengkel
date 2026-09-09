@@ -41,7 +41,7 @@ class WorkshopPerformanceReportController extends Controller
         if ($filters['viewType'] === 'mechanic') {
             $rows = $this->buildMechanicQuery($filters, $permittedBranches)->get();
             $page = LengthAwarePaginator::resolveCurrentPage();
-            $perPage = 15;
+            $perPage = 10;
             $viewData['mechanicRows'] = new LengthAwarePaginator(
                 $rows->forPage($page, $perPage)->values(),
                 $rows->count(),
@@ -57,7 +57,7 @@ class WorkshopPerformanceReportController extends Controller
             ->with(['branch', 'customer', 'workOrder.mechanic', 'details'])
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('reports.workshop-performance.index', $viewData);

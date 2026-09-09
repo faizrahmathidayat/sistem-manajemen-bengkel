@@ -59,7 +59,7 @@ class StockCardController extends Controller
             $movements = InventoryMovement::where('sparepart_branch_id', $sparepartBranch->id)
                 ->orderBy('movement_at')
                 ->orderBy('id')
-                ->simplePaginate(20)
+                ->paginate(10)
                 ->withQueryString();
 
             $movements->getCollection()->transform(function (InventoryMovement $movement) {

@@ -27,7 +27,7 @@ class ServiceCatalogController extends Controller
                         ->orWhere('name', 'like', '%' . addcslashes($q, '%_\\') . '%');
                 });
             })
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('service-catalogs.index', compact('serviceCatalogs'))->with('search', $search);

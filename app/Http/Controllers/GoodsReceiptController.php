@@ -47,7 +47,7 @@ class GoodsReceiptController extends Controller
             })
             ->orderByDesc('receipt_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('goods-receipts.index', compact('goodsReceipts'))

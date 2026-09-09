@@ -29,7 +29,7 @@ class VehicleController extends Controller
                 });
             })
             ->orderBy('created_at', 'desc')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         $customers = Customer::where('is_active', true)->orderBy('name')->get();

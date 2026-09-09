@@ -21,7 +21,7 @@ class BranchController extends Controller
                         ->orWhere('name', 'like', '%' . addcslashes($q, '%_\\') . '%');
                 });
             })
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('branches.index', compact('branches'))->with('search', $search);

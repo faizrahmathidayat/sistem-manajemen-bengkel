@@ -30,7 +30,7 @@ class MechanicController extends Controller
                 });
             })
             ->when($branchIds, fn ($query) => $query->whereHas('mechanicBranches', fn ($q) => $q->whereIn('branch_id', $branchIds)->where('is_active', true)))
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         $userBranches = auth()->user()->branches;

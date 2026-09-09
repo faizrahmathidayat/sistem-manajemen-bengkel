@@ -46,7 +46,7 @@ class WorkOrderController extends Controller
             })
             ->orderByDesc('work_order_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('work-orders.index', compact('workOrders'))

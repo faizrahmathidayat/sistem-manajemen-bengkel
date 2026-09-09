@@ -44,7 +44,7 @@ class GrossProfitReportController extends Controller
                 ->with(['branch', 'customer'])
                 ->orderByDesc('invoice_date')
                 ->orderByDesc('id')
-                ->simplePaginate(15)
+                ->paginate(10)
                 ->withQueryString();
 
             return view('reports.gross-profit.index', $viewData);
@@ -52,7 +52,7 @@ class GrossProfitReportController extends Controller
 
         $rows = $this->buildSummaryQuery($filters, $permittedBranches)->get();
         $page = LengthAwarePaginator::resolveCurrentPage();
-        $perPage = 15;
+        $perPage = 10;
         $viewData['summaryRows'] = new LengthAwarePaginator(
             $rows->forPage($page, $perPage)->values(),
             $rows->count(),

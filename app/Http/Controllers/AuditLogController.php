@@ -40,7 +40,7 @@ class AuditLogController extends Controller
             ->when($dateTo, fn ($q) => $q->whereDate('created_at', '<=', $dateTo))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
-            ->simplePaginate(20)
+            ->paginate(10)
             ->withQueryString();
 
         return view('audit-logs.index', [

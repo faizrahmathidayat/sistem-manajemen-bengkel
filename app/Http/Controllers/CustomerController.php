@@ -63,7 +63,7 @@ class CustomerController extends Controller
             // Deliberately duplicates Customer::branches()'s is_active pivot filter here
             // (instead of reusing that relation) to avoid an extra join.
             ->when($branchIds, fn ($query) => $query->whereHas('customerBranches', fn ($q) => $q->whereIn('branch_id', $branchIds)->where('is_active', true)))
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         $userBranches = auth()->user()->branches;

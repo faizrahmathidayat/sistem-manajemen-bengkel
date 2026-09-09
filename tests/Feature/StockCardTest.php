@@ -192,7 +192,7 @@ class StockCardTest extends TestCase
         $response->assertSee(route('stock-transfers.show', $stockTransfer), false);
     }
 
-    public function test_index_paginates_at_twenty_rows(): void
+    public function test_index_paginates_at_ten_rows(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
         $sparepartBranch = $this->makeSparepartBranch($branch);
@@ -209,7 +209,7 @@ class StockCardTest extends TestCase
         $response = $this->actingAs(User::find($user->id))->get("/stock-card?branch_id={$branch->id}&sparepart_id={$sparepartBranch->sparepart_id}");
 
         $response->assertOk();
-        // simplePaginate(20) with 25 rows must produce a second-page link —
+        // paginate(10) with 25 rows must produce a second-page link —
         // checking for the query string rather than a specific button label,
         // since the label text depends on Laravel's (unlocalized) pagination
         // translation strings, not app-authored copy.

@@ -48,7 +48,7 @@ class InvoiceController extends Controller
             })
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('invoices.index', compact('invoices'))

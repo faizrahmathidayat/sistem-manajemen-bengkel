@@ -37,7 +37,7 @@ class PaymentReceiptController extends Controller
             })
             ->orderByDesc('payment_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('payment-receipts.index', compact('paymentReceipts'))

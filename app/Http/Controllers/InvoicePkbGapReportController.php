@@ -52,7 +52,7 @@ class InvoicePkbGapReportController extends Controller
 
         $invoices = $invoicesQuery->orderByDesc('invoices.invoice_date')
             ->orderByDesc('invoices.id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         if ($filters['mode'] === 'detail') {

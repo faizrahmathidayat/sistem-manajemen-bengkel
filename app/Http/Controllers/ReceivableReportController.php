@@ -34,7 +34,7 @@ class ReceivableReportController extends Controller
         $invoices = $query->with(['branch', 'customer'])
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         $invoices->getCollection()->transform([$this, 'withAgingLabel']);

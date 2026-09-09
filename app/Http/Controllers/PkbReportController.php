@@ -46,7 +46,7 @@ class PkbReportController extends Controller
 
         $workOrders = $workOrders->orderByDesc('work_order_date')
             ->orderByDesc('id')
-            ->simplePaginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return view('reports.pkb.index', [

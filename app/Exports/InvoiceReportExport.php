@@ -38,7 +38,7 @@ class InvoiceReportExport implements FromQuery, WithHeadings, WithMapping, WithC
     public function headings(): array
     {
         return $this->mode === 'detail'
-            ? ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Status', 'Tipe Item', 'Nama Item', 'Qty', 'Harga Satuan', 'Diskon', 'Subtotal Line']
+            ? ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Status', 'Tipe Item', 'Kode Item', 'Nama Item', 'Qty', 'Harga Satuan', 'Diskon', 'Subtotal Line']
             : ['No. Invoice', 'Cabang', 'Tanggal', 'Customer', 'Mekanik', 'Subtotal Jasa', 'Subtotal Sparepart', 'Discount', 'PPN', 'Grand Total', 'Terbayar', 'Sisa Piutang', 'Status'];
     }
 
@@ -66,7 +66,7 @@ class InvoiceReportExport implements FromQuery, WithHeadings, WithMapping, WithC
         }
 
         if ($invoice->details->isEmpty()) {
-            return [[$invoice->number, $branchName, $invoice->invoice_date->format('Y-m-d'), $invoice->customer->name, $mechanicLabel, $invoice->status, '-', '-', null, null, null, null]];
+            return [[$invoice->number, $branchName, $invoice->invoice_date->format('Y-m-d'), $invoice->customer->name, $mechanicLabel, $invoice->status, '-', '-', '-', null, null, null, null]];
         }
 
         return $invoice->details->map(function ($detail) use ($invoice, $branchName, $mechanicLabel) {
@@ -78,6 +78,7 @@ class InvoiceReportExport implements FromQuery, WithHeadings, WithMapping, WithC
                 $mechanicLabel,
                 $invoice->status,
                 $detail->item_type === InvoiceDetailItemType::SERVICE ? 'Jasa' : 'Sparepart',
+                $detail->report_item_code,
                 $detail->description,
                 (float) $detail->qty,
                 (float) $detail->unit_price,

@@ -10,7 +10,7 @@
     <table class="print-table">
         @if ($mode === 'detail')
             <thead>
-                <tr><th>No. Invoice</th><th>Cabang</th><th>Tanggal</th><th>Customer</th><th>Mekanik</th><th>Status</th><th>Tipe Item</th><th>Nama Item</th><th>Qty</th><th>Harga Satuan</th><th>Diskon</th><th>Subtotal Line</th></tr>
+                <tr><th>No. Invoice</th><th>Cabang</th><th>Tanggal</th><th>Customer</th><th>Mekanik</th><th>Status</th><th>Tipe Item</th><th>Kode Item</th><th>Nama Item</th><th>Qty</th><th>Harga Satuan</th><th>Diskon</th><th>Subtotal Line</th></tr>
             </thead>
             <tbody>
                 @foreach ($invoices as $invoice)
@@ -19,7 +19,7 @@
                         <tr>
                             <td>{{ $invoice->number }}</td><td>{{ $invoice->branch->name }}</td><td>{{ $invoice->invoice_date->format('d/m/Y') }}</td><td>{{ $invoice->customer->name }}</td><td>{{ $mechanicLabel }}</td><td>{{ $invoice->status }}</td>
                             <td>{{ $detail->item_type === \App\Support\InvoiceDetailItemType::SERVICE ? 'Jasa' : 'Sparepart' }}</td>
-                            <td>{{ $detail->description }}</td><td>{{ number_format($detail->qty, 0, ',', '.') }}</td>
+                            <td>{{ $detail->report_item_code }}</td><td>{{ $detail->description }}</td><td>{{ number_format($detail->qty, 0, ',', '.') }}</td>
                             <td>{{ number_format($detail->unit_price, 0, ',', '.') }}</td>
                             <td>{{ $detail->discount_amount > 0 ? number_format($detail->discount_amount, 0, ',', '.') : '-' }}</td>
                             <td>{{ number_format($detail->line_total, 0, ',', '.') }}</td>
@@ -27,7 +27,7 @@
                     @empty
                         <tr>
                             <td>{{ $invoice->number }}</td><td>{{ $invoice->branch->name }}</td><td>{{ $invoice->invoice_date->format('d/m/Y') }}</td><td>{{ $invoice->customer->name }}</td><td>{{ $mechanicLabel }}</td><td>{{ $invoice->status }}</td>
-                            <td colspan="6">&mdash;</td>
+                            <td colspan="7">&mdash;</td>
                         </tr>
                     @endforelse
                 @endforeach

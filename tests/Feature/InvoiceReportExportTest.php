@@ -177,6 +177,48 @@ class InvoiceReportExportTest extends TestCase
         $this->assertStringContainsString('Oli Mesin', $text);
     }
 
+    public function test_pdf_preview_detail_mode_shows_kode_item(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $this->makeInvoice($branch, $customer, 100000, 60000, now()->toDateString());
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices/pdf-preview?mode=detail');
+
+        $text = $this->extractPdfText($response->getContent());
+        $this->assertStringContainsString('Kode Item', $text);
+        $this->assertStringContainsString(\App\Models\ServiceCatalog::first()->code, $text);
+        $this->assertStringContainsString(\App\Models\Sparepart::first()->code, $text);
+    }
+
+    public function test_excel_detail_mode_has_kode_item_column_before_nama_item_with_codes(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makeInvoice($branch, $customer, 100000, 60000, now()->toDateString());
+        $invoice->load(['branch', 'customer', 'workOrder.mechanic', 'details.serviceLine.serviceCatalog']);
+
+        $export = new \App\Exports\InvoiceReportExport(\App\Models\Invoice::query(), 'detail', 'filter');
+        $headings = $export->headings();
+        $this->assertSame('Kode Item', $headings[array_search('Nama Item', $headings, true) - 1]);
+
+        $rows = collect($export->map($invoice));
+        $nameIdx = array_search('Nama Item', $headings, true);
+        $service = $rows->first(fn ($row) => $row[$nameIdx] === 'Ganti Oli');
+        $sparepart = $rows->first(fn ($row) => $row[$nameIdx] === 'Oli Mesin');
+        $this->assertSame(\App\Models\ServiceCatalog::first()->code, $service[$nameIdx - 1]);
+        $this->assertSame(\App\Models\Sparepart::first()->code, $sparepart[$nameIdx - 1]);
+    }
+
+    public function test_excel_rekap_mode_headings_do_not_include_kode_item(): void
+    {
+        $export = new \App\Exports\InvoiceReportExport(\App\Models\Invoice::query(), 'rekap', 'filter');
+
+        $this->assertNotContains('Kode Item', $export->headings());
+    }
+
     public function test_pdf_preview_rekap_mode_shows_branch_and_mechanic(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

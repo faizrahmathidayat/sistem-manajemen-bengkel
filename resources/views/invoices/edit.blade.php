@@ -120,6 +120,7 @@
             // added via "+ Tambah Jasa", where there is nothing to preselect yet.
             const row = InvoiceLineItems.addServiceLine(true);
             row.querySelector('.service-wo-line-id').value = line.work_order_service_line_id || '';
+            row.querySelector('.service-item-code').value = line.item_code || '';
             row.querySelector('.service-locked-description').value = line.description;
             row.querySelector('.service-qty').value = line.qty;
             row.querySelector('.service-unit-price').value = line.unit_price;

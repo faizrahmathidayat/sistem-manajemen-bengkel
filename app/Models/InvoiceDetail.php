@@ -31,6 +31,11 @@ class InvoiceDetail extends Model
         return $this->belongsTo(Invoice::class);
     }
 
+    public function getReportItemCodeAttribute(): string
+    {
+        return $this->item_code_snapshot ?: '-';
+    }
+
     public function serviceLine()
     {
         return $this->belongsTo(WorkOrderServiceLine::class, 'work_order_service_line_id');

@@ -35,6 +35,7 @@ class StoreDirectSaleInvoiceRequest extends FormRequest
             'services' => ['nullable', 'array'],
             'services.*' => ['array'],
             'services.*.description' => ['required_with:services.*.qty', 'string', 'max:255'],
+            'services.*.item_code' => ['nullable', 'string', 'max:30', 'exists:service_catalogs,code'],
             'services.*.qty' => ['required_with:services.*.description', 'integer', 'min:1'],
             'services.*.unit_price' => ['required_with:services.*.description', 'numeric', 'min:0'],
             'services.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],

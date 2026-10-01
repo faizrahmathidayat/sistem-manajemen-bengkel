@@ -172,6 +172,41 @@ class InvoiceDirectSaleTest extends TestCase
         $this->assertStringStartsWith('DS/', $invoice->number);
     }
 
+    public function test_direct_sale_stores_service_catalog_code_and_leaves_manual_lines_blank(): void
+    {
+        [$branch, $customer] = $this->makeBranchAndCustomer();
+        ServiceCatalog::create(['code' => 'SVC-CUCI', 'name' => 'Cuci Mobil', 'default_price' => 40000]);
+
+        $invoice = (new InvoiceService())->createDirectSale($branch, $customer, [
+            'services' => [
+                ['description' => 'Cuci Mobil', 'qty' => 1, 'unit_price' => 40000, 'item_code' => 'SVC-CUCI'],
+                ['description' => 'Jasa Manual', 'qty' => 1, 'unit_price' => 1000, 'item_code' => ""],
+                ['description' => 'Tanpa Field', 'qty' => 1, 'unit_price' => 1000],
+            ],
+        ]);
+
+        $this->assertSame(['SVC-CUCI', null, null], $invoice->details()->orderBy('sort_order')->pluck('item_code_snapshot')->all());
+    }
+
+    public function test_store_direct_validates_service_item_code_against_catalog(): void
+    {
+        [$branch, $customer] = $this->makeBranchAndCustomer();
+        ServiceCatalog::create(['code' => 'SVC-CUCI', 'name' => 'Cuci Mobil', 'default_price' => 40000]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.create');
+
+        $base = ['branch_id' => $branch->id, 'customer_id' => $customer->id, 'invoice_date' => now()->toDateString(), 'spareparts' => []];
+
+        $this->actingAs($user)->post('/invoices/direct', $base + ['services' => [
+            ['description' => 'Cuci Mobil', 'qty' => 1, 'unit_price' => 40000, 'item_code' => 'NOPE'],
+        ]])->assertSessionHasErrors('services.0.item_code');
+
+        $this->actingAs($user)->post('/invoices/direct', $base + ['services' => [
+            ['description' => 'Cuci Mobil', 'qty' => 1, 'unit_price' => 40000, 'item_code' => 'SVC-CUCI'],
+        ]])->assertSessionHasNoErrors();
+        $this->assertSame('SVC-CUCI', \App\Models\InvoiceDetail::latest('id')->first()->item_code_snapshot);
+    }
+
     public function test_store_direct_rejects_decimal_qty(): void
     {
         [$branch, $customer] = $this->makeBranchAndCustomer();

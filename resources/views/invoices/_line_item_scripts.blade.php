@@ -7,7 +7,7 @@
             <select class="form-select service-catalog-select">
                 <option value="">-- Manual --</option>
                 @foreach ($serviceCatalogs as $catalog)
-                    <option value="{{ $catalog->id }}" data-price="{{ $catalog->default_price }}" data-name="{{ $catalog->name }}">{{ $catalog->name }}</option>
+                    <option value="{{ $catalog->id }}" data-price="{{ $catalog->default_price }}" data-name="{{ $catalog->name }}" data-code="{{ $catalog->code }}">{{ $catalog->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -69,6 +69,12 @@
         hiddenId.name = `services[${index}][work_order_service_line_id]`;
         wrapper.appendChild(hiddenId);
 
+        const hiddenCode = document.createElement('input');
+        hiddenCode.type = 'hidden';
+        hiddenCode.className = 'service-item-code';
+        hiddenCode.name = `services[${index}][item_code]`;
+        wrapper.appendChild(hiddenCode);
+
         wrapper.querySelector('.service-qty').name = `services[${index}][qty]`;
         wrapper.querySelector('.service-unit-price').name = `services[${index}][unit_price]`;
         wrapper.querySelector('.service-discount-percent').name = `services[${index}][discount_percent]`;
@@ -90,6 +96,7 @@
             catalogSelect.addEventListener('change', function () {
                 const selected = this.selectedOptions[0];
                 hiddenDescription.value = this.value ? (selected.dataset.name || '') : '';
+                hiddenCode.value = this.value ? (selected.dataset.code || '') : '';
                 if (this.value) {
                     wrapper.querySelector('.service-unit-price').value = selected.dataset.price || 0;
                 }

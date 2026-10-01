@@ -297,6 +297,109 @@ class InvoiceControllerTest extends TestCase
         $this->assertSame('Diskon member', $invoice->notes);
     }
 
+    public function test_create_from_work_order_stores_service_catalog_code_in_snapshot(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $this->assertSame('SVC-01-JKT', $serviceDetail->item_code_snapshot);
+    }
+
+    public function test_update_keeps_and_stores_service_item_codes_and_rejects_unknown_code(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        ServiceCatalog::create(['code' => 'SVC-NEW', 'name' => 'Cuci Mobil', 'default_price' => 40000]);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $payload = fn (array $extraService) => [
+            'discount_percent' => 0,
+            'tax_percent' => 0,
+            'services' => [[
+                'work_order_service_line_id' => $serviceDetail->work_order_service_line_id,
+                'description' => $serviceDetail->description,
+                'qty' => 1,
+                'unit_price' => 50000,
+                'item_code' => 'SVC-01-JKT',
+            ], array_merge(['qty' => 1, 'unit_price' => 40000], $extraService)],
+            'spareparts' => [[
+                'work_order_sparepart_line_id' => $sparepartDetail->work_order_sparepart_line_id,
+                'sparepart_branch_id' => $sparepartDetail->sparepart_branch_id,
+                'qty' => 2,
+                'unit_price' => 60000,
+            ]],
+        ];
+        $serviceCodes = fn () => $invoice->fresh()->details()->where('item_type', 'service')->orderBy('sort_order')->pluck('item_code_snapshot')->all();
+
+        $this->actingAs($user)->put("/invoices/{$invoice->id}", $payload(['description' => 'Cuci Mobil', 'item_code' => 'SVC-NEW']))
+            ->assertRedirect("/invoices/{$invoice->id}");
+        $this->assertSame(['SVC-01-JKT', 'SVC-NEW'], $serviceCodes());
+
+        // A manually typed line (no catalog) has no code; a blank string is treated as none.
+        $this->actingAs($user)->put("/invoices/{$invoice->id}", $payload(['description' => 'Jasa Manual', 'item_code' => ""]))
+            ->assertRedirect("/invoices/{$invoice->id}");
+        $this->assertSame(['SVC-01-JKT', null], $serviceCodes());
+
+        $this->actingAs($user)->put("/invoices/{$invoice->id}", $payload(['description' => 'Jasa Aneh', 'item_code' => 'NOPE-999']))
+            ->assertSessionHasErrors('services.1.item_code');
+    }
+
+    public function test_edit_page_passes_existing_service_item_code_to_the_form(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $user = User::factory()->create();
+        $this->grantBranchPermission($user, $branch, 'invoice.edit');
+
+        $this->actingAs($user)->get("/invoices/{$invoice->id}/edit")
+            ->assertOk()
+            ->assertViewHas('existingServiceLines', fn ($lines) => $lines->first()['item_code'] === 'SVC-01-JKT');
+    }
+
+    public function test_backfill_migration_fills_service_codes_on_existing_invoice_details(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $serviceDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SERVICE);
+        $sparepartDetail = $invoice->details->firstWhere('item_type', \App\Support\InvoiceDetailItemType::SPAREPART);
+        $manual = \App\Models\InvoiceDetail::create([
+            'invoice_id' => $invoice->id, 'item_type' => 'service', 'description' => 'Manual',
+            'qty' => 1, 'unit_price' => 1000, 'line_total' => 1000, 'sort_order' => 9,
+        ]);
+        $serviceDetail->update(['item_code_snapshot' => null]);
+
+        (new \BackfillServiceItemCodeOnInvoiceDetails())->up();
+
+        $this->assertSame('SVC-01-JKT', $serviceDetail->fresh()->item_code_snapshot);
+        $this->assertNull($manual->fresh()->item_code_snapshot);
+        $this->assertSame($sparepartDetail->item_code_snapshot, $sparepartDetail->fresh()->item_code_snapshot);
+    }
+
+    public function test_name_backfill_migration_fills_codes_for_untraced_service_lines_by_exact_catalog_name(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $invoice = $this->makeInvoice($branch);
+        $make = fn (string $description, ?string $code = null) => \App\Models\InvoiceDetail::create([
+            'invoice_id' => $invoice->id, 'item_type' => 'service', 'description' => $description,
+            'item_code_snapshot' => $code, 'qty' => 1, 'unit_price' => 1000, 'line_total' => 1000, 'sort_order' => 9,
+        ]);
+        $matching = $make('Ganti Oli');
+        $messy = $make('  ganti OLI ');
+        $unknown = $make('Jasa Tidak Ada Di Katalog');
+        $alreadySet = $make('Ganti Oli', 'KODE-LAMA');
+
+        (new \BackfillServiceItemCodeByCatalogName())->up();
+
+        $this->assertSame('SVC-01-JKT', $matching->fresh()->item_code_snapshot);
+        $this->assertSame('SVC-01-JKT', $messy->fresh()->item_code_snapshot);
+        $this->assertNull($unknown->fresh()->item_code_snapshot);
+        $this->assertSame('KODE-LAMA', $alreadySet->fresh()->item_code_snapshot);
+    }
+
     public function test_update_applies_per_line_discount_and_computes_net_line_total(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

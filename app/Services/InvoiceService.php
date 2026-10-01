@@ -47,7 +47,7 @@ class InvoiceService
                 throw new DomainException('PKB ini sudah memiliki invoice.');
             }
 
-            $serviceLines = $fresh->serviceLines()->reorder()->orderBy('sort_order')->get();
+            $serviceLines = $fresh->serviceLines()->reorder()->with('serviceCatalog')->orderBy('sort_order')->get();
             $sparepartLines = $fresh->sparepartLines()->reorder()->orderBy('sort_order')->get();
 
             $subtotalService = round((float) $serviceLines->sum('line_total'), 2);
@@ -79,7 +79,7 @@ class InvoiceService
                     'item_type' => InvoiceDetailItemType::SERVICE,
                     'work_order_service_line_id' => $line->id,
                     'work_order_sparepart_line_id' => null,
-                    'item_code_snapshot' => null,
+                    'item_code_snapshot' => optional($line->serviceCatalog)->code,
                     'description' => $line->description,
                     'qty' => $line->qty,
                     'unit_price' => $line->unit_price,
@@ -112,6 +112,16 @@ class InvoiceService
         });
     }
 
+    /**
+     * Service code chosen from the catalog in the invoice editor; blank for manually typed lines.
+     */
+    protected function serviceItemCode(array $line): ?string
+    {
+        $code = isset($line['item_code']) ? trim((string) $line['item_code']) : '';
+
+        return $code === '' ? null : $code;
+    }
+
     public function createDirectSale(Branch $branch, Customer $customer, array $data): Invoice
     {
         return DB::transaction(function () use ($branch, $customer, $data) {
@@ -142,6 +152,7 @@ class InvoiceService
                 InvoiceDetail::create([
                     'invoice_id' => $invoice->id,
                     'item_type' => InvoiceDetailItemType::SERVICE,
+                    'item_code_snapshot' => $this->serviceItemCode($line),
                     'description' => $line['description'],
                     'qty' => $qty,
                     'unit_price' => $unitPrice,
@@ -215,7 +226,7 @@ class InvoiceService
                     'work_order_service_line_id' => $line['work_order_service_line_id'] ?? null,
                     'work_order_sparepart_line_id' => null,
                     'sparepart_branch_id' => null,
-                    'item_code_snapshot' => null,
+                    'item_code_snapshot' => $this->serviceItemCode($line),
                     'description' => $line['description'],
                     'qty' => $qty,
                     'unit_price' => $unitPrice,

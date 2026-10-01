@@ -448,6 +448,50 @@ class InvoiceReportControllerTest extends TestCase
         $response->assertSee('60.000');
     }
 
+    public function test_index_detail_mode_shows_kode_item_before_nama_item(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $this->makeInvoice($branch, $customer, 100000, 60000, now()->toDateString());
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices?mode=detail');
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['Tipe Item', 'Kode Item', 'Nama Item']);
+        $response->assertSee(ServiceCatalog::first()->code);
+        $response->assertSee(Sparepart::first()->code);
+    }
+
+    public function test_index_detail_mode_shows_dash_for_service_line_without_catalog(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $invoice = $this->makeInvoice($branch, $customer, 100000, 0, now()->toDateString());
+        $code = ServiceCatalog::first()->code;
+        $invoice->details()->where('item_type', 'service')->update(['item_code_snapshot' => null]);
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $response = $this->actingAs($viewer)->get('/reports/invoices?mode=detail');
+
+        $response->assertOk();
+        $response->assertDontSee($code);
+        $response->assertSee('<td><code>-</code></td>', false);
+    }
+
+    public function test_index_rekap_mode_does_not_show_kode_item(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        $customer = Customer::create(['customer_type' => 'INDIVIDUAL', 'name' => 'Budi Santoso', 'stnk_name' => 'Budi Santoso']);
+        $this->makeInvoice($branch, $customer, 100000, 60000, now()->toDateString());
+        $viewer = User::factory()->create();
+        $this->grantBranchPermission($viewer, $branch, 'report.invoice.view');
+
+        $this->actingAs($viewer)->get('/reports/invoices')->assertDontSee('Kode Item');
+    }
+
     public function test_index_rekap_mode_does_not_show_detail_columns(): void
     {
         $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);

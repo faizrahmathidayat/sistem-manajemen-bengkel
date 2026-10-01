@@ -114,6 +114,7 @@
                         <th>Customer</th>
                         <th>Mekanik</th>
                         <th>Tipe Item</th>
+                        <th>Kode Item</th>
                         <th>Nama Item</th>
                         <th>Qty</th>
                         <th>Harga Satuan</th>
@@ -153,6 +154,7 @@
                                 <td>{{ $invoice->customer->name }}</td>
                                 <td>{{ $mechanicLabel }}</td>
                                 <td>{{ $detail->item_type === \App\Support\InvoiceDetailItemType::SERVICE ? 'Jasa' : 'Sparepart' }}</td>
+                                <td><code>{{ $detail->report_item_code }}</code></td>
                                 <td>{{ $detail->description }}</td>
                                 <td>{{ number_format($detail->qty, 0, ',', '.') }}</td>
                                 <td>{{ number_format($detail->unit_price, 0, ',', '.') }}</td>
@@ -173,12 +175,13 @@
                                 <td>&mdash;</td>
                                 <td>&mdash;</td>
                                 <td>&mdash;</td>
+                                <td>&mdash;</td>
                                 <td>{!! $statusBadge !!}</td>
                             </tr>
                         @endforelse
                     @empty
                         <tr>
-                            <td colspan="12" class="p-0">
+                            <td colspan="13" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-file-earmark-text',
                                     'title' => 'Belum ada data invoice',

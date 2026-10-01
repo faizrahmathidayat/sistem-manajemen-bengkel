@@ -114,6 +114,7 @@ class InvoiceController extends Controller
         $existingServiceLines = $invoice->details->where('item_type', InvoiceDetailItemType::SERVICE)->map(function (InvoiceDetail $detail) {
             return [
                 'work_order_service_line_id' => $detail->work_order_service_line_id,
+                'item_code' => $detail->item_code_snapshot,
                 'description' => $detail->description,
                 'qty' => (float) $detail->qty,
                 'unit_price' => (float) $detail->unit_price,

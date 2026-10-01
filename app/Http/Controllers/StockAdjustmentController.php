@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\StockAdjustmentLineImportTemplateExport;
+use App\Http\Requests\ImportStockAdjustmentLinesRequest;
 use App\Http\Requests\StoreStockAdjustmentRequest;
 use App\Http\Requests\UpdateStockAdjustmentRequest;
+use App\Imports\StockAdjustmentLinesImport;
 use App\Models\Branch;
 use App\Models\InventoryMovement;
 use App\Models\SparepartBranchStock;
@@ -15,6 +18,7 @@ use App\Support\AuditEvent;
 use App\Support\InventoryMovementType;
 use App\Support\StockAdjustmentStatus;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class StockAdjustmentController extends Controller
 {
@@ -67,6 +71,27 @@ class StockAdjustmentController extends Controller
         }
 
         return view('stock-adjustments.create', compact('branches'));
+    }
+
+    public function downloadImportTemplate()
+    {
+        abort_if(auth()->user()->branchesWithPermission('stock_adjustment.create')->isEmpty(), 403);
+
+        return Excel::download(new StockAdjustmentLineImportTemplateExport(), 'template-import-stock-adjustment.xlsx');
+    }
+
+    public function importLines(ImportStockAdjustmentLinesRequest $request)
+    {
+        $data = $request->validated();
+
+        $import = new StockAdjustmentLinesImport((int) $data['branch_id']);
+        Excel::import($import, $data['file']);
+
+        if (! empty($import->errors)) {
+            return response()->json(['errors' => $import->errors], 422);
+        }
+
+        return response()->json(['lines' => $import->lines]);
     }
 
     public function store(StoreStockAdjustmentRequest $request)

@@ -48,8 +48,9 @@
                 <div>
                     <h2 class="h5 mb-1 section-title"><i class="bi bi-nut"></i><span>Baris Penyesuaian</span></h2>
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="addStockAdjustmentLine">+ Tambah Sparepart</button>
+                @include('stock-adjustments._import_controls', ['importDisabled' => false])
             </div>
+            <div class="alert alert-danger d-none" id="importStockAdjustmentErrors"></div>
             <div class="row g-2 mb-1 text-muted small">
                 <div class="col-md-4">Sparepart</div>
                 <div class="col-md-2">Qty Sistem</div>

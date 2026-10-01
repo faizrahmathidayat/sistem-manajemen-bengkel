@@ -192,6 +192,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('stock-adjustments')->name('stock-adjustments.')->group(function () {
         Route::get('/', [StockAdjustmentController::class, 'index'])->name('index');
         Route::get('/create', [StockAdjustmentController::class, 'create'])->name('create');
+        Route::get('/import-template', [StockAdjustmentController::class, 'downloadImportTemplate'])->name('import-template');
+        Route::post('/import-lines', [StockAdjustmentController::class, 'importLines'])->name('import-lines');
         Route::post('/', [StockAdjustmentController::class, 'store'])->name('store');
         Route::get('/{stockAdjustment}', [StockAdjustmentController::class, 'show'])->name('show');
         Route::get('/{stockAdjustment}/edit', [StockAdjustmentController::class, 'edit'])->name('edit');

@@ -72,6 +72,89 @@
         addLine(window.currentStockAdjustmentBranchId || null);
     });
 
+    // Excel import: server validates/parses the file and returns the lines as JSON;
+    // nothing is persisted until the form itself is saved. A sparepart that is already
+    // in the form (the form requires distinct spareparts) has its qty/reason updated
+    // instead of getting a duplicate row.
+    function findRowBySparepartBranchId(sparepartBranchId) {
+        return Array.from(document.querySelectorAll('.stock-adjustment-line')).find(function (row) {
+            return String($(row.querySelector('.stock-adjustment-sparepart-select')).val() || '') === String(sparepartBranchId);
+        });
+    }
+
+    async function applyImportedLine(line, branchId) {
+        let row = findRowBySparepartBranchId(line.sparepart_branch_id);
+        const isNew = !row;
+        if (isNew) row = addLine(branchId);
+        row.querySelector('.stock-adjustment-physical-qty').value = line.physical_qty;
+        row.querySelector('.stock-adjustment-reason').value = line.reason;
+        if (isNew) await preselectLine(row, line.sparepart_branch_id, branchId);
+    }
+
+    const importButton = document.getElementById('importStockAdjustmentButton');
+    const importFile = document.getElementById('importStockAdjustmentFile');
+    const importSpinner = document.getElementById('importStockAdjustmentSpinner');
+    const importIcon = document.getElementById('importStockAdjustmentIcon');
+    const importErrors = document.getElementById('importStockAdjustmentErrors');
+
+    function showImportErrors(messages) {
+        importErrors.innerHTML = '';
+        const list = document.createElement('ul');
+        list.className = 'mb-0';
+        messages.forEach(function (message) {
+            const item = document.createElement('li');
+            item.textContent = message;
+            list.appendChild(item);
+        });
+        importErrors.appendChild(list);
+        importErrors.classList.remove('d-none');
+    }
+
+    importButton.addEventListener('click', function () {
+        importFile.click();
+    });
+
+    importFile.addEventListener('change', async function () {
+        const file = importFile.files[0];
+        importFile.value = '';
+        const branchId = window.currentStockAdjustmentBranchId;
+        if (!file || !branchId) return;
+
+        importErrors.classList.add('d-none');
+        importButton.disabled = true;
+        importIcon.classList.add('d-none');
+        importSpinner.classList.remove('d-none');
+
+        try {
+            const formData = new FormData();
+            formData.append('branch_id', branchId);
+            formData.append('file', file);
+
+            const response = await fetch(@json(route('stock-adjustments.import-lines')), {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
+                body: formData,
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                const messages = data.errors && Array.isArray(data.errors) ? data.errors : [data.message || 'Import gagal.'];
+                showImportErrors(messages);
+                return;
+            }
+
+            for (const line of data.lines) {
+                await applyImportedLine(line, branchId);
+            }
+        } catch (error) {
+            showImportErrors(['Gagal menghubungi server. Silakan coba lagi.']);
+        } finally {
+            importButton.disabled = !window.currentStockAdjustmentBranchId;
+            importIcon.classList.remove('d-none');
+            importSpinner.classList.add('d-none');
+        }
+    });
+
     window.StockAdjustmentLineItems = {
         addLine: addLine,
         preselectLine: preselectLine,

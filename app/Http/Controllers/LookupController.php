@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Mechanic;
+use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -122,6 +123,35 @@ class LookupController extends Controller
                         'on_hand_qty' => (float) $sb->stock->on_hand_qty,
                     ];
                 })
+                ->values()
+        );
+    }
+
+    public function reportSpareparts(Request $request)
+    {
+        $branchIds = auth()->user()->branchesWithPermission('report.goods_receipt.view')->pluck('id');
+        abort_if($branchIds->isEmpty(), 403);
+
+        $query = Sparepart::query()
+            ->whereIn('id', SparepartBranch::whereIn('branch_id', $branchIds)->select('sparepart_id'));
+        $ids = array_map('intval', (array) $request->query('ids', []));
+
+        if (! empty($ids)) {
+            $query->whereIn('id', $ids);
+        } else {
+            $term = $this->searchTerm($request);
+            if ($term === null) {
+                return response()->json([]);
+            }
+            $escaped = addcslashes($term, '%_\\');
+            $query->where(function ($inner) use ($escaped) {
+                $inner->where('name', 'like', "%{$escaped}%")->orWhere('code', 'like', "%{$escaped}%");
+            });
+        }
+
+        return response()->json(
+            $query->orderBy('name')->limit(20)->get()
+                ->map(fn (Sparepart $sp) => ['id' => $sp->id, 'text' => $sp->code . ' — ' . $sp->name])
                 ->values()
         );
     }

@@ -288,6 +288,14 @@ class MenuPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'code' => 'reporting.goods_receipt',
+                'name' => 'Laporan Penerimaan Barang',
+                'is_branch_scoped' => true,
+                'permissions' => [
+                    ['code' => 'report.goods_receipt.view', 'resource' => 'report', 'action' => 'goods_receipt.view', 'description' => 'Melihat laporan penerimaan barang'],
+                ],
+            ],
+            [
                 'code' => 'reporting.gross_profit',
                 'name' => 'Laporan Laba Rugi',
                 'is_branch_scoped' => true,

@@ -161,6 +161,12 @@
             <span class="nav-text">Laporan Stok</span>
         </a>
     @endif
+    @if ($user->branchesWithPermission('report.goods_receipt.view')->isNotEmpty())
+        <a href="{{ route('reports.goods-receipts.index') }}" class="nav-link {{ request()->routeIs('reports.goods-receipts.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-box-arrow-in-down"></i></span>
+            <span class="nav-text">Laporan Penerimaan Barang</span>
+        </a>
+    @endif
     @if ($user->branchesWithPermission('report.gross_profit.view')->isNotEmpty())
         <a href="{{ route('reports.gross-profit.index') }}" class="nav-link {{ request()->routeIs('reports.gross-profit.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-graph-up-arrow"></i></span>

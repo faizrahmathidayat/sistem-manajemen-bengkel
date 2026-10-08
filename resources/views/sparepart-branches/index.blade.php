@@ -15,6 +15,9 @@
                 <a href="{{ route('sparepart-branches.createExisting') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-link-45deg"></i> Tambah dari Cabang Lain
                 </a>
+                <a href="{{ route('sparepart-branches.copyFromBranch') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-files"></i> Salin dari Cabang Lain
+                </a>
             @endif
             @if (auth()->user()->branchesWithPermission('sparepart.create')->isNotEmpty())
                 <a href="{{ route('sparepart-branches.import') }}" class="btn btn-outline-secondary btn-sm">

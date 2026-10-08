@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\SparepartMasterImportTemplateExport;
+use App\Http\Requests\CopySparepartFromBranchRequest;
 use App\Http\Requests\ImportSparepartMasterLinesRequest;
 use App\Http\Requests\StoreSparepartMasterBulkRequest;
 use App\Http\Requests\StoreSparepartRequest;
@@ -216,6 +217,68 @@ class SparepartBranchController extends Controller
         });
 
         return redirect()->route('sparepart-branches.index')->with('status', 'Sparepart berhasil ditambahkan ke cabang ini.');
+    }
+
+    public function copyFromBranchPage()
+    {
+        $user = auth()->user();
+        $branch = $this->resolveCurrentBranch($user);
+
+        if (! $branch || ! $user->hasPermissionToInBranch('sparepart.create', $branch->id)) {
+            abort(403);
+        }
+
+        $sourceBranches = $user->branchesWithPermission('sparepart.view')
+            ->where('id', '!=', $branch->id)
+            ->values();
+
+        $copyableCounts = $sourceBranches->mapWithKeys(
+            fn (Branch $source) => [$source->id => $this->copyableConfigs($source->id, $branch->id)->count()]
+        );
+
+        return view('sparepart-branches.copy-from-branch', compact('branch', 'sourceBranches', 'copyableCounts'));
+    }
+
+    public function copyFromBranch(CopySparepartFromBranchRequest $request)
+    {
+        $data = $request->validated();
+        $targetBranchId = (int) $data['branch_id'];
+        $sourceBranchId = (int) $data['source_branch_id'];
+
+        $copied = DB::transaction(function () use ($sourceBranchId, $targetBranchId) {
+            $configs = $this->copyableConfigs($sourceBranchId, $targetBranchId)->get();
+
+            foreach ($configs as $config) {
+                SparepartBranch::create([
+                    'sparepart_id' => $config->sparepart_id,
+                    'branch_id' => $targetBranchId,
+                    'rack_id' => null,
+                    'selling_price' => $config->selling_price,
+                    'minimum_stock' => $config->minimum_stock,
+                ]);
+            }
+
+            return $configs->count();
+        });
+
+        $sourceName = Branch::findOrFail($sourceBranchId)->name;
+        $message = $copied > 0
+            ? "{$copied} sparepart berhasil disalin dari {$sourceName}. Rak perlu diatur ulang per sparepart."
+            : "Tidak ada sparepart baru yang bisa disalin dari {$sourceName}.";
+
+        return redirect()->route('sparepart-branches.index')->with('status', $message);
+    }
+
+    /**
+     * Active configs at the source branch whose active master sparepart is not yet configured at the target.
+     */
+    protected function copyableConfigs(int $sourceBranchId, int $targetBranchId)
+    {
+        return SparepartBranch::where('branch_id', $sourceBranchId)
+            ->where('is_active', true)
+            ->whereHas('sparepart', fn ($query) => $query->where('is_active', true))
+            ->whereNotIn('sparepart_id', SparepartBranch::where('branch_id', $targetBranchId)->select('sparepart_id'))
+            ->orderBy('id');
     }
 
     public function edit(SparepartBranch $sparepartBranch)

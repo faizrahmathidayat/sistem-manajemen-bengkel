@@ -139,6 +139,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create-existing', [SparepartBranchController::class, 'createExisting'])->name('createExisting');
         Route::get('/lookup/unconfigured', [SparepartBranchController::class, 'lookupUnconfigured'])->name('lookup.unconfigured');
         Route::post('/existing', [SparepartBranchController::class, 'storeExisting'])->name('storeExisting');
+        Route::get('/copy-from-branch', [SparepartBranchController::class, 'copyFromBranchPage'])->name('copyFromBranch');
+        Route::post('/copy-from-branch', [SparepartBranchController::class, 'copyFromBranch'])->name('copyFromBranch.store');
         Route::get('/import', [SparepartBranchController::class, 'importPage'])->name('import');
         Route::get('/import-template', [SparepartBranchController::class, 'downloadImportTemplate'])->name('import-template');
         Route::post('/import-lines', [SparepartBranchController::class, 'importLines'])->name('import-lines');

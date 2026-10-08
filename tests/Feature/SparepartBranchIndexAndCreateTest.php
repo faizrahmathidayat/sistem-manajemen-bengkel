@@ -230,10 +230,12 @@ class SparepartBranchIndexAndCreateTest extends TestCase
 
         $response = $this->actingAs($user)->post('/sparepart-branches/existing', [
             'branch_id' => $branchA->id,
-            'sparepart_id' => $sparepart->id,
-            'rack_id' => $rack->id,
-            'selling_price' => 60000,
-            'minimum_stock' => 5,
+            'lines' => [[
+                'sparepart_id' => $sparepart->id,
+                'rack_id' => $rack->id,
+                'selling_price' => 60000,
+                'minimum_stock' => 5,
+            ]],
         ]);
 
         $response->assertRedirect('/sparepart-branches');
@@ -301,10 +303,12 @@ class SparepartBranchIndexAndCreateTest extends TestCase
 
         $response = $this->post('/sparepart-branches/existing', [
             'branch_id' => $branch->id,
-            'sparepart_id' => $sparepart->id,
-            'rack_id' => $rack->id,
-            'selling_price' => 60000,
-            'minimum_stock' => 5,
+            'lines' => [[
+                'sparepart_id' => $sparepart->id,
+                'rack_id' => $rack->id,
+                'selling_price' => 60000,
+                'minimum_stock' => 5,
+            ]],
         ]);
 
         $response->assertRedirect('/sparepart-branches');
@@ -325,10 +329,11 @@ class SparepartBranchIndexAndCreateTest extends TestCase
         $this->actingAs(User::find($user->id))->get('/sparepart-branches');
 
         $response = $this->post('/sparepart-branches/existing', [
-            'branch_id' => $branch->id, 'sparepart_id' => $sparepart->id, 'selling_price' => 100000,
+            'branch_id' => $branch->id,
+            'lines' => [['sparepart_id' => $sparepart->id, 'selling_price' => 100000]],
         ]);
 
-        $response->assertSessionHasErrors(['sparepart_id']);
+        $response->assertSessionHasErrors(['lines.0.sparepart_id']);
     }
 
     public function test_index_does_not_500_when_q_is_submitted_as_an_array(): void

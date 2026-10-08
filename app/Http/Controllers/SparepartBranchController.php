@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\SparepartExistingImportTemplateExport;
 use App\Exports\SparepartMasterImportTemplateExport;
 use App\Http\Requests\CopySparepartFromBranchRequest;
 use App\Http\Requests\ImportSparepartMasterLinesRequest;
@@ -9,6 +10,7 @@ use App\Http\Requests\StoreSparepartMasterBulkRequest;
 use App\Http\Requests\StoreSparepartRequest;
 use App\Http\Requests\StoreSparepartToBranchRequest;
 use App\Http\Requests\UpdateSparepartBranchRequest;
+use App\Imports\SparepartExistingLinesImport;
 use App\Imports\SparepartMasterLinesImport;
 use App\Models\Branch;
 use App\Models\Rack;
@@ -167,7 +169,34 @@ class SparepartBranchController extends Controller
 
         $racks = Rack::where('is_active', true)->orderBy('code')->get();
 
-        return view('sparepart-branches.create-existing', compact('branch', 'racks'));
+        // Rows are rebuilt client-side after a failed validation; the Select2 pickers need
+        // their "code — name" labels back, so resolve them for the previously chosen ids.
+        $oldSparepartIds = collect(old('lines', []))->pluck('sparepart_id')->filter()->all();
+        $oldSparepartLabels = Sparepart::whereIn('id', $oldSparepartIds)->get()
+            ->mapWithKeys(fn (Sparepart $sparepart) => [$sparepart->id => $sparepart->code . ' — ' . $sparepart->name]);
+
+        return view('sparepart-branches.create-existing', compact('branch', 'racks', 'oldSparepartLabels'));
+    }
+
+    public function downloadExistingImportTemplate()
+    {
+        abort_if(auth()->user()->branchesWithPermission('sparepart.create')->isEmpty(), 403);
+
+        return Excel::download(new SparepartExistingImportTemplateExport(), 'template-tambah-sparepart-dari-master.xlsx');
+    }
+
+    public function importExistingLines(ImportSparepartMasterLinesRequest $request)
+    {
+        $data = $request->validated();
+
+        $import = new SparepartExistingLinesImport((int) $data['branch_id']);
+        Excel::import($import, $data['file']);
+
+        if (! empty($import->errors)) {
+            return response()->json(['errors' => $import->errors], 422);
+        }
+
+        return response()->json(['lines' => $import->lines]);
     }
 
     public function lookupUnconfigured(Request $request)
@@ -207,16 +236,20 @@ class SparepartBranchController extends Controller
         $data = $request->validated();
 
         DB::transaction(function () use ($data, $branch) {
-            SparepartBranch::create([
-                'sparepart_id' => $data['sparepart_id'],
-                'branch_id' => $branch->id,
-                'rack_id' => $data['rack_id'] ?? null,
-                'selling_price' => $data['selling_price'],
-                'minimum_stock' => $data['minimum_stock'] ?? 0,
-            ]);
+            foreach ($data['lines'] as $line) {
+                SparepartBranch::create([
+                    'sparepart_id' => $line['sparepart_id'],
+                    'branch_id' => $branch->id,
+                    'rack_id' => $line['rack_id'] ?? null,
+                    'selling_price' => $line['selling_price'],
+                    'minimum_stock' => $line['minimum_stock'] ?? 0,
+                ]);
+            }
         });
 
-        return redirect()->route('sparepart-branches.index')->with('status', 'Sparepart berhasil ditambahkan ke cabang ini.');
+        $count = count($data['lines']);
+
+        return redirect()->route('sparepart-branches.index')->with('status', "{$count} sparepart berhasil ditambahkan ke cabang ini.");
     }
 
     public function copyFromBranchPage()

@@ -31,8 +31,8 @@ class StoreSparepartMasterBulkRequest extends FormRequest
             'lines.*.code' => ['required', 'string', 'max:30', 'distinct', 'unique:spareparts,code'],
             'lines.*.name' => ['required', 'string', 'max:150'],
             'lines.*.rack_id' => ['nullable', 'integer', 'exists:racks,id'],
-            'lines.*.selling_price' => ['required', 'numeric', 'min:0'],
-            'lines.*.minimum_stock' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.selling_price' => ['required', 'integer', 'min:0'],
+            'lines.*.minimum_stock' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

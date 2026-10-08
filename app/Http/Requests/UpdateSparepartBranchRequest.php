@@ -16,8 +16,8 @@ class UpdateSparepartBranchRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:150'],
             'rack_id' => ['nullable', 'integer', 'exists:racks,id'],
-            'selling_price' => ['required', 'numeric', 'min:0'],
-            'minimum_stock' => ['nullable', 'numeric', 'min:0'],
+            'selling_price' => ['required', 'integer', 'min:0'],
+            'minimum_stock' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

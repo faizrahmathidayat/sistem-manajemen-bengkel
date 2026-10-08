@@ -254,6 +254,34 @@
         }
     })();
     </script>
+    <script>
+    // Inputs marked data-integer accept whole numbers only: block ".", ",", "e", "+", "-"
+    // while typing and strip any non-digit characters left by paste/drop/autofill.
+    (function () {
+        document.addEventListener('keydown', function (event) {
+            if (!event.target.matches || !event.target.matches('input[data-integer]')) return;
+            if (['.', ',', 'e', 'E', '+', '-'].indexOf(event.key) !== -1) {
+                event.preventDefault();
+            }
+        });
+        document.addEventListener('input', function (event) {
+            if (!event.target.matches || !event.target.matches('input[data-integer]')) return;
+            var cleaned = event.target.value.replace(/[^0-9]/g, '');
+            if (cleaned !== event.target.value) {
+                event.target.value = cleaned;
+            }
+        });
+        document.addEventListener('paste', function (event) {
+            if (!event.target.matches || !event.target.matches('input[data-integer]')) return;
+            var text = (event.clipboardData || window.clipboardData).getData('text');
+            if (/[^0-9]/.test(text)) {
+                event.preventDefault();
+                var digits = text.replace(/[.,].*$/, '').replace(/[^0-9]/g, '');
+                document.execCommand('insertText', false, digits);
+            }
+        });
+    })();
+    </script>
     @stack('scripts')
 </body>
 </html>

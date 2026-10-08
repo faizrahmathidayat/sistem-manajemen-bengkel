@@ -15,10 +15,10 @@
             </select>
         </div>
         <div class="col-md-2">
-            <input type="number" step="0.01" min="0" required class="form-control sparepart-import-price" placeholder="Harga Jual">
+            <input type="number" step="1" min="0" data-integer required class="form-control sparepart-import-price" placeholder="Harga Jual">
         </div>
         <div class="col-md-1">
-            <input type="number" step="0.001" min="0" class="form-control sparepart-import-stock" placeholder="Stok Min." value="0">
+            <input type="number" step="1" min="0" data-integer class="form-control sparepart-import-stock" placeholder="Stok Min." value="0">
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-sparepart-import-line">&times;</button>

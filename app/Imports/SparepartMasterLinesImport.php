@@ -131,8 +131,8 @@ class SparepartMasterLinesImport implements ToCollection, WithHeadingRow
                 'name' => $name,
                 'rack_id' => $rackId,
                 'rack_code' => $rackId ? $rackCode : null,
-                'selling_price' => (float) $priceRaw,
-                'minimum_stock' => ($stockRaw === null || $stockRaw === '') ? 0.0 : (float) $stockRaw,
+                'selling_price' => round((float) $priceRaw),
+                'minimum_stock' => ($stockRaw === null || $stockRaw === '') ? 0.0 : round((float) $stockRaw),
             ];
         }
     }

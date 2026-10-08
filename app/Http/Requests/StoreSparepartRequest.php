@@ -20,8 +20,8 @@ class StoreSparepartRequest extends FormRequest
             'code' => ['required', 'string', 'max:30', 'unique:spareparts,code'],
             'name' => ['required', 'string', 'max:150'],
             'rack_id' => ['nullable', 'integer', 'exists:racks,id'],
-            'selling_price' => ['required', 'numeric', 'min:0'],
-            'minimum_stock' => ['nullable', 'numeric', 'min:0'],
+            'selling_price' => ['required', 'integer', 'min:0'],
+            'minimum_stock' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

@@ -47,12 +47,12 @@
             </div>
             <div class="col-md-4">
                 <label for="selling_price" class="form-label">Harga Jual</label>
-                <input type="number" step="0.01" min="0" name="selling_price" id="selling_price" value="{{ old('selling_price', $sparepartBranch->selling_price) }}" class="form-control @error('selling_price') is-invalid @enderror" required>
+                <input type="number" step="1" min="0" data-integer name="selling_price" id="selling_price" value="{{ old('selling_price', (int) round($sparepartBranch->selling_price)) }}" class="form-control @error('selling_price') is-invalid @enderror" required>
                 @error('selling_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-md-4">
                 <label for="minimum_stock" class="form-label">Stok Minimum</label>
-                <input type="number" step="0.001" min="0" name="minimum_stock" id="minimum_stock" value="{{ old('minimum_stock', $sparepartBranch->minimum_stock) }}" class="form-control @error('minimum_stock') is-invalid @enderror">
+                <input type="number" step="1" min="0" data-integer name="minimum_stock" id="minimum_stock" value="{{ old('minimum_stock', (int) round($sparepartBranch->minimum_stock)) }}" class="form-control @error('minimum_stock') is-invalid @enderror">
                 @error('minimum_stock')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
         </div>

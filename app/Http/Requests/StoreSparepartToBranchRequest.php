@@ -20,8 +20,8 @@ class StoreSparepartToBranchRequest extends FormRequest
             'branch_id' => ['required', 'integer'],
             'sparepart_id' => ['required', 'integer', 'exists:spareparts,id'],
             'rack_id' => ['nullable', 'integer', 'exists:racks,id'],
-            'selling_price' => ['required', 'numeric', 'min:0'],
-            'minimum_stock' => ['nullable', 'numeric', 'min:0'],
+            'selling_price' => ['required', 'integer', 'min:0'],
+            'minimum_stock' => ['nullable', 'integer', 'min:0'],
         ];
     }
 

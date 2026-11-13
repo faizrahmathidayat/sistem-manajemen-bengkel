@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<title>Rancangan — Permintaan Barang, Pembelian Barang & Penerimaan Barang</title>
+<title>Rancangan Modul Pengadaan Barang — Sistem Manajemen Bengkel</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -141,11 +141,10 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
 </head>
 <body>
 
-<!-- ============ COVER ============ -->
 <section class="pg">
   <div class="cover">
-    <div class="eyebrow">Rancangan Fitur · Sistem Manajemen Bengkel</div>
-    <h1>Permintaan Barang, Pembelian Barang<br>& Perubahan Penerimaan Barang</h1>
+    <div class="eyebrow">Sistem Manajemen Bengkel · Modul Pengadaan</div>
+    <h1>Permintaan Barang, Pembelian Barang<br>&amp; Penerimaan Barang</h1>
     <div class="flow">
       <span class="b"><i class="bi bi-clipboard-plus"></i> Permintaan</span><i class="bi bi-arrow-right"></i>
       <span class="b"><i class="bi bi-person-lines-fill"></i> Tentukan Supplier</span><i class="bi bi-arrow-right"></i>
@@ -154,79 +153,150 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       <span class="b"><i class="bi bi-truck"></i> Penerimaan</span><i class="bi bi-arrow-right"></i>
       <span class="b"><i class="bi bi-boxes"></i> Stok Bertambah</span>
     </div>
-    <div class="note" style="max-width:720px">
-      Dokumen ini adalah rancangan untuk disetujui <b>sebelum</b> kode ditulis: alur &amp; status, aturan approval, model data, permission, mockup UI setiap layar, dan laporan.
-      Semua mockup memakai gaya UI aplikasi saat ini (Bootstrap 5, design tokens proyek). Data pada mockup hanyalah contoh.
+    <div class="note" style="max-width:760px">
+      Dokumen ini merangkum alur proses, aturan bisnis, peran pengguna, dan tampilan layar modul pengadaan: dari permintaan barang oleh cabang,
+      persetujuan bertingkat, pembelian ke supplier, sampai barang diterima dan stok bertambah, lengkap dengan laporannya.
+      Seluruh data pada gambar tampilan hanyalah contoh.
     </div>
-    <div class="note mt-3" style="color:#6B7280">Branch: <code>feature/permintaan-pembelian-barang</code> · Spec tertulis: <code>docs/superpowers/specs/2026-11-13-permintaan-pembelian-barang-design.md</code> · 13 November 2026</div>
+    <div class="note mt-3" style="color:#6B7280">Versi final · 14 November 2026</div>
   </div>
 </section>
 
-<!-- ============ 1 ALUR ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">01</span><h2>Alur Besar &amp; Peran</h2><span class="sub">Siapa melakukan apa di setiap tahap</span></div>
-  <div class="lane" style="margin:14px 0 14px">
-    <div class="step"><span class="n">1</span><h4>Buat Permintaan</h4><p>Pilih sparepart &amp; qty untuk cabangnya. Belum ada supplier/harga.</p><div class="who"><i class="bi bi-person"></i> Kepala Bengkel</div><span class="tag o">Menunggu Supplier</span></div>
-    <div class="step"><span class="n">2</span><h4>Tentukan Supplier</h4><p>Isi supplier &amp; harga beli per barang. Setelah lengkap: <b>Ajukan Approval</b>.</p><div class="who"><i class="bi bi-person"></i> Kepala Gudang</div><span class="tag o">Menunggu Supplier</span></div>
-    <div class="step"><span class="n">3</span><h4>Approval Berjenjang</h4><p>Manager → Direktur → CEO sesuai total. Hanya <b>Setuju</b> / <b>Tolak</b>.</p><div class="who"><i class="bi bi-person"></i> Manager / Direktur / CEO</div><span class="tag o">Menunggu Approval</span></div>
-    <div class="step"><span class="n">4</span><h4>Pembelian Terbentuk</h4><p>Otomatis 1 draft pembelian per supplier saat approval terakhir setuju.</p><div class="who"><i class="bi bi-person"></i> Sistem → Petugas Pembelian</div><span class="tag g">Disetujui</span> <span class="tag s">PO Draft</span></div>
-    <div class="step"><span class="n">5</span><h4>Terbitkan Pembelian</h4><p>Petugas meninjau &amp; menerbitkan PO ke supplier. Bisa dibatalkan bila belum ada penerimaan.</p><div class="who"><i class="bi bi-person"></i> Petugas Pembelian</div><span class="tag">PO Diterbitkan</span></div>
-    <div class="step" style="margin-right:0"><span class="n">6</span><h4>Penerimaan Barang</h4><p>Barang datang → Penerimaan dibuat dari PO (boleh bertahap) → <b>Posting</b> → stok &amp; HPP bertambah.</p><div class="who"><i class="bi bi-person"></i> Petugas Gudang cabang</div><span class="tag g">Stok +</span></div>
+  <div class="pg-head"><span class="no">01</span><h2>Ringkasan</h2><span class="sub">Apa yang berubah dan apa manfaatnya</span></div>
+  <div class="split" style="grid-template-columns:1fr 1fr; gap:18px; margin-bottom:12px">
+    <div class="callout warn" style="margin:0">
+      <b>Sebelum</b>
+      <ul style="margin:6px 0 0; padding-left:18px">
+        <li>Penerimaan barang dibuat bebas: tanpa supplier, tanpa persetujuan, tanpa kaitan ke permintaan.</li>
+        <li>Tidak ada jejak siapa yang meminta, menyetujui, atau membatalkan pembelian.</li>
+        <li>Tidak ada laporan pembelian dan barang yang belum datang.</li>
+      </ul>
+    </div>
+    <div class="callout ok" style="margin:0">
+      <b>Sesudah</b>
+      <ul style="margin:6px 0 0; padding-left:18px">
+        <li>Satu alur terkontrol: permintaan cabang → supplier &amp; harga → persetujuan bertingkat → pembelian → penerimaan.</li>
+        <li>Stok hanya bertambah dari penerimaan yang berasal dari pembelian yang sah.</li>
+        <li>Setiap langkah tercatat dan dapat dilaporkan.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="lane" style="grid-template-columns:repeat(3,1fr); gap:12px">
+    <div class="step" style="margin-right:0"><span class="n"><i class="bi bi-box-seam" style="font-size:12px"></i></span><h4>Permintaan hanya untuk barang yang kurang</h4><p>Barang yang boleh diminta hanyalah yang stok tersedianya sudah di bawah stok minimal cabang. Sistem menolak sisanya.</p></div>
+    <div class="step" style="margin-right:0"><span class="n"><i class="bi bi-diagram-3" style="font-size:12px"></i></span><h4>Persetujuan sesuai nilai</h4><p>Semakin besar nilai permintaan, semakin tinggi level yang harus menyetujui. Level, siapa approvernya, dan batas nominalnya diatur sendiri oleh admin tanpa mengubah program.</p></div>
+    <div class="step" style="margin-right:0"><span class="n"><i class="bi bi-shop" style="font-size:12px"></i></span><h4>Pembelian otomatis per supplier</h4><p>Begitu approval terakhir menyetujui, sistem menyusun satu pembelian untuk tiap supplier. Petugas pembelian tinggal menerbitkannya.</p></div>
+    <div class="step" style="margin-right:0"><span class="n"><i class="bi bi-truck" style="font-size:12px"></i></span><h4>Penerimaan bertahap yang terkendali</h4><p>Barang diterima berdasarkan pembelian, boleh bertahap, tidak boleh melebihi sisa pesanan. Harga mengikuti pembelian, jadi HPP akurat.</p></div>
+    <div class="step" style="margin-right:0"><span class="n"><i class="bi bi-journal-text" style="font-size:12px"></i></span><h4>Jejak yang jelas</h4><p>Siapa mengajukan, menyetujui, menolak, atau membatalkan, kapan, dan alasannya, tercatat di riwayat dan audit log.</p></div>
+    <div class="step" style="margin-right:0"><span class="n"><i class="bi bi-clipboard-data" style="font-size:12px"></i></span><h4>Laporan siap pakai</h4><p>Laporan Permintaan (posisi approval &amp; lama proses), Laporan Pembelian (nilai, diterima, outstanding, per supplier), dan Laporan Penerimaan; bisa diekspor Excel dan PDF.</p></div>
+  </div>
+  <div class="callout mt-3"><b>Data lama aman.</b> Penerimaan barang yang dibuat sebelum modul ini tetap tersimpan, tetap tampil di daftar dan laporan (tanpa supplier dan nomor pembelian), dan draft lama masih dapat diselesaikan.</div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 2</span></div>
+</section>
+
+
+<section class="pg">
+  <div class="pg-head"><span class="no">02</span><h2>Alur Proses &amp; Peran</h2><span class="sub">Siapa melakukan apa di setiap tahap</span></div>
+  <div class="lane" style="margin:12px 0 12px">
+    <div class="step"><span class="n">1</span><h4>Buat Permintaan</h4><p>Pilih barang yang stoknya di bawah minimal dan isi qty untuk cabangnya.</p><div class="who"><i class="bi bi-person"></i> Kepala Bengkel</div><span class="tag o">Menunggu Supplier</span></div>
+    <div class="step"><span class="n">2</span><h4>Tentukan Supplier</h4><p>Isi supplier &amp; harga beli per barang, lalu <b>Ajukan Approval</b>.</p><div class="who"><i class="bi bi-person"></i> Kepala Gudang</div><span class="tag o">Menunggu Supplier</span></div>
+    <div class="step"><span class="n">3</span><h4>Approval Berjenjang</h4><p>Level yang wajib ditentukan nilai total. Hanya <b>Setuju</b> atau <b>Tolak</b>.</p><div class="who"><i class="bi bi-person"></i> Approver tiap level</div><span class="tag o">Menunggu Approval</span></div>
+    <div class="step"><span class="n">4</span><h4>Pembelian Terbentuk</h4><p>Satu draft pembelian per supplier tersusun otomatis.</p><div class="who"><i class="bi bi-person"></i> Sistem</div><span class="tag g">Disetujui</span> <span class="tag s">PO Draft</span></div>
+    <div class="step"><span class="n">5</span><h4>Terbitkan Pembelian</h4><p>Petugas meninjau lalu menerbitkan PO ke supplier (bisa dicetak).</p><div class="who"><i class="bi bi-person"></i> Petugas Pembelian</div><span class="tag">PO Diterbitkan</span></div>
+    <div class="step" style="margin-right:0"><span class="n">6</span><h4>Penerimaan Barang</h4><p>Barang datang, penerimaan dibuat dari PO (boleh bertahap), lalu <b>Posting</b>: stok &amp; HPP bertambah.</p><div class="who"><i class="bi bi-person"></i> Petugas Gudang cabang</div><span class="tag g">Stok +</span></div>
   </div>
 
-  <div class="split" style="grid-template-columns:1fr 1fr">
+  <div class="split" style="grid-template-columns:1fr 1fr; gap:18px">
     <div>
       <b style="font-size:12.5px">Status Permintaan Barang</b>
       <div class="statuschain"><span class="chip w">menunggu supplier</span><i class="bi bi-arrow-right"></i><span class="chip w">menunggu approval</span><i class="bi bi-arrow-right"></i><span class="chip g">disetujui</span></div>
-      <div class="statuschain"><span class="chip w">menunggu approval</span><i class="bi bi-arrow-right"></i><span class="chip r">ditolak (final)</span> &nbsp; <span class="chip w">menunggu supplier</span><i class="bi bi-arrow-right"></i><span class="chip s">dibatalkan</span></div>
+      <div class="statuschain"><span class="chip w">menunggu approval</span><i class="bi bi-arrow-right"></i><span class="chip r">ditolak</span> &nbsp; <span class="chip w">menunggu supplier / approval</span><i class="bi bi-arrow-right"></i><span class="chip s">dibatalkan</span></div>
       <b style="font-size:12.5px">Status Pembelian (PO)</b>
       <div class="statuschain"><span class="chip s">draft</span><i class="bi bi-arrow-right"></i><span class="chip b">diterbitkan</span><i class="bi bi-arrow-right"></i><span class="chip w">diterima sebagian</span><i class="bi bi-arrow-right"></i><span class="chip g">selesai</span></div>
-      <div class="statuschain"><span class="chip s">draft / diterbitkan</span><i class="bi bi-arrow-right"></i><span class="chip r">dibatalkan</span> <span class="note">(hanya jika belum ada penerimaan terposting)</span></div>
-      <b style="font-size:12.5px">Status Penerimaan (tidak berubah)</b>
+      <div class="statuschain"><span class="chip s">draft / diterbitkan</span><i class="bi bi-arrow-right"></i><span class="chip r">dibatalkan</span> <span class="note">(selama belum ada penerimaan diposting)</span></div>
+      <b style="font-size:12.5px">Status Penerimaan</b>
       <div class="statuschain"><span class="chip s">draft</span><i class="bi bi-arrow-right"></i><span class="chip g">diposting</span> &nbsp;<span class="chip s">draft</span><i class="bi bi-arrow-right"></i><span class="chip r">dibatalkan</span></div>
     </div>
     <div>
-      <div class="callout ok"><b>Prinsip utama:</b> stok <u>hanya</u> bertambah dari Penerimaan yang diposting, dan Penerimaan <u>hanya</u> boleh berasal dari Pembelian yang diterbitkan, yang berasal dari Permintaan yang disetujui penuh.</div>
-      <div class="callout"><b>Lintas cabang vs per cabang.</b> Permintaan &amp; Penerimaan mengikuti permission <u>per cabang</u> (seperti sekarang). Kepala Gudang dan Petugas Pembelian memakai permission <u>global</u> (melihat semua cabang). Level, approver, dan aturan nominal <u>diatur di layar Pengaturan Approval</u>.</div>
-      <div class="callout warn"><b>Ditolak = selesai.</b> Permintaan yang ditolak tidak bisa dihidupkan lagi; pemohon membuat permintaan baru dari awal. Alasan penolakan wajib diisi dan tampil di detail.</div>
+      <div class="callout ok" style="margin-top:0"><b>Prinsip utama:</b> stok <u>hanya</u> bertambah dari Penerimaan yang diposting; Penerimaan <u>hanya</u> berasal dari Pembelian yang diterbitkan; Pembelian <u>hanya</u> lahir dari Permintaan yang disetujui penuh.</div>
+      <div class="callout"><b>Per cabang vs lintas cabang.</b> Pemohon dan penerima barang bekerja per cabang. Kepala Gudang, approver, dan Petugas Pembelian melihat semua cabang. Level, approver, dan aturan nominal diatur di layar Pengaturan Approval.</div>
+      <div class="callout warn"><b>Ditolak dan dibatalkan bersifat final.</b> Permintaan yang ditolak atau dibatalkan tidak dihidupkan kembali; pemohon membuat permintaan baru. Alasan penolakan wajib dan tampil di detail permintaan.</div>
     </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 2</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 3</span></div>
 </section>
 
-<!-- ============ 2 APPROVAL ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">02</span><h2>Aturan Approval Berjenjang</h2><span class="sub">Level, approver, dan batas nominal dapat diatur di Pengaturan Approval</span></div>
-  <div class="split" style="grid-template-columns:1.05fr 1fr; gap:22px">
+  <div class="pg-head"><span class="no">03</span><h2>Aturan Bisnis</h2><span class="sub">Ketentuan yang dijaga sistem</span></div>
+  <div class="split" style="grid-template-columns:1.35fr 1fr; gap:18px">
     <div>
       <table class="doc">
-        <tr><th>Total Permintaan</th><th>Rantai Approval (berurutan)</th><th>Jumlah Level</th></tr>
+        <tr><th style="width:120px">Topik</th><th>Aturan</th></tr>
+        <tr><td><b>Barang yang boleh diminta</b></td><td>Hanya barang dengan <b>stok tersedia di bawah stok minimal</b> cabang (stok tersedia = stok fisik − yang sudah dicadangkan PKB). Dicek saat disimpan dan sekali lagi saat data benar-benar tersimpan. Barang tanpa stok minimal tidak dapat diminta.</td></tr>
+        <tr><td><b>Supplier &amp; harga</b></td><td>Kepala Gudang mengisi supplier dan harga beli per barang; satu barang satu supplier; harga bilangan bulat lebih dari 0. Total dihitung ulang oleh sistem.</td></tr>
+        <tr><td><b>Persetujuan</b></td><td>Berjenjang menurut total permintaan (batas nominal termasuk angka batasnya). Satu level boleh punya beberapa approver; <b>salah satu cukup</b>. Level, approver, dan aturan nominal diatur admin.</td></tr>
+        <tr><td><b>Pembatasan approver</b></td><td>Pemohon dan pengaju <b>tidak boleh</b> menyetujui permintaannya sendiri; satu orang hanya memproses <b>satu level</b> per permintaan. Pengajuan ditolak dengan pesan jelas bila rantainya mustahil diselesaikan (mis. satu-satunya approver level itu adalah pemohon).</td></tr>
+        <tr><td><b>Perubahan pengaturan</b></td><td>Berlaku untuk permintaan yang diajukan setelahnya. Permintaan yang sedang berjalan memakai rantai dan approver saat diajukan.</td></tr>
+        <tr><td><b>Penolakan</b></td><td>Alasan wajib; permintaan menjadi final; level yang belum sempat memproses ditandai tidak diproses.</td></tr>
+        <tr><td><b>Pembelian</b></td><td>Satu pembelian per supplier, tersusun otomatis saat approval terakhir menyetujui. Qty dan harga tidak dapat diubah (hasil persetujuan).</td></tr>
+        <tr><td><b>Penerimaan</b></td><td>Dari pembelian yang diterbitkan; boleh bertahap; qty tidak boleh melebihi sisa pesanan (dicek ulang saat posting); harga mengikuti pembelian; stok dan HPP bertambah saat diposting.</td></tr>
+      </table>
+    </div>
+    <div>
+      <b style="font-size:12.5px">Siapa boleh membatalkan permintaan</b>
+      <table class="doc mt-1">
+        <tr><th>Status</th><th>Boleh membatalkan</th><th>Ketentuan</th></tr>
+        <tr><td><span class="tag o">Menunggu Supplier</span></td><td>Pemohon, Kepala Gudang</td><td>Alasan opsional. Tetap boleh walau supplier sudah terisi.</td></tr>
+        <tr><td><span class="tag o">Menunggu Approval</span></td><td>Kepala Gudang</td><td><b>Alasan wajib</b>. Langkah yang belum diproses dihentikan; keputusan yang sudah masuk tetap tercatat.</td></tr>
+        <tr><td><span class="tag g">Disetujui</span></td><td>—</td><td>Tidak dibatalkan dari permintaan; batalkan lewat Pembelian (selama belum ada barang diterima).</td></tr>
+        <tr><td><span class="tag r">Ditolak</span> <span class="tag s">Dibatalkan</span></td><td>—</td><td>Final.</td></tr>
+      </table>
+      <div class="note mt-2" style="font-size:11px"><b>Mengubah isi permintaan</b> hanya oleh pemohon, dan hanya sebelum ada supplier yang terisi.</div>
+      <b style="font-size:12.5px;display:block;margin-top:12px">Pembatalan Pembelian (PO)</b>
+      <div class="note" style="font-size:11px">Draft atau diterbitkan, selama belum ada penerimaan yang diposting. Draft penerimaan miliknya ikut dibatalkan. PO yang dibatalkan bersifat final.</div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 4</span></div>
+</section>
+
+
+<section class="pg">
+  <div class="pg-head"><span class="no">04</span><h2>Approval Berjenjang</h2><span class="sub">Level, approver, dan batas nominal diatur di Pengaturan Approval</span></div>
+  <div class="split" style="grid-template-columns:1.05fr 1fr; gap:22px">
+    <div>
+      <b style="font-size:12.5px">Contoh aturan awal</b>
+      <table class="doc mt-1">
+        <tr><th>Total Permintaan</th><th>Rantai Approval (berurutan)</th><th>Level</th></tr>
         <tr><td>≤ Rp 10.000.000</td><td><span class="tag">1 Manager</span></td><td>1</td></tr>
         <tr><td>&gt; Rp 10.000.000 s.d. ≤ Rp 50.000.000</td><td><span class="tag">1 Manager</span> → <span class="tag">2 Direktur</span></td><td>2</td></tr>
-        <tr><td>&gt; Rp 50.000.000 (termasuk di atas 100 jt)</td><td><span class="tag">1 Manager</span> → <span class="tag">2 Direktur</span> → <span class="tag">3 CEO</span></td><td>3</td></tr>
+        <tr><td>&gt; Rp 50.000.000</td><td><span class="tag">1 Manager</span> → <span class="tag">2 Direktur</span> → <span class="tag">3 CEO</span></td><td>3</td></tr>
       </table>
       <div class="note mt-2">
-        <b>Total</b> = jumlah (qty × harga beli) semua baris, dihitung ulang di server saat <i>Ajukan Approval</i>, lalu dikunci (snapshot).<br>
-        <b>Batas inklusif:</b> tepat Rp 10.000.000 → cukup Manager; tepat Rp 50.000.000 → sampai Direktur.<br><b>Tabel ini adalah aturan awal (contoh).</b> Client dapat mengubah batas, level, dan urutannya di Pengaturan Approval tanpa mengubah kode.<br><br>
+        Tabel ini hanyalah contoh. Admin dapat menambah level (mis. “Kepala Cabang”), mengganti nama dan urutannya, memilih siapa saja approver tiap level,
+        serta mengubah batas nominal dan level yang terlibat, kapan pun, <b>tanpa mengubah program</b>.<br><br>
         <b>Cara kerja:</b>
         <ol style="padding-left:18px;margin:4px 0">
-          <li>Saat <i>Ajukan Approval</i>, sistem membuat baris approval sesuai aturan nominal yang berlaku saat itu (semua <code>pending</code>) dan <b>menyalin daftar approver</b> tiap level dari Pengaturan Approval. Ajukan ditolak bila ada level yang belum punya approver aktif.</li>
-          <li>Hanya level pending <u>terkecil</u> yang bisa diproses, oleh <b>salah satu user</b> yang diatur untuk level itu (cukup satu orang).</li>
-          <li><b>Setuju</b> → level jadi <code>approved</code>, giliran level berikut. Setuju level terakhir → permintaan <code>disetujui</code>, Pembelian terbentuk.</li>
-          <li><b>Tolak</b> (alasan wajib) → permintaan <code>ditolak</code>, level sisa jadi <code>void</code>.</li>
-          <li>Satu orang hanya boleh memproses <u>satu level</u> per permintaan; pemohon / pengaju tidak boleh menyetujui permintaannya sendiri.</li>
+          <li>Saat <i>Ajukan Approval</i>, sistem menghitung total, memilih aturan yang sesuai, dan menyalin rantai beserta daftar approver ke permintaan.</li>
+          <li>Hanya level yang sedang giliran yang dapat memutuskan, oleh salah satu approver level itu.</li>
+          <li><b>Setuju</b> → giliran level berikutnya. Setuju level terakhir → permintaan disetujui dan pembelian terbentuk.</li>
+          <li><b>Tolak</b> (alasan wajib) → permintaan ditolak dan final.</li>
+          <li>Pemohon/pengaju tidak boleh menyetujui permintaannya sendiri; satu orang satu level per permintaan.</li>
+          <li>Sebelum diajukan, Kepala Gudang melihat <b>pratinjau rantai</b> beserta nama approvernya. Bila rantai tidak mungkin diselesaikan, pengajuan ditolak dengan alasan yang jelas.</li>
+          <li>Permintaan yang tertahan (semua approver langkah itu nonaktif) diberi peringatan; admin dapat memuat ulang approver, atau Kepala Gudang dapat membatalkan permintaan.</li>
         </ol>
       </div>
     </div>
     <div>
-      <b style="font-size:12.5px">Contoh visual (Total Rp 38.320.000 → 2 level)</b>
+      <b style="font-size:12.5px">Contoh (Total Rp 38.320.000 → 2 level)</b>
       <div class="panel mt-2" style="padding:16px 14px">
         <div class="stepper" style="width:75%;margin:0 auto">
           <div class="stp done"><div class="dot"><i class="bi bi-check-lg"></i></div><b>Manager</b><small>Sri W.<br>12/11/2026 09:14</small></div>
-          <div class="stp now"><div class="dot">2</div><b>Direktur</b><small>menunggu</small></div>
+          <div class="stp now"><div class="dot">2</div><b>Direktur</b><small>menunggu: Hadi S.</small></div>
         </div>
       </div>
-      <b style="font-size:12.5px;display:block;margin-top:12px">Contoh visual (Total Rp 74.000.000 → 3 level)</b>
+      <b style="font-size:12.5px;display:block;margin-top:12px">Contoh (Total Rp 74.000.000 → 3 level)</b>
       <div class="panel mt-2" style="padding:16px 14px">
         <div class="stepper">
           <div class="stp done"><div class="dot"><i class="bi bi-check-lg"></i></div><b>Manager</b><small>Disetujui</small></div>
@@ -244,23 +314,65 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       </div>
     </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 3</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 5</span></div>
 </section>
 
-<!-- ============ PENGATURAN APPROVAL: LEVEL ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">03</span><h2>UI · Pengaturan Approval — Level &amp; Approver</h2><span class="sub">Administrasi → Pengaturan Approval · tab 1 · permission <code>approval_setting.view / manage</code></span></div>
+  <div class="pg-head"><span class="no">05</span><h2>Peran &amp; Hak Akses</h2><span class="sub">Hak akses diberikan per user di layar Users yang sudah ada</span></div>
+  <div class="split" style="grid-template-columns:1.6fr 1fr; gap:20px">
+    <div>
+      <table class="doc">
+        <tr><th style="width:130px">Peran</th><th style="width:90px">Cakupan</th><th>Dapat melakukan</th></tr>
+        <tr><td><b>Kepala Bengkel</b></td><td><span class="tag g">per cabang</span></td><td>Melihat dan membuat permintaan barang untuk cabangnya; mengubah permintaan sendiri sebelum supplier terisi; membatalkan permintaan sendiri sebelum diajukan.</td></tr>
+        <tr><td><b>Kepala Gudang</b></td><td><span class="tag">semua cabang</span></td><td>Melihat permintaan semua cabang; mengisi supplier &amp; harga; mengajukan approval; membatalkan permintaan (saat menunggu supplier atau approval).</td></tr>
+        <tr><td><b>Approver</b><br><span class="note">(Manager, Direktur, CEO, dst.)</span></td><td><span class="tag">semua cabang</span></td><td>Melihat permintaan yang menunggu keputusannya di menu <i>Approval Permintaan</i>; Setuju atau Tolak (alasan wajib). Dipilih admin di Pengaturan Approval, bukan lewat hak akses biasa.</td></tr>
+        <tr><td><b>Petugas Pembelian</b></td><td><span class="tag">semua cabang</span></td><td>Melihat pembelian; menerbitkan, membatalkan, dan mencetak PO.</td></tr>
+        <tr><td><b>Petugas Gudang cabang</b></td><td><span class="tag g">per cabang</span></td><td>Membuat penerimaan dari PO, mengubah qty draft, memposting atau membatalkan penerimaan (hak Penerimaan Barang yang sudah ada).</td></tr>
+        <tr><td><b>Admin</b></td><td><span class="tag">semua cabang</span></td><td>Mengelola master Supplier dan Pengaturan Approval (level, approver, aturan nominal); memuat ulang approver pada permintaan yang tertahan.</td></tr>
+        <tr><td><b>Pelihat Laporan</b></td><td><span class="tag">semua cabang</span></td><td>Laporan Permintaan Barang dan Laporan Pembelian Barang (Laporan Penerimaan tetap per cabang seperti sekarang).</td></tr>
+      </table>
+      <div class="note mt-2">Satu orang boleh memegang beberapa peran. Menu di sebelah kanan hanya tampil sesuai hak akses masing-masing user.</div>
+    </div>
+    <div>
+<div class="sb" style="width:100%;zoom:.86">
+        <div class="h">Persediaan</div>
+        <div class="l"><span class="ni"><i class="bi bi-box-seam"></i></span>Master Sparepart</div>
+        <div class="l"><span class="ni"><i class="bi bi-card-list"></i></span>Kartu Stok</div>
+        <div class="l chg"><span class="ni"><i class="bi bi-truck"></i></span>Penerimaan Barang<span class="nw" style="background:#D97706">UBAH</span></div>
+        <div class="h">Pembelian <span class="nw" style="display:inline;background:#10B981;color:#fff;border-radius:99px;padding:1px 7px;font-family:var(--font-mono)">BARU</span></div>
+        <div class="l new"><span class="ni"><i class="bi bi-clipboard-plus"></i></span>Permintaan Barang</div>
+        <div class="l new"><span class="ni"><i class="bi bi-patch-check"></i></span>Approval Permintaan<span class="bd">3</span></div>
+        <div class="l new"><span class="ni"><i class="bi bi-cart-check"></i></span>Pembelian Barang</div>
+        <div class="h">Master Data</div>
+        <div class="l new"><span class="ni"><i class="bi bi-shop"></i></span>Supplier</div>
+        <div class="h">Administrasi</div>
+        <div class="l new"><span class="ni"><i class="bi bi-sliders"></i></span>Pengaturan Approval</div>
+        <div class="h">Laporan</div>
+        <div class="l new"><span class="ni"><i class="bi bi-clipboard-data"></i></span>Laporan Permintaan Barang</div>
+        <div class="l new"><span class="ni"><i class="bi bi-cart-check"></i></span>Laporan Pembelian Barang</div>
+        <div class="l chg"><span class="ni"><i class="bi bi-box-arrow-in-down"></i></span>Laporan Penerimaan Barang<span class="nw" style="background:#D97706">UBAH</span></div>
+        <div class="note" style="margin:8px 6px 0;font-size:10px">Menu muncul sesuai hak akses masing-masing user. Menu <i>Approval Permintaan</i> tampil bagi user yang terdaftar sebagai approver; lencana = jumlah permintaan yang menunggu user itu.</div>
+      </div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 6</span></div>
+</section>
+
+
+<section class="pg">
+  <div class="pg-head"><span class="no">06</span><h2>Pengaturan Approval — Level &amp; Approver</h2><span class="sub">Administrasi → Pengaturan Approval · tab Level &amp; Approver</span></div>
   <div class="split" style="grid-template-columns:auto 1fr; gap:16px">
   <div class="frame" style="width:1010px;zoom:.8">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/pengaturan-approval</span><span class="who">Login: Admin</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/approval-settings</span><span class="who">Login: Admin</span></div>
     <div class="frame-body">
       <div class="page-heading" style="margin-bottom:.8rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-sliders"></i></span><div><p class="eyebrow">Administrasi</p><h1>Pengaturan Approval</h1><p class="text-muted mb-0 small">Atur level approval, siapa approvernya, dan aturan nominal yang menentukan rantai persetujuan.</p></div></div>
         <div class="heading-actions"><a class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> Simpan</a></div></div>
       <ul class="nav nav-tabs mb-3" style="font-size:.88rem"><li class="nav-item"><a class="nav-link active">Level &amp; Approver <span class="badge bg-secondary">4</span></a></li><li class="nav-item"><a class="nav-link">Aturan Nominal <span class="badge bg-secondary">3</span></a></li></ul>
-      <div class="small text-muted mb-2"><i class="bi bi-arrows-move"></i> Urutan level = urutan persetujuan dalam rantai (seret untuk mengubah). Aturan nominal memilih level mana yang dipakai.</div>
+      <div class="small text-muted mb-2"><i class="bi bi-arrow-down-up"></i> Urutan level = urutan persetujuan dalam rantai (ubah dengan panah naik/turun). Aturan nominal memilih level mana yang dipakai.</div>
 
       <div class="panel mb-2" style="padding:.8rem 1rem"><div class="d-flex align-items-center gap-3">
-        <i class="bi bi-grip-vertical text-muted"></i><span class="tag" style="font-size:12px">1</span>
+        <span class="text-muted" style="display:inline-flex;flex-direction:column;line-height:.75;font-size:.7rem"><i class="bi bi-chevron-up"></i><i class="bi bi-chevron-down"></i></span><span class="tag" style="font-size:12px">1</span>
         <div style="width:170px"><input class="form-control form-control-sm" value="Manager"></div>
         <div class="s2 flex-fill" style="min-height:34px;gap:6px"><span class="badge text-bg-light border">Sri Wahyuni ✕</span><span class="badge text-bg-light border">Andi Pratama ✕</span><span class="text-muted small">Tambah user…</span></div>
         <span class="small text-muted" style="width:92px">dipakai di 3 aturan</span>
@@ -268,7 +380,7 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
         <a class="btn btn-outline-danger btn-sm disabled" style="opacity:.4"><i class="bi bi-trash"></i></a></div></div>
 
       <div class="panel mb-2" style="padding:.8rem 1rem"><div class="d-flex align-items-center gap-3">
-        <i class="bi bi-grip-vertical text-muted"></i><span class="tag" style="font-size:12px">2</span>
+        <span class="text-muted" style="display:inline-flex;flex-direction:column;line-height:.75;font-size:.7rem"><i class="bi bi-chevron-up"></i><i class="bi bi-chevron-down"></i></span><span class="tag" style="font-size:12px">2</span>
         <div style="width:170px"><input class="form-control form-control-sm" value="Direktur"></div>
         <div class="s2 flex-fill" style="min-height:34px;gap:6px"><span class="badge text-bg-light border">Hadi Santoso ✕</span><span class="text-muted small">Tambah user…</span></div>
         <span class="small text-muted" style="width:92px">dipakai di 2 aturan</span>
@@ -277,7 +389,7 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
         <div class="alert alert-warning py-1 px-2 small mt-2 mb-0" style="border-radius:6px"><i class="bi bi-exclamation-triangle"></i> Hadi Santoso masih approver pada <b>2 permintaan berjalan</b>; bila dihapus ia tetap dapat memproses permintaan tersebut.</div></div>
 
       <div class="panel mb-2" style="padding:.8rem 1rem"><div class="d-flex align-items-center gap-3">
-        <i class="bi bi-grip-vertical text-muted"></i><span class="tag" style="font-size:12px">3</span>
+        <span class="text-muted" style="display:inline-flex;flex-direction:column;line-height:.75;font-size:.7rem"><i class="bi bi-chevron-up"></i><i class="bi bi-chevron-down"></i></span><span class="tag" style="font-size:12px">3</span>
         <div style="width:170px"><input class="form-control form-control-sm" value="CEO"></div>
         <div class="s2 empty flex-fill" style="min-height:34px">Belum ada approver — pilih minimal satu user…</div>
         <span class="small text-muted" style="width:92px">dipakai di 1 aturan</span>
@@ -286,7 +398,7 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
         <div class="form-text text-danger mt-1"><i class="bi bi-x-circle"></i> Permintaan yang butuh level ini (total &gt; Rp 50 jt) tidak dapat diajukan sampai diisi.</div></div>
 
       <div class="panel mb-2" style="padding:.8rem 1rem"><div class="d-flex align-items-center gap-3">
-        <i class="bi bi-grip-vertical text-muted"></i><span class="tag s" style="font-size:12px">4</span>
+        <span class="text-muted" style="display:inline-flex;flex-direction:column;line-height:.75;font-size:.7rem"><i class="bi bi-chevron-up"></i><i class="bi bi-chevron-down"></i></span><span class="tag s" style="font-size:12px">4</span>
         <div style="width:170px"><input class="form-control form-control-sm" value="Kepala Cabang"></div>
         <div class="s2 flex-fill" style="min-height:34px;gap:6px"><span class="badge text-bg-light border">Rudi Hartono ✕</span><span class="text-muted small">Tambah user…</span></div>
         <span class="small text-muted" style="width:92px">belum dipakai</span>
@@ -302,21 +414,20 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       <li>Level bersifat <b>dinamis</b>: tambah, ubah nama, urutkan, nonaktifkan. Contoh “Kepala Cabang” (level 4) baru ditambahkan.</li>
       <li>Per level: banyak user, <b>salah satu cukup</b>; hanya user aktif.</li>
       <li>Level yang <b>dipakai aturan</b> tidak bisa dihapus/dinonaktifkan (tombol abu-abu) — lepas dulu dari aturannya.</li>
-      <li>Level “Manager / Direktur / CEO” hanya <b>data awal</b> (seed), bebas diubah.</li>
+      <li>Level “Manager / Direktur / CEO” hanya <b>contoh awal</b>, bebas diubah atau dihapus.</li>
       <li>Nama level disalin ke permintaan saat diajukan, jadi riwayat tetap utuh walau nama diubah.</li>
       <li>Setiap perubahan tercatat di Audit Log.</li>
     </ul>
   </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 4</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 7</span></div>
 </section>
 
-<!-- ============ PENGATURAN APPROVAL: ATURAN ============ -->
 <section class="pg">
-  <div class="pg-head"><span class="no">04</span><h2>UI · Pengaturan Approval — Aturan Nominal</h2><span class="sub">Administrasi → Pengaturan Approval · tab 2 · menentukan rantai persetujuan dari total permintaan</span></div>
+  <div class="pg-head"><span class="no">07</span><h2>Pengaturan Approval — Aturan Nominal</h2><span class="sub">Administrasi → Pengaturan Approval · tab Aturan Nominal</span></div>
   <div class="split" style="grid-template-columns:auto 1fr; gap:16px">
   <div class="frame" style="width:1010px;zoom:.8">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/pengaturan-approval?tab=aturan</span><span class="who">Login: Admin</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/approval-settings?tab=aturan</span><span class="who">Login: Admin</span></div>
     <div class="frame-body">
       <div class="page-heading" style="margin-bottom:.8rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-sliders"></i></span><div><p class="eyebrow">Administrasi</p><h1>Pengaturan Approval</h1></div></div>
         <div class="heading-actions"><a class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> Simpan</a></div></div>
@@ -353,144 +464,20 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
   <div style="font-size:11.5px">
     <b>Keterangan</b>
     <ul class="legend note" style="padding-left:16px;margin-top:6px">
-      <li>Client bebas mengubah <b>angka batas</b>, menambah / menghapus baris, dan memilih level mana saja per baris.</li>
+      <li>Admin bebas mengubah <b>angka batas</b>, menambah / menghapus baris, dan memilih level mana saja per baris.</li>
       <li>Urutan persetujuan selalu mengikuti <b>urutan level</b> (tab 1), bukan urutan klik.</li>
       <li>Validasi saat simpan: batas atas naik ketat · aturan terakhir tanpa batas · tiap aturan ≥ 1 level aktif · tidak ada level ganda.</li>
       <li><b>Uji Aturan</b> membantu admin memastikan hasilnya sebelum disimpan.</li>
       <li>Perubahan hanya berlaku untuk permintaan yang <b>diajukan setelah</b> disimpan; yang berjalan memakai rantai saat diajukan.</li>
-      <li>Data awal (seed): ≤10 jt Manager · ≤50 jt +Direktur · di atasnya +CEO — hanya contoh awal.</li>
+      <li>Pengaturan awal: ≤10 jt Manager · ≤50 jt +Direktur · di atasnya +CEO — hanya contoh, bebas diubah.</li>
     </ul>
   </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 5</span></div>
-</section>
-
-<!-- ============ 3 PERMISSION & SIDEBAR ============ -->
-<section class="pg">
-  <div class="pg-head"><span class="no">05</span><h2>Permission &amp; Menu Sidebar</h2><span class="sub">Disemai lewat MenuPermissionSeeder, diatur di layar Users yang sudah ada</span></div>
-  <div class="split" style="grid-template-columns:1.55fr 1fr; gap:20px">
-    <div>
-      <table class="doc">
-        <tr><th>Menu</th><th>Cakupan</th><th>Kode permission</th><th>Kegunaan</th></tr>
-        <tr><td rowspan="2"><b>Permintaan Barang</b></td><td rowspan="2"><span class="tag g">per cabang</span></td><td><code>purchase_request.view</code></td><td>Melihat permintaan cabangnya</td></tr>
-        <tr><td><code>purchase_request.create</code></td><td>Buat / ubah / batalkan (selama belum di-assign)</td></tr>
-        <tr><td rowspan="2"><b>Penentuan Supplier</b></td><td rowspan="2"><span class="tag">global</span></td><td><code>purchase_request.view_all</code></td><td>Melihat permintaan semua cabang</td></tr>
-        <tr><td><code>purchase_request.assign_supplier</code></td><td>Isi supplier &amp; harga, Ajukan Approval</td></tr>
-        <tr><td><b>Pengaturan Approval</b><br><span class="tag s">Administrasi</span></td><td><span class="tag">global</span></td><td><code>approval_setting.view</code><br><code>approval_setting.manage</code></td><td>Melihat / mengatur level, approver, dan aturan nominal</td></tr>
-        <tr><td><b>Approval Permintaan</b></td><td><span class="tag">global</span></td><td><i>tanpa kode permission</i></td><td>Akses = user terdaftar sebagai approver pada level yang sedang giliran (daftar disalin saat pengajuan)</td></tr>
-        <tr><td rowspan="3"><b>Pembelian Barang</b></td><td rowspan="3"><span class="tag">global</span></td><td><code>purchase_order.view</code></td><td>Melihat pembelian</td></tr>
-        <tr><td><code>purchase_order.issue</code></td><td>Terbitkan pembelian</td></tr>
-        <tr><td><code>purchase_order.cancel</code></td><td>Batalkan pembelian (belum ada penerimaan)</td></tr>
-        <tr><td><b>Master Supplier</b></td><td><span class="tag">global</span></td><td><code>supplier.view / create / edit</code></td><td>Kelola supplier</td></tr>
-        <tr><td><b>Penerimaan Barang</b></td><td><span class="tag g">per cabang</span></td><td><code>receipt.view / create / post / cancel</code></td><td><b>Sudah ada</b> — tidak berubah</td></tr>
-        <tr><td><b>Laporan</b></td><td><span class="tag">global</span></td><td><code>report.purchase_request.view</code><br><code>report.purchase_order.view</code></td><td>Laporan baru (Penerimaan memakai <code>report.goods_receipt.view</code> yang ada)</td></tr>
-      </table>
-      <div class="note mt-2"><b>Contoh peran:</b> Kepala Bengkel = <code>purchase_request.view/create</code> + <code>receipt.*</code> di cabangnya. Kepala Gudang = <code>view_all</code> + <code>assign_supplier</code>. Approver (Manager, Direktur, CEO, dst.) = <u>dipilih di Pengaturan Approval</u>, bukan lewat permission. Satu user bisa memegang beberapa permission.</div>
-    </div>
-    <div style="display:flex; gap:14px">
-      <div class="sb" style="width:100%">
-        <div class="h">Persediaan</div>
-        <div class="l"><span class="ni"><i class="bi bi-box-seam"></i></span>Master Sparepart</div>
-        <div class="l"><span class="ni"><i class="bi bi-card-list"></i></span>Kartu Stok</div>
-        <div class="l chg"><span class="ni"><i class="bi bi-truck"></i></span>Penerimaan Barang<span class="nw" style="background:#D97706">UBAH</span></div>
-        <div class="h">Pembelian <span class="nw" style="display:inline;background:#10B981;color:#fff;border-radius:99px;padding:1px 7px;font-family:var(--font-mono)">BARU</span></div>
-        <div class="l new"><span class="ni"><i class="bi bi-clipboard-plus"></i></span>Permintaan Barang</div>
-        <div class="l new"><span class="ni"><i class="bi bi-patch-check"></i></span>Approval Permintaan<span class="bd">3</span></div>
-        <div class="l new"><span class="ni"><i class="bi bi-cart-check"></i></span>Pembelian Barang</div>
-        <div class="h">Master Data</div>
-        <div class="l new"><span class="ni"><i class="bi bi-shop"></i></span>Supplier</div>
-        <div class="h">Administrasi</div>
-        <div class="l new"><span class="ni"><i class="bi bi-sliders"></i></span>Pengaturan Approval</div>
-        <div class="h">Laporan</div>
-        <div class="l new"><span class="ni"><i class="bi bi-clipboard-data"></i></span>Laporan Permintaan Barang</div>
-        <div class="l new"><span class="ni"><i class="bi bi-cart-check"></i></span>Laporan Pembelian Barang</div>
-        <div class="l chg"><span class="ni"><i class="bi bi-box-arrow-in-down"></i></span>Laporan Penerimaan Barang<span class="nw" style="background:#D97706">UBAH</span></div>
-        <div class="note" style="margin:8px 6px 0;font-size:10px">Menu muncul sesuai permission. Menu <i>Approval Permintaan</i> tampil bagi user yang terdaftar sebagai approver; lencana = jumlah permintaan yang menunggu user itu.</div>
-      </div>
-    </div>
-  </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 6</span></div>
-</section>
-
-<!-- ============ 4 DATA MODEL ============ -->
-<section class="pg">
-  <div class="pg-head"><span class="no">06</span><h2>Model Data (1/2) — Permintaan, Pembelian, Penerimaan</h2><span class="sub">Biru = tabel baru · Oranye = tabel existing yang ditambah kolom</span></div>
-  <div class="er">
-    <div class="ent"><h5>suppliers</h5><div><b>id</b></div><div>code <em>unique</em></div><div>name</div><div>contact_person</div><div>phone · address</div><div>is_active</div></div>
-    <div class="ent"><h5>purchase_requests</h5><div><b>id</b></div><div>number <em>unique (RQ/…)</em></div><div>branch_id <em>→ branches</em></div><div>request_date · notes</div><div>status</div><div>total_amount <em>snapshot</em></div><div>submitted_at · submitted_by</div><div>rejected_reason</div></div>
-    <div class="ent"><h5>purchase_request_lines</h5><div><b>id</b></div><div>purchase_request_id <em>→</em></div><div>sparepart_branch_id <em>→</em></div><div>qty <em>&gt; 0</em></div><div>supplier_id <em>→ null s/d assign</em></div><div>unit_price · line_total</div><div>sort_order</div></div>
-    <div class="ent"><h5>purchase_orders</h5><div><b>id</b></div><div>number <em>unique (PO/…)</em></div><div>purchase_request_id <em>→</em></div><div>supplier_id <em>→</em></div><div>branch_id <em>→</em></div><div>order_date · notes</div><div>status · total_amount</div><div>issued_at · issued_by</div></div>
-    <div class="ent"><h5>purchase_order_lines</h5><div><b>id</b></div><div>purchase_order_id <em>→</em></div><div>purchase_request_line_id <em>→</em></div><div>sparepart_branch_id <em>→</em></div><div>qty_ordered <em>&gt; 0</em></div><div>unit_price · line_total</div><div>qty_received <em>diupdate saat posting</em></div></div>
-    <div class="ent chg"><h5>goods_receipts (+1)</h5><div>number · branch_id · status …</div><div><b>+ purchase_order_id</b> <em>→ null hanya data lama</em></div><div>reference_number <em>= No. surat jalan/nota supplier</em></div></div>
-    <div class="ent chg"><h5>goods_receipt_lines (+1)</h5><div>sparepart_branch_id · qty</div><div>purchase_price <em>← dari PO</em></div><div><b>+ purchase_order_line_id</b> <em>→ null hanya data lama</em></div></div>
-    <div class="ent old"><h5>users · branches · sparepart_branches</h5><div>sudah ada — dirujuk lewat FK</div></div>
-  </div>
-  <div class="split mt-3" style="grid-template-columns:1fr 1fr; gap:20px">
-    <div>
-      <b style="font-size:12px">Relasi</b>
-      <ul class="note" style="padding-left:16px;margin:3px 0">
-        <li>purchase_requests <b>1—N</b> purchase_request_lines <b>·</b> 1—N purchase_request_approvals (halaman berikut)</li>
-        <li>purchase_request_lines <b>N—1</b> suppliers (satu barang satu supplier)</li>
-        <li>purchase_requests <b>1—N</b> purchase_orders (1 PO per supplier pada permintaan itu)</li>
-        <li>purchase_orders <b>1—N</b> purchase_order_lines; tiap baris PO menunjuk tepat satu baris permintaan</li>
-        <li>purchase_orders <b>1—N</b> goods_receipts (penerimaan bertahap)</li>
-      </ul>
-    </div>
-    <div>
-      <b style="font-size:12px">Jaminan integritas</b>
-      <ul class="note" style="padding-left:16px;margin:3px 0">
-        <li>Check constraint: qty &gt; 0, harga ≥ 0 (pola <code>goods_receipt_lines</code>).</li>
-        <li>Semua perubahan status: <code>DB::transaction</code> + <code>lockForUpdate()</code> + guard status.</li>
-        <li>Posting Penerimaan: <code>qty ≤ qty_ordered − qty_received</code> diperiksa di bawah lock.</li>
-        <li>Data lama aman: kolom baru nullable; riwayat Penerimaan lama tetap terbaca di kartu stok &amp; laporan.</li>
-      </ul>
-    </div>
-  </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 7</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 8</span></div>
 </section>
 
 <section class="pg">
-  <div class="pg-head"><span class="no">07</span><h2>Model Data (2/2) — Approval Dinamis</h2><span class="sub">Konfigurasi (level, user, aturan) terpisah dari snapshot per permintaan</span></div>
-  <div class="split" style="grid-template-columns:1.2fr 1fr; gap:18px">
-    <div>
-      <div class="note mb-1"><b>Konfigurasi</b> (diatur admin di Pengaturan Approval)</div>
-      <div class="er" style="grid-template-columns:repeat(2,1fr)">
-        <div class="ent"><h5>approval_levels</h5><div><b>id</b></div><div>name <em>unique (Manager, Direktur, …)</em></div><div>sort_order <em>urutan dalam rantai</em></div><div>is_active</div></div>
-        <div class="ent"><h5>approval_level_users</h5><div><b>id</b></div><div>approval_level_id <em>→</em></div><div>user_id <em>→ users</em></div><div><em>unique(level, user)</em></div></div>
-        <div class="ent"><h5>approval_rules</h5><div><b>id</b></div><div>max_amount <em>inklusif; NULL = tanpa batas (hanya aturan terakhir)</em></div><div>sort_order</div></div>
-        <div class="ent"><h5>approval_rule_levels</h5><div><b>id</b></div><div>approval_rule_id <em>→</em></div><div>approval_level_id <em>→</em></div><div><em>unique(rule, level)</em></div></div>
-      </div>
-      <div class="note mt-2 mb-1"><b>Snapshot per permintaan</b> (dibuat saat Ajukan Approval)</div>
-      <div class="er" style="grid-template-columns:repeat(2,1fr)">
-        <div class="ent"><h5>purchase_request_approvals</h5><div><b>id</b></div><div>purchase_request_id <em>→</em></div><div>step_no <em>1..n urutan rantai</em></div><div>approval_level_id <em>→ nullable</em></div><div>level_name <em>snapshot nama</em></div><div>status <em>pending|approved|rejected|void</em></div><div>acted_by · acted_at · notes</div></div>
-        <div class="ent"><h5>purchase_request_approval_users</h5><div><b>id</b></div><div>purchase_request_approval_id <em>→</em></div><div>user_id <em>→ users</em></div><div><em>snapshot approver langkah itu</em></div></div>
-      </div>
-    </div>
-    <div>
-      <b style="font-size:12px">Cara rantai terbentuk saat “Ajukan Approval”</b>
-      <ol class="note" style="padding-left:18px;margin:4px 0">
-        <li>Hitung ulang total dari baris permintaan.</li>
-        <li>Pilih <b>aturan</b> dengan batas atas terkecil yang ≥ total (aturan terakhir bila lebih besar).</li>
-        <li>Ambil level aturan itu, urutkan menurut <code>approval_levels.sort_order</code>.</li>
-        <li>Periksa tiap level punya ≥ 1 user aktif; bila tidak → ditolak dengan pesan jelas.</li>
-        <li>Tulis satu baris <code>purchase_request_approvals</code> per level (+ nama level) dan salin user level itu ke <code>…_approval_users</code>.</li>
-      </ol>
-      <b style="font-size:12px">Validasi saat menyimpan pengaturan</b>
-      <ul class="note" style="padding-left:16px;margin:4px 0">
-        <li>Batas atas aturan naik ketat; aturan terakhir tanpa batas; tidak ada celah/tumpang tindih.</li>
-        <li>Tiap aturan ≥ 1 level aktif; nama level unik.</li>
-        <li>Level yang dipakai aturan tidak boleh dihapus/dinonaktifkan.</li>
-      </ul>
-      <div class="callout ok"><b>Data awal (seed migrasi):</b> level Manager, Direktur, CEO (tanpa user) dan 3 aturan: ≤10 jt Manager · ≤50 jt +Direktur · di atasnya +CEO. Semua dapat diubah admin.</div>
-      <div class="callout warn" style="margin-top:6px"><b>Berjalan aman:</b> permintaan yang sudah diajukan memakai snapshot-nya sendiri, sehingga mengubah level/aturan/approver tidak memengaruhinya.</div>
-    </div>
-  </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 8</span></div>
-</section>
-
-<!-- ============ 5 SUPPLIER ============ -->
-<section class="pg">
-  <div class="pg-head"><span class="no">08</span><h2>UI · Master Supplier</h2><span class="sub">Menu: Master Data → Supplier · permission <code>supplier.*</code></span></div>
+  <div class="pg-head"><span class="no">08</span><h2>Master Supplier</h2><span class="sub">Menu: Master Data → Supplier</span></div>
   <div class="split" style="grid-template-columns:auto 1fr; gap:14px">
   <div class="frame" style="width:700px;zoom:.78">
     <div class="frame-bar"><span class="dots"></span><span class="url">/suppliers</span><span class="who">Admin Master Data</span></div>
@@ -528,51 +515,44 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
   </div>
   </div>
   <div class="callout mt-2"><b>Aturan:</b> kode unik; supplier nonaktif tidak muncul di pilihan supplier tetapi tetap tampil pada dokumen lama; supplier yang sudah dipakai tidak dapat dihapus (hanya dinonaktifkan). Tanpa tombol hapus.</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 9</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 9</span></div>
 </section>
 
-<!-- ============ 6 PERMINTAAN LIST ============ -->
 <section class="pg">
-  <div class="pg-head"><span class="no">09</span><h2>UI · Daftar Permintaan Barang</h2><span class="sub">Menu: Pembelian → Permintaan Barang · tampilan Kepala Gudang (lintas cabang)</span></div>
+  <div class="pg-head"><span class="no">09</span><h2>Daftar Permintaan Barang</h2><span class="sub">Menu: Pembelian → Permintaan Barang · tampilan Kepala Gudang (semua cabang)</span></div>
   <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/permintaan-barang</span><span class="who">Login: Kepala Gudang</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/purchase-requests</span><span class="who">Login: Kepala Gudang</span></div>
     <div class="frame-body">
       <div class="page-heading"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-clipboard-plus"></i></span><div><p class="eyebrow">Pembelian</p><h1>Permintaan Barang</h1><p class="text-muted mb-0 small">Permintaan sparepart dari cabang, penentuan supplier, dan approval.</p></div></div></div>
-      <div class="row g-3 mb-3">
-        <div class="col-3"><div class="stat"><div><div class="v">4</div><div class="l">Menunggu supplier</div></div><span class="ic"><i class="bi bi-person-lines-fill"></i></span></div></div>
-        <div class="col-3"><div class="stat"><div><div class="v">3</div><div class="l">Menunggu approval</div></div><span class="ic"><i class="bi bi-hourglass-split"></i></span></div></div>
-        <div class="col-3"><div class="stat"><div><div class="v">11</div><div class="l">Disetujui bulan ini</div></div><span class="ic"><i class="bi bi-check2-circle"></i></span></div></div>
-        <div class="col-3"><div class="stat"><div><div class="v">1</div><div class="l">Ditolak bulan ini</div></div><span class="ic"><i class="bi bi-x-circle"></i></span></div></div>
-      </div>
       <div class="card mb-3"><div class="card-body p-2 d-flex gap-2 align-items-center">
         <i class="bi bi-search ms-2 text-muted"></i><input class="form-control form-control-sm border-0" placeholder="Cari nomor permintaan..." style="flex:1">
-        <div class="form-select form-select-sm" style="width:150px">Semua Cabang</div>
-        <div class="form-select form-select-sm" style="width:170px">Semua Status</div>
+        <div class="form-select form-select-sm" style="width:190px">Semua Cabang Saya</div>
+        <div class="form-select form-select-sm" style="width:215px">-- Semua Status --</div>
         <a class="btn btn-outline-primary btn-sm">Terapkan</a>
         <a class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Permintaan Baru</a>
       </div></div>
       <div class="card"><table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Nomor</th><th>Cabang</th><th>Tanggal</th><th>Pemohon</th><th class="text-end">Item</th><th class="text-end">Total (Rp)</th><th>Status</th><th>Posisi Approval</th><th class="text-end">Aksi</th></tr></thead>
+        <thead><tr><th>Nomor</th><th>Cabang</th><th>Tanggal</th><th>Pemohon</th><th class="text-end">Item</th><th class="text-end">Total (Rp)</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
         <tbody>
-          <tr><td><code>RQ/BKS/202611/00009</code></td><td>Bekasi</td><td>13/11/2026</td><td>Budi</td><td class="rp">4</td><td class="rp">—</td><td><span class="status-dot s-wait">Menunggu Supplier</span></td><td class="text-muted">—</td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-person-lines-fill"></i> Tentukan Supplier</a></td></tr>
-          <tr><td><code>RQ/BKS/202611/00007</code></td><td>Bekasi</td><td>11/11/2026</td><td>Budi</td><td class="rp">5</td><td class="rp">38.320.000</td><td><span class="status-dot s-wait">Menunggu Approval</span></td><td>Direktur <span class="text-muted small">(2/2)</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
-          <tr><td><code>RQ/UTM/202611/00004</code></td><td>Utama</td><td>10/11/2026</td><td>Rina</td><td class="rp">9</td><td class="rp">74.000.000</td><td><span class="status-dot s-wait">Menunggu Approval</span></td><td>Manager <span class="text-muted small">(1/3)</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
-          <tr><td><code>RQ/UTM/202611/00003</code></td><td>Utama</td><td>07/11/2026</td><td>Rina</td><td class="rp">3</td><td class="rp">6.450.000</td><td><span class="status-dot s-ok">Disetujui</span></td><td class="text-muted">PO: 1 dokumen</td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
-          <tr><td><code>RQ/BKS/202611/00002</code></td><td>Bekasi</td><td>05/11/2026</td><td>Budi</td><td class="rp">2</td><td class="rp">52.800.000</td><td><span class="status-dot s-bad">Ditolak</span></td><td>Ditolak oleh Direktur</td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
-          <tr><td><code>RQ/BKS/202611/00001</code></td><td>Bekasi</td><td>03/11/2026</td><td>Budi</td><td class="rp">1</td><td class="rp">—</td><td><span class="status-dot s-mute">Dibatalkan</span></td><td class="text-muted">—</td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>RQ/BKS/202611/00009</code></td><td>Bekasi</td><td>13/11/2026</td><td>Budi</td><td class="rp">4</td><td class="rp">—</td><td><span class="status-dot s-wait">Menunggu Supplier</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>RQ/BKS/202611/00007</code></td><td>Bekasi</td><td>11/11/2026</td><td>Budi</td><td class="rp">5</td><td class="rp">38.320.000</td><td><span class="status-dot s-wait">Menunggu Approval</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>RQ/UTM/202611/00004</code></td><td>Utama</td><td>10/11/2026</td><td>Rina</td><td class="rp">9</td><td class="rp">74.000.000</td><td><span class="status-dot s-wait">Menunggu Approval</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>RQ/UTM/202611/00003</code></td><td>Utama</td><td>07/11/2026</td><td>Rina</td><td class="rp">3</td><td class="rp">6.450.000</td><td><span class="status-dot s-ok">Disetujui</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>RQ/BKS/202611/00002</code></td><td>Bekasi</td><td>05/11/2026</td><td>Budi</td><td class="rp">2</td><td class="rp">52.800.000</td><td><span class="status-dot s-bad">Ditolak</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>RQ/BKS/202611/00001</code></td><td>Bekasi</td><td>03/11/2026</td><td>Budi</td><td class="rp">1</td><td class="rp">—</td><td><span class="status-dot s-mute">Dibatalkan</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
         </tbody></table></div>
     </div>
   </div>
-  <div class="note mt-2"><b>Catatan:</b> Kepala Bengkel melihat daftar yang sama tetapi hanya cabangnya, tanpa tombol "Tentukan Supplier". Total tampil "—" selama harga belum diisi. Kolom <i>Posisi Approval</i> menampilkan level yang sedang ditunggu dan progres (mis. 2/3).</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 10</span></div>
+  <div class="note mt-2"><b>Catatan:</b> Kepala Bengkel melihat daftar yang sama tetapi hanya untuk cabangnya. Total tampil “—” selama harga belum diisi. Posisi approval per permintaan terlihat di halaman detail dan di Laporan Permintaan Barang.</div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 10</span></div>
 </section>
 
-<!-- ============ 7 PERMINTAAN BARU ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">10</span><h2>UI · Permintaan Barang Baru</h2><span class="sub">Tampilan Kepala Bengkel · permission <code>purchase_request.create</code></span></div>
+  <div class="pg-head"><span class="no">10</span><h2>Permintaan Barang Baru</h2><span class="sub">Tampilan Kepala Bengkel · hanya barang yang stoknya di bawah minimal</span></div>
   <div class="split" style="grid-template-columns:auto 1fr; gap:14px">
   <div class="frame" style="width:1010px;zoom:.8">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/permintaan-barang/create</span><span class="who">Login: Kepala Bengkel (Bekasi)</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/purchase-requests/create</span><span class="who">Login: Kepala Bengkel (Bekasi)</span></div>
     <div class="frame-body">
       <div class="page-heading"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-clipboard-plus"></i></span><div><p class="eyebrow">Permintaan Barang</p><h1>Permintaan Barang Baru</h1></div></div>
         <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a></div></div>
@@ -586,13 +566,15 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       </div>
       <div class="panel mb-3">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <div><h2 class="section-title"><i class="bi bi-nut"></i><span>Barang yang Diminta</span></h2><p class="text-muted mb-0 small mt-1">Supplier dan harga ditentukan oleh Kepala Gudang pada tahap berikutnya.</p></div>
+          <div><h2 class="section-title"><i class="bi bi-nut"></i><span>Barang yang Diminta</span></h2>
+            <p class="text-muted mb-0 small mt-1">Supplier dan harga ditentukan oleh Kepala Gudang pada tahap berikutnya.</p>
+            <p class="text-muted mb-0 small"><i class="bi bi-info-circle"></i> Hanya barang dengan stok di bawah stok minimal yang dapat diminta (stok tersedia = stok fisik dikurangi yang sudah dipesan PKB).</p></div>
           <a class="btn btn-outline-primary btn-sm">+ Tambah Sparepart</a>
         </div>
-        <div class="row g-2 small text-muted mb-1 fw-bold"><div class="col-6">Sparepart</div><div class="col-2">Stok Saat Ini</div><div class="col-2">Qty Diminta</div><div class="col-2"></div></div>
-        <div class="row g-2 mb-2 align-items-center"><div class="col-6"><div class="s2">OLI-001 — Oli Mesin 10W-40 1L</div></div><div class="col-2 small text-muted">14</div><div class="col-2"><input class="form-control form-control-sm" value="120"></div><div class="col-2"><a class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a></div></div>
-        <div class="row g-2 mb-2 align-items-center"><div class="col-6"><div class="s2">FLT-014 — Filter Oli Avanza</div></div><div class="col-2 small text-muted">6</div><div class="col-2"><input class="form-control form-control-sm" value="60"></div><div class="col-2"><a class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a></div></div>
-        <div class="row g-2 mb-2 align-items-center"><div class="col-6"><div class="s2">BRK-203 — Kampas Rem Depan Innova</div></div><div class="col-2 small text-muted">3</div><div class="col-2"><input class="form-control form-control-sm" value="40"></div><div class="col-2"><a class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a></div></div>
+        <div class="row g-2 small text-muted mb-1 fw-bold"><div class="col-6">Sparepart</div><div class="col-2">Stok Tersedia / Minimal</div><div class="col-2">Qty Diminta</div><div class="col-2"></div></div>
+        <div class="row g-2 mb-2 align-items-center"><div class="col-6"><div class="s2">OLI-001 — Oli Mesin 10W-40 1L</div></div><div class="col-2 small text-muted">3 / 10</div><div class="col-2"><input class="form-control form-control-sm" value="120"></div><div class="col-2"><a class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a></div></div>
+        <div class="row g-2 mb-2 align-items-center"><div class="col-6"><div class="s2">FLT-014 — Filter Oli Avanza</div></div><div class="col-2 small text-muted">1 / 8</div><div class="col-2"><input class="form-control form-control-sm" value="60"></div><div class="col-2"><a class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a></div></div>
+        <div class="row g-2 mb-2 align-items-center"><div class="col-6"><div class="s2">BRK-203 — Kampas Rem Depan Innova</div></div><div class="col-2 small text-muted">2 / 6</div><div class="col-2"><input class="form-control form-control-sm" value="40"></div><div class="col-2"><a class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a></div></div>
         <div class="row g-2 align-items-center"><div class="col-6"><div class="s2 empty">Pilih sparepart…</div></div><div class="col-2 small text-muted">—</div><div class="col-2"><input class="form-control form-control-sm" placeholder="0"></div><div class="col-2"></div></div>
       </div>
       <div class="d-flex justify-content-end gap-2"><a class="btn btn-outline-secondary">Batal</a><a class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan Permintaan</a></div>
@@ -601,178 +583,181 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
   <div style="font-size:11.5px">
     <b>Keterangan</b>
     <ul class="legend note" style="padding-left:16px;margin-top:6px">
-      <li>Pilihan sparepart: Select2 AJAX (pola yang sudah ada), hanya sparepart cabang terpilih.</li>
-      <li>Kolom <i>Stok Saat Ini</i> membantu menentukan jumlah.</li>
-      <li>Qty bilangan bulat &gt; 0 (desimal diblokir, sesuai perbaikan terakhir).</li>
-      <li>Sparepart yang sama tidak boleh dobel dalam satu permintaan.</li>
+      <li>Pencarian sparepart hanya menampilkan barang yang <b>stok tersedianya di bawah stok minimal</b> cabang itu.</li>
+      <li>Kolom <i>Stok Tersedia / Minimal</i> membantu menentukan jumlah.</li>
+      <li>Bila tetap dipaksa, sistem menolak dengan pesan, mis. “Stok tersedia 25 belum di bawah stok minimal 10…”.</li>
+      <li>Qty bilangan bulat &gt; 0; sparepart tidak boleh dobel.</li>
       <li>Tidak ada kolom harga/supplier di form ini.</li>
       <li>Simpan → status <span class="tag o">Menunggu Supplier</span>; nomor <code>RQ/…</code> dibuat otomatis.</li>
-      <li>Pemohon boleh <b>Ubah</b>/<b>Batalkan</b> selama belum ada supplier terisi.</li>
+      <li>Pemohon dapat <b>Ubah</b> isi permintaan selama belum ada supplier terisi, dan <b>Batalkan</b> sebelum diajukan.</li>
     </ul>
   </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 11</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 11</span></div>
 </section>
 
-<!-- ============ 8 DETAIL: MENUNGGU SUPPLIER ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">11</span><h2>UI · Detail Permintaan — Tentukan Supplier</h2><span class="sub">Status Menunggu Supplier · tampilan Kepala Gudang · permission <code>assign_supplier</code></span></div>
-  <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/permintaan-barang/7</span><span class="who">Login: Kepala Gudang</span></div>
+  <div class="pg-head"><span class="no">11</span><h2>Detail Permintaan — Tentukan Supplier</h2><span class="sub">Status Menunggu Supplier · tampilan Kepala Gudang</span></div>
+  <div class="frame" style="zoom:.72">
+    <div class="frame-bar"><span class="dots"></span><span class="url">/purchase-requests/7</span><span class="who">Login: Kepala Gudang</span></div>
     <div class="frame-body">
       <div class="page-heading"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-clipboard-plus"></i></span><div><p class="eyebrow">Permintaan Barang</p><h1>RQ/BKS/202611/00007</h1></div></div>
-        <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a><a class="btn btn-outline-primary btn-sm"><i class="bi bi-save"></i> Simpan Draft</a><a class="btn btn-primary btn-sm disabled" style="opacity:.55"><i class="bi bi-send-check"></i> Ajukan Approval</a></div></div>
+        <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a><a class="btn btn-outline-danger btn-sm"><i class="bi bi-slash-circle"></i> Batalkan Permintaan</a><a class="btn btn-primary btn-sm"><i class="bi bi-send-check"></i> Ajukan Approval</a></div></div>
       <div class="card mb-3"><div class="card-body"><div class="row g-3 small">
-        <div class="col-2"><b>Cabang</b><div>Bekasi</div></div><div class="col-2"><b>Tanggal</b><div>11/11/2026</div></div><div class="col-2"><b>Pemohon</b><div>Budi (Kepala Bengkel)</div></div>
-        <div class="col-2"><b>Status</b><div><span class="status-dot s-wait">Menunggu Supplier</span></div></div><div class="col-4"><b>Catatan</b><div>Stok oli &amp; kampas rem menipis jelang akhir tahun</div></div></div></div></div>
-      <div class="panel">
+        <div class="col-2"><b>Cabang</b><div>Bekasi</div></div><div class="col-2"><b>Tanggal</b><div>11/11/2026</div></div><div class="col-3"><b>Pemohon</b><div>Budi (Kepala Bengkel)</div></div>
+        <div class="col-2"><b>Status</b><div><span class="status-dot s-wait">Menunggu Supplier</span></div></div><div class="col-3"><b>Catatan</b><div>Stok oli &amp; kampas rem menipis</div></div></div></div></div>
+      <div class="panel mb-3">
         <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="section-title"><i class="bi bi-person-lines-fill"></i><span>Supplier &amp; Harga per Barang</span></h2>
-          <div class="hint-bar"><i class="bi bi-exclamation-triangle"></i> 2 dari 5 baris belum lengkap — lengkapi supplier &amp; harga untuk mengajukan approval</div></div>
+          <div class="hint-bar"><i class="bi bi-check-circle" style="color:#0F766E"></i> <span style="color:#115E59">Semua baris sudah lengkap</span></div></div>
         <table class="table table-sm align-middle mb-0">
           <thead><tr><th>Kode</th><th>Sparepart</th><th class="text-end">Qty</th><th style="width:250px">Supplier</th><th style="width:130px" class="text-end">Harga Beli (Rp)</th><th class="text-end">Subtotal (Rp)</th></tr></thead>
           <tbody>
             <tr><td><code>OLI-001</code></td><td>Oli Mesin 10W-40 1L</td><td class="rp">120</td><td><div class="s2">PT Sumber Oli Jaya</div></td><td><input class="form-control form-control-sm text-end" value="85.000"></td><td class="rp">10.200.000</td></tr>
             <tr><td><code>FLT-014</code></td><td>Filter Oli Avanza</td><td class="rp">60</td><td><div class="s2">PT Sumber Oli Jaya</div></td><td><input class="form-control form-control-sm text-end" value="45.000"></td><td class="rp">2.700.000</td></tr>
             <tr><td><code>BRK-203</code></td><td>Kampas Rem Depan Innova</td><td class="rp">40</td><td><div class="s2">CV Mitra Otomotif</div></td><td><input class="form-control form-control-sm text-end" value="210.000"></td><td class="rp">8.400.000</td></tr>
-            <tr><td><code>AKI-045</code></td><td>Aki 45Ah</td><td class="rp">20</td><td><div class="s2 empty">Pilih supplier…</div></td><td><input class="form-control form-control-sm text-end" placeholder="0" style="border-color:#FCA5A5"></td><td class="rp text-muted">—</td></tr>
-            <tr><td><code>BSI-077</code></td><td>Busi Iridium</td><td class="rp">90</td><td><div class="s2 empty">Pilih supplier…</div></td><td><input class="form-control form-control-sm text-end" placeholder="0" style="border-color:#FCA5A5"></td><td class="rp text-muted">—</td></tr>
+            <tr><td><code>AKI-045</code></td><td>Aki 45Ah</td><td class="rp">20</td><td><div class="s2">UD Sinar Spare</div></td><td><input class="form-control form-control-sm text-end" value="725.000"></td><td class="rp">14.500.000</td></tr>
+            <tr><td><code>BSI-077</code></td><td>Busi Iridium</td><td class="rp">90</td><td><div class="s2">CV Mitra Otomotif</div></td><td><input class="form-control form-control-sm text-end" value="28.000"></td><td class="rp">2.520.000</td></tr>
           </tbody>
-          <tfoot><tr><td colspan="5" class="text-end fw-bold">Total saat ini</td><td class="rp fw-bold">21.300.000</td></tr></tfoot>
+          <tfoot><tr><td colspan="5" class="text-end fw-bold">Total saat ini</td><td class="rp fw-bold">38.320.000</td></tr></tfoot>
         </table>
+        <div class="d-flex justify-content-end mt-2"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-save"></i> Simpan Draft</a></div>
       </div>
-      <div class="note mt-2" style="font-size:11px">Setelah semua baris lengkap: total = <b>Rp 38.320.000</b> → rantai approval akan tampil sebagai pratinjau berikut nama approvernya: <b>Manager</b> (Sri W., Andi P.) → <b>Direktur</b> (Hadi S.). Bila satu level belum punya approver, tombol Ajukan Approval ditolak dengan pesan “Approver level Direktur belum diatur”.</div>
+      <div class="panel">
+        <h2 class="section-title mb-2"><i class="bi bi-patch-check"></i><span>Pratinjau Rantai Approval</span></h2>
+        <div class="small text-muted mb-1">Total Rp 38.320.000. Saat Ajukan Approval ditekan, rantai berikut dibentuk:</div>
+        <div><b>Manager</b> <span class="text-muted">(Sri Wahyuni, Andi Pratama)</span> <i class="bi bi-arrow-right mx-1"></i> <b>Direktur</b> <span class="text-muted">(Hadi Santoso)</span></div>
+      </div>
     </div>
   </div>
-  <div class="note mt-2"><b>Aturan:</b> pilihan supplier hanya supplier aktif (Select2). Harga &gt; 0. Subtotal &amp; total dihitung di browser sebagai bantuan dan <u>dihitung ulang di server</u>. "Simpan Draft" menyimpan pengisian sebagian tanpa mengajukan. Setelah Ajukan Approval, baris terkunci.</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 12</span></div>
+  <div class="note mt-2"><b>Aturan:</b> supplier dipilih dari master Supplier yang aktif. Harga bilangan bulat &gt; 0; subtotal dan total dihitung otomatis dan dihitung ulang oleh sistem. “Simpan Draft” menyimpan pengisian sebagian. <b>Ajukan Approval</b> baru aktif bila semua baris lengkap dan rantai approval dapat diselesaikan; bila tidak, kotak pratinjau menampilkan alasannya. Setelah diajukan, baris terkunci. Kepala Gudang masih dapat <b>Membatalkan Permintaan</b>.</div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 12</span></div>
 </section>
 
-<!-- ============ 9 DETAIL: MENUNGGU APPROVAL ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">12</span><h2>UI · Detail Permintaan — Menunggu Approval</h2><span class="sub">Status Menunggu Approval · tampilan Direktur (approver level 2)</span></div>
-  <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/permintaan-barang/7</span><span class="who">Login: Direktur</span></div>
+  <div class="pg-head"><span class="no">12</span><h2>Detail Permintaan — Menunggu Approval</h2><span class="sub">Tampilan Direktur (approver level 2)</span></div>
+  <div class="frame" style="zoom:.72">
+    <div class="frame-bar"><span class="dots"></span><span class="url">/purchase-requests/7</span><span class="who">Login: Direktur</span></div>
     <div class="frame-body">
       <div class="page-heading"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-clipboard-plus"></i></span><div><p class="eyebrow">Permintaan Barang</p><h1>RQ/BKS/202611/00007</h1></div></div>
-        <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a><a class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Tolak</a><a class="btn btn-success btn-sm" style="--bs-btn-bg:#0F766E;--bs-btn-border-color:#0F766E"><i class="bi bi-check-circle"></i> Setuju</a></div></div>
-      <div class="row g-3">
-        <div class="col-8">
-          <div class="card mb-3"><div class="card-body"><div class="row g-3 small">
-            <div class="col-3"><b>Cabang</b><div>Bekasi</div></div><div class="col-3"><b>Tanggal</b><div>11/11/2026</div></div><div class="col-3"><b>Pemohon</b><div>Budi</div></div>
-            <div class="col-3"><b>Status</b><div><span class="status-dot s-wait">Menunggu Approval</span></div></div>
-            <div class="col-6"><b>Disusun supplier oleh</b><div>Wati (Kepala Gudang), 12/11/2026 08:40</div></div><div class="col-6"><b>Catatan</b><div>Stok oli &amp; kampas rem menipis jelang akhir tahun</div></div></div></div></div>
-          <div class="panel">
-            <h2 class="section-title mb-2"><i class="bi bi-list-check"></i><span>Rincian Barang</span></h2>
-            <table class="table table-sm align-middle mb-0">
-              <thead><tr><th>Kode</th><th>Sparepart</th><th class="text-end">Qty</th><th>Supplier</th><th class="text-end">Harga</th><th class="text-end">Subtotal</th></tr></thead>
-              <tbody>
-                <tr><td><code>OLI-001</code></td><td>Oli Mesin 10W-40 1L</td><td class="rp">120</td><td>PT Sumber Oli Jaya</td><td class="rp">85.000</td><td class="rp">10.200.000</td></tr>
-                <tr><td><code>FLT-014</code></td><td>Filter Oli Avanza</td><td class="rp">60</td><td>PT Sumber Oli Jaya</td><td class="rp">45.000</td><td class="rp">2.700.000</td></tr>
-                <tr><td><code>BRK-203</code></td><td>Kampas Rem Depan Innova</td><td class="rp">40</td><td>CV Mitra Otomotif</td><td class="rp">210.000</td><td class="rp">8.400.000</td></tr>
-                <tr><td><code>AKI-045</code></td><td>Aki 45Ah</td><td class="rp">20</td><td>UD Sinar Spare</td><td class="rp">725.000</td><td class="rp">14.500.000</td></tr>
-                <tr><td><code>BSI-077</code></td><td>Busi Iridium</td><td class="rp">90</td><td>CV Mitra Otomotif</td><td class="rp">28.000</td><td class="rp">2.520.000</td></tr>
-              </tbody>
-              <tfoot><tr><td colspan="5" class="text-end fw-bold">Total Permintaan</td><td class="rp fw-bold">38.320.000</td></tr></tfoot>
-            </table>
-            <div class="small text-muted mt-2">Ringkasan per supplier: PT Sumber Oli Jaya <b>12.900.000</b> · CV Mitra Otomotif <b>10.920.000</b> · UD Sinar Spare <b>14.500.000</b></div>
-          </div>
+        <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a><a class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Tolak</a><a class="btn btn-sm" style="background:#0F766E;color:#fff"><i class="bi bi-check-circle"></i> Setuju</a></div></div>
+      <div class="card mb-3"><div class="card-body"><div class="row g-3 small">
+        <div class="col-2"><b>Cabang</b><div>Bekasi</div></div><div class="col-2"><b>Tanggal</b><div>11/11/2026</div></div><div class="col-3"><b>Pemohon</b><div>Budi</div></div>
+        <div class="col-2"><b>Status</b><div><span class="status-dot s-wait">Menunggu Approval</span></div></div><div class="col-3"><b>Catatan</b><div>Stok oli &amp; kampas rem menipis</div></div></div></div></div>
+      <div class="panel mb-3">
+        <h2 class="section-title mb-3"><i class="bi bi-patch-check"></i><span>Progres Approval</span></h2>
+        <div class="stepper" style="width:55%;margin:0 auto">
+          <div class="stp done"><div class="dot"><i class="bi bi-check-lg"></i></div><b>Manager</b><small>Sri Wahyuni<br>12/11/2026 09:14</small></div>
+          <div class="stp now"><div class="dot">2</div><b>Direktur</b><small>menunggu: Hadi Santoso</small></div>
         </div>
-        <div class="col-4">
-          <div class="panel mb-3">
-            <h2 class="section-title mb-3"><i class="bi bi-patch-check"></i><span>Progres Approval</span></h2>
-            <div class="stepper"><div class="stp done"><div class="dot"><i class="bi bi-check-lg"></i></div><b>Manager</b><small>Sri W.<br>12/11 09:14</small></div><div class="stp now"><div class="dot">2</div><b>Direktur</b><small>giliran Anda</small></div></div>
-            <div class="small mt-3 p-2" style="background:#F8FAFC;border-radius:6px"><i class="bi bi-chat-left-text"></i> <b>Manager:</b> “Setuju, harga oli sesuai kontrak.”</div>
-            <div class="small text-muted mt-2">Total Rp 38.320.000 → rantai: Manager → Direktur.<br>Calon penyetuju level 2: <b>Hadi S.</b></div>
-          </div>
-          <div class="callout warn" style="margin:0"><b>Tombol Setuju / Tolak</b> hanya tampil untuk user yang terdaftar sebagai approver level yang sedang giliran (Direktur: Hadi S.), dan hanya jika level sebelumnya sudah setuju. Pengguna lain melihat halaman ini tanpa tombol. Admin dengan izin <i>approval_setting.manage</i> melihat tombol <i>Muat Ulang Approver</i> bila semua approver level itu sudah nonaktif.</div>
-        </div>
+        <div class="small mt-3 p-2" style="background:#F8FAFC;border-radius:6px"><i class="bi bi-chat-left-text"></i> <b>Manager:</b> “Setuju, harga oli sesuai kontrak.”</div>
+        <div class="small text-muted mt-2">Total Rp 38.320.000 — rantai dibentuk saat pengajuan.</div>
+      </div>
+      <div class="panel">
+        <h2 class="section-title mb-2"><i class="bi bi-list-check"></i><span>Rincian Barang</span></h2>
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Kode</th><th>Sparepart</th><th class="text-end">Qty</th><th>Supplier</th><th class="text-end">Harga Beli</th><th class="text-end">Subtotal</th></tr></thead>
+          <tbody>
+            <tr><td><code>OLI-001</code></td><td>Oli Mesin 10W-40 1L</td><td class="rp">120</td><td>PT Sumber Oli Jaya</td><td class="rp">85.000</td><td class="rp">10.200.000</td></tr>
+            <tr><td><code>FLT-014</code></td><td>Filter Oli Avanza</td><td class="rp">60</td><td>PT Sumber Oli Jaya</td><td class="rp">45.000</td><td class="rp">2.700.000</td></tr>
+            <tr><td><code>BRK-203</code></td><td>Kampas Rem Depan Innova</td><td class="rp">40</td><td>CV Mitra Otomotif</td><td class="rp">210.000</td><td class="rp">8.400.000</td></tr>
+            <tr><td><code>AKI-045</code></td><td>Aki 45Ah</td><td class="rp">20</td><td>UD Sinar Spare</td><td class="rp">725.000</td><td class="rp">14.500.000</td></tr>
+            <tr><td><code>BSI-077</code></td><td>Busi Iridium</td><td class="rp">90</td><td>CV Mitra Otomotif</td><td class="rp">28.000</td><td class="rp">2.520.000</td></tr>
+          </tbody>
+          <tfoot><tr><td colspan="5" class="text-end fw-bold">Total</td><td class="rp fw-bold">38.320.000</td></tr></tfoot>
+        </table>
       </div>
     </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 13</span></div>
+  <div class="note mt-2"><b>Siapa melihat tombol apa:</b> <i>Setuju</i> dan <i>Tolak</i> hanya untuk approver level yang sedang giliran (setelah level sebelumnya setuju), dan bukan pemohon/pengaju. Pengguna lain melihat halaman yang sama tanpa tombol. Kepala Gudang melihat tombol <i>Batalkan Permintaan</i>. Bila semua approver langkah itu nonaktif, muncul peringatan “tertahan”.</div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 13</span></div>
 </section>
 
-<!-- ============ 10 TOLAK + DITOLAK ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">13</span><h2>UI · Tolak &amp; Hasil Penolakan</h2><span class="sub">Tolak wajib alasan · permintaan ditolak bersifat final</span></div>
-  <div class="split" style="grid-template-columns:auto 1fr; gap:14px">
-    <div class="frame" style="width:560px;zoom:.8">
-      <div class="frame-bar"><span class="dots"></span><span class="url">/permintaan-barang/7 · modal Tolak</span><span class="who">Login: Direktur</span></div>
-      <div class="frame-body" style="padding:14px">
-        <div class="backdrop"><div class="modal-mock" style="width:100%">
-          <div class="mh"><span><i class="bi bi-x-circle text-danger"></i> Tolak Permintaan</span><span>✕</span></div>
-          <div class="mb">
-            <p class="small mb-2">Anda menolak <b>RQ/BKS/202611/00007</b> (Rp 38.320.000). Permintaan yang ditolak <b>tidak dapat dilanjutkan</b>; pemohon harus membuat permintaan baru dari awal.</p>
-            <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
-            <textarea class="form-control" rows="3">Harga aki 45Ah di atas harga pasar, mohon survei supplier lain.</textarea>
-            <div class="form-text text-danger" style="display:none">Alasan wajib diisi.</div>
-          </div>
-          <div class="mf"><a class="btn btn-outline-secondary btn-sm">Batal</a><a class="btn btn-danger btn-sm"><i class="bi bi-x-circle"></i> Ya, Tolak</a></div>
-        </div></div>
-      </div>
+  <div class="pg-head"><span class="no">13</span><h2>Tolak &amp; Batalkan Permintaan</h2><span class="sub">Keduanya final; alasan tercatat dan tampil di detail permintaan</span></div>
+  <div class="split" style="grid-template-columns:1fr 1fr; gap:12px">
+    <div class="frame" style="width:100%;zoom:.8">
+      <div class="frame-bar"><span class="dots"></span><span class="url">Tolak · oleh Direktur</span><span class="who">Direktur</span></div>
+      <div class="frame-body" style="padding:12px"><div class="backdrop"><div class="modal-mock" style="width:100%">
+        <div class="mh"><span><i class="bi bi-x-circle text-danger"></i> Tolak Permintaan</span><span>✕</span></div>
+        <div class="mb"><p class="small mb-2">Anda menolak <b>RQ/BKS/202611/00007</b>. Permintaan yang ditolak <b>tidak dapat dilanjutkan</b>; pemohon harus membuat permintaan baru dari awal.</p>
+          <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
+          <textarea class="form-control" rows="3">Harga aki 45Ah di atas harga pasar, mohon survei supplier lain.</textarea></div>
+        <div class="mf"><a class="btn btn-outline-secondary btn-sm">Batal</a><a class="btn btn-danger btn-sm"><i class="bi bi-x-circle"></i> Ya, Tolak</a></div>
+      </div></div></div>
     </div>
-    <div class="frame" style="width:640px;zoom:.8">
-      <div class="frame-bar"><span class="dots"></span><span class="url">/permintaan-barang/7 · setelah ditolak</span><span class="who">Login: Kepala Bengkel</span></div>
-      <div class="frame-body" style="padding:14px">
-        <div class="page-heading" style="margin-bottom:.7rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-clipboard-plus"></i></span><div><p class="eyebrow">Permintaan Barang</p><h1 style="font-size:1.25rem">RQ/BKS/202611/00007</h1></div></div>
-          <div class="heading-actions"><a class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Buat Permintaan Baru</a></div></div>
-        <div class="alert alert-danger py-2 small mb-2" style="border-radius:8px"><b><i class="bi bi-x-octagon"></i> Ditolak oleh Direktur</b> · 12/11/2026 14:05<br>“Harga aki 45Ah di atas harga pasar, mohon survei supplier lain.”<br><span class="text-muted">Permintaan ini sudah tidak berlaku. Silakan buat permintaan baru.</span></div>
-        <div class="panel" style="padding:.9rem">
-          <div class="stepper"><div class="stp done"><div class="dot"><i class="bi bi-check-lg"></i></div><b>Manager</b><small>Disetujui</small></div><div class="stp bad"><div class="dot"><i class="bi bi-x-lg"></i></div><b>Direktur</b><small>Ditolak</small></div></div>
-          <hr class="my-3">
-          <div class="small text-muted">Rincian barang tetap bisa dilihat (read-only) sebagai arsip. Tidak ada tombol Ubah / Ajukan ulang.</div>
-        </div>
-      </div>
+    <div class="frame" style="width:100%;zoom:.8">
+      <div class="frame-bar"><span class="dots"></span><span class="url">Batalkan · oleh Kepala Gudang</span><span class="who">Kepala Gudang</span></div>
+      <div class="frame-body" style="padding:12px"><div class="backdrop"><div class="modal-mock" style="width:100%">
+        <div class="mh"><span><i class="bi bi-slash-circle text-danger"></i> Batalkan permintaan ini?</span><span>✕</span></div>
+        <div class="mb"><p class="small mb-2"><b>RQ/BKS/202611/00007</b> akan dibatalkan dan <b>tidak dapat dilanjutkan</b>. Permintaan ini sedang menunggu approval; langkah approval yang belum diproses akan dihentikan.</p>
+          <label class="form-label">Alasan <span class="text-danger">*</span></label>
+          <textarea class="form-control" rows="3">Kebutuhan dibatalkan, stok sudah dipenuhi dari transfer cabang.</textarea></div>
+        <div class="mf"><a class="btn btn-outline-secondary btn-sm">Kembali</a><a class="btn btn-danger btn-sm"><i class="bi bi-slash-circle"></i> Ya, Batalkan</a></div>
+      </div></div></div>
     </div>
   </div>
-  <div class="callout warn mt-2"><b>Tidak ada “hidupkan kembali”.</b> Sesuai keputusan: transaksi yang ditolak dianggap tidak berlaku dan harus dibuat dari awal. Status <span class="tag r">Ditolak</span> dan alasannya tersimpan permanen dan muncul di Laporan Permintaan Barang.</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 14</span></div>
+  <div class="split mt-2" style="grid-template-columns:1fr 1fr; gap:12px">
+    <div class="panel" style="padding:.9rem">
+      <b style="font-size:12px">Hasil: Ditolak</b>
+      <div class="alert alert-danger py-2 small my-2" style="border-radius:8px"><b><i class="bi bi-x-octagon"></i> Permintaan ditolak.</b><div>Alasan: Harga aki 45Ah di atas harga pasar, mohon survei supplier lain.</div><div>Permintaan ini sudah tidak berlaku. Silakan buat permintaan baru.</div></div>
+      <div class="stepper"><div class="stp done"><div class="dot"><i class="bi bi-check-lg"></i></div><b>Manager</b><small>Disetujui</small></div><div class="stp bad"><div class="dot"><i class="bi bi-x-lg"></i></div><b>Direktur</b><small>Ditolak</small></div></div>
+    </div>
+    <div class="panel" style="padding:.9rem">
+      <b style="font-size:12px">Hasil: Dibatalkan</b>
+      <div class="alert alert-secondary py-2 small my-2" style="border-radius:8px"><b><i class="bi bi-slash-circle"></i> Permintaan dibatalkan</b> oleh Wati (Kepala Gudang) pada 13/11/2026 15:20<div>Alasan: Kebutuhan dibatalkan, stok sudah dipenuhi dari transfer cabang.</div></div>
+      <div class="stepper"><div class="stp done"><div class="dot"><i class="bi bi-check-lg"></i></div><b>Manager</b><small>Disetujui</small></div><div class="stp void"><div class="dot">2</div><b>Direktur</b><small>tidak diproses</small></div></div>
+    </div>
+  </div>
+  <div class="callout warn mt-2"><b>Final.</b> Permintaan yang ditolak atau dibatalkan tidak dihidupkan kembali; bila masih dibutuhkan, pemohon membuat permintaan baru. Keputusan yang sudah masuk sebelum pembatalan tetap tercatat.</div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 14</span></div>
 </section>
 
-<!-- ============ 11 DISETUJUI + INBOX ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">14</span><h2>UI · Disetujui &amp; Inbox Approval</h2><span class="sub">Setelah level terakhir setuju, Pembelian terbentuk otomatis</span></div>
+  <div class="pg-head"><span class="no">14</span><h2>Disetujui &amp; Inbox Approval</h2><span class="sub">Setelah level terakhir setuju, Pembelian terbentuk otomatis</span></div>
   <div class="split" style="grid-template-columns:1fr 1fr; gap:14px">
     <div class="frame" style="width:620px;zoom:.8">
-      <div class="frame-bar"><span class="dots"></span><span class="url">/permintaan-barang/3 · disetujui penuh</span><span class="who">Login: Petugas Pembelian</span></div>
+      <div class="frame-bar"><span class="dots"></span><span class="url">/purchase-requests/3 · disetujui penuh</span><span class="who">Login: Petugas Pembelian</span></div>
       <div class="frame-body" style="padding:14px">
         <div class="page-heading" style="margin-bottom:.7rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-clipboard-plus"></i></span><div><p class="eyebrow">Permintaan Barang</p><h1 style="font-size:1.25rem">RQ/UTM/202611/00003</h1></div></div></div>
         <div class="alert alert-success py-2 small mb-2" style="border-radius:8px;background:#F0FDFA;border-color:#99F6E4;color:#115E59"><b><i class="bi bi-check-circle"></i> Disetujui penuh</b> · Manager ✓ 08/11 · Total Rp 6.450.000 (1 level)</div>
         <div class="panel" style="padding:.9rem">
           <h2 class="section-title mb-2" style="font-size:.9rem"><i class="bi bi-cart-check"></i><span>Pembelian yang Terbentuk</span></h2>
           <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>No. Pembelian</th><th>Supplier</th><th class="text-end">Total</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>No. Pembelian</th><th>Supplier</th><th class="text-end">Total</th><th>Status</th></tr></thead>
             <tbody>
-              <tr><td><code>PO/UTM/202611/00002</code></td><td>CV Mitra Otomotif</td><td class="rp">6.450.000</td><td><span class="status-dot s-mute">Draft</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm">Buka</a></td></tr>
+              <tr><td><code>PO/UTM/202611/00002</code></td><td>CV Mitra Otomotif</td><td class="rp">6.450.000</td><td><span class="status-dot s-mute">Draft</span></td></tr>
             </tbody></table>
         </div>
       </div>
     </div>
     <div class="frame" style="width:640px;zoom:.8">
-      <div class="frame-bar"><span class="dots"></span><span class="url">/approval-permintaan</span><span class="who">Login: Direktur</span></div>
+      <div class="frame-bar"><span class="dots"></span><span class="url">/approvals</span><span class="who">Login: Direktur</span></div>
       <div class="frame-body" style="padding:14px">
         <div class="page-heading" style="margin-bottom:.7rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-patch-check"></i></span><div><p class="eyebrow">Pembelian</p><h1 style="font-size:1.25rem">Approval Permintaan</h1></div></div></div>
         <ul class="nav nav-tabs mb-2" style="font-size:.85rem"><li class="nav-item"><a class="nav-link active">Menunggu Saya <span class="badge bg-danger">2</span></a></li><li class="nav-item"><a class="nav-link">Riwayat Saya</a></li></ul>
         <div class="card"><table class="table table-sm align-middle mb-0">
-          <thead><tr><th>Nomor</th><th>Cabang</th><th class="text-end">Total (Rp)</th><th>Level Saya</th><th>Menunggu</th><th></th></tr></thead>
+          <thead><tr><th>Nomor</th><th>Cabang</th><th>Pemohon</th><th class="text-end">Total (Rp)</th><th>Level Saya</th><th>Menunggu</th><th class="text-end">Aksi</th></tr></thead>
           <tbody>
-            <tr><td><code>RQ/BKS/202611/00007</code></td><td>Bekasi</td><td class="rp">38.320.000</td><td><span class="tag">2 Direktur</span></td><td class="small">1 hari</td><td class="text-end"><a class="btn btn-outline-primary btn-sm">Tinjau</a></td></tr>
-            <tr><td><code>RQ/UTM/202611/00006</code></td><td>Utama</td><td class="rp">27.900.000</td><td><span class="tag">2 Direktur</span></td><td class="small">3 jam</td><td class="text-end"><a class="btn btn-outline-primary btn-sm">Tinjau</a></td></tr>
+            <tr><td><code>RQ/BKS/202611/00007</code></td><td>Bekasi</td><td>Budi</td><td class="rp">38.320.000</td><td><span class="tag">2 Direktur</span></td><td class="small">1 hari</td><td class="text-end"><a class="btn btn-outline-primary btn-sm">Tinjau</a></td></tr>
+            <tr><td><code>RQ/UTM/202611/00006</code></td><td>Utama</td><td>Rina</td><td class="rp">27.900.000</td><td><span class="tag">2 Direktur</span></td><td class="small">3 jam</td><td class="text-end"><a class="btn btn-outline-primary btn-sm">Tinjau</a></td></tr>
           </tbody></table></div>
         <div class="small text-muted mt-2">Hanya permintaan yang <b>sudah giliran</b> level user ini (level sebelumnya sudah setuju). “Riwayat Saya” = yang pernah disetujui/ditolak user ini, beserta keputusannya.</div>
       </div>
     </div>
   </div>
   <div class="callout ok mt-2"><b>Pembuatan Pembelian otomatis:</b> pada transaksi yang sama dengan Setuju level terakhir, sistem mengelompokkan baris per supplier dan membuat satu <i>Pembelian draft</i> per supplier (di sini 1 supplier = 1 PO; contoh: permintaan Rp 38,3 jt dengan 3 supplier — Sumber Oli Jaya, Mitra Otomotif, Sinar Spare — menghasilkan 3 PO). Harga &amp; qty disalin dari permintaan dan tidak bisa diubah di Pembelian.</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 15</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 15</span></div>
 </section>
 
-<!-- ============ 12 PEMBELIAN LIST + DETAIL ============ -->
 <section class="pg">
-  <div class="pg-head"><span class="no">15</span><h2>UI · Pembelian Barang</h2><span class="sub">Menu: Pembelian → Pembelian Barang · permission <code>purchase_order.*</code></span></div>
+  <div class="pg-head"><span class="no">15</span><h2>Detail Pembelian Barang</h2><span class="sub">Menu: Pembelian → Pembelian Barang · rincian dan progres penerimaan</span></div>
   <div class="split" style="grid-template-columns:auto 1fr; gap:14px">
     <div class="frame" style="width:1210px;zoom:.78">
-      <div class="frame-bar"><span class="dots"></span><span class="url">/pembelian-barang/3</span><span class="who">Login: Petugas Pembelian</span></div>
+      <div class="frame-bar"><span class="dots"></span><span class="url">/purchase-orders/3</span><span class="who">Login: Petugas Pembelian</span></div>
       <div class="frame-body">
         <div class="page-heading"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-cart-check"></i></span><div><p class="eyebrow">Pembelian Barang</p><h1>PO/BKS/202611/00003</h1></div></div>
           <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer"></i> Cetak PO</a><a class="btn btn-primary btn-sm"><i class="bi bi-truck"></i> Terima Barang</a></div></div>
@@ -809,39 +794,39 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       </div>
     </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 16</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 16</span></div>
 </section>
 
 <section class="pg">
-  <div class="pg-head"><span class="no">16</span><h2>UI · Daftar Pembelian &amp; PO Draft</h2><span class="sub">Daftar dengan filter supplier &amp; progres · PO draft menunggu diterbitkan</span></div>
+  <div class="pg-head"><span class="no">16</span><h2>Daftar Pembelian Barang</h2><span class="sub">Menu: Pembelian → Pembelian Barang · tampilan Petugas Pembelian</span></div>
   <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/pembelian-barang</span><span class="who">Login: Petugas Pembelian</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/purchase-orders</span><span class="who">Login: Petugas Pembelian</span></div>
     <div class="frame-body">
       <div class="page-heading"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-cart-check"></i></span><div><p class="eyebrow">Pembelian</p><h1>Pembelian Barang</h1><p class="text-muted mb-0 small">Pembelian dibuat otomatis dari Permintaan yang telah disetujui.</p></div></div></div>
       <div class="card mb-3"><div class="card-body p-2 d-flex gap-2 align-items-center">
         <i class="bi bi-search ms-2 text-muted"></i><input class="form-control form-control-sm border-0" placeholder="Cari nomor pembelian..." style="flex:1">
-        <div class="form-select form-select-sm" style="width:150px">Semua Cabang</div><div class="form-select form-select-sm" style="width:180px">Semua Supplier</div><div class="form-select form-select-sm" style="width:170px">Semua Status</div>
+        <div class="form-select form-select-sm" style="width:205px">Semua Cabang Saya</div><div class="form-select form-select-sm" style="width:215px">-- Semua Status --</div><div class="form-select form-select-sm" style="width:190px">Semua Supplier</div>
         <a class="btn btn-outline-primary btn-sm">Terapkan</a></div></div>
       <div class="card"><table class="table table-hover align-middle mb-0">
-        <thead><tr><th>No. Pembelian</th><th>Tanggal</th><th>Supplier</th><th>Cabang</th><th>Asal Permintaan</th><th class="text-end">Total (Rp)</th><th style="width:140px">Diterima</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+        <thead><tr><th>No. Pembelian</th><th>Tanggal</th><th>Supplier</th><th>Cabang</th><th>Asal Permintaan</th><th class="text-end">Total (Rp)</th><th style="width:130px">Diterima</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
         <tbody>
-          <tr><td><code>PO/BKS/202611/00005</code></td><td>13/11</td><td>UD Sinar Spare</td><td>Bekasi</td><td><code>RQ/…00005</code></td><td class="rp">14.500.000</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:0"></div></div><span class="small text-muted">0%</span></td><td><span class="status-dot s-mute">Draft</span></td><td class="text-end"><a class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Terbitkan</a> <a class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i></a></td></tr>
-          <tr><td><code>PO/BKS/202611/00004</code></td><td>13/11</td><td>CV Mitra Otomotif</td><td>Bekasi</td><td><code>RQ/…00005</code></td><td class="rp">10.920.000</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:0"></div></div><span class="small text-muted">0%</span></td><td><span class="status-dot s-mute">Draft</span></td><td class="text-end"><a class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Terbitkan</a> <a class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i></a></td></tr>
-          <tr><td><code>PO/BKS/202611/00003</code></td><td>12/11</td><td>PT Sumber Oli Jaya</td><td>Bekasi</td><td><code>RQ/…00005</code></td><td class="rp">12.900.000</td><td><div class="progress" style="height:7px"><div class="progress-bar bg-warning" style="width:78%"></div></div><span class="small text-muted">78%</span></td><td><span class="status-dot s-wait">Diterima Sebagian</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
-          <tr><td><code>PO/UTM/202611/00002</code></td><td>08/11</td><td>CV Mitra Otomotif</td><td>Utama</td><td><code>RQ/…00003</code></td><td class="rp">6.450.000</td><td><div class="progress" style="height:7px"><div class="progress-bar bg-success" style="width:100%"></div></div><span class="small text-muted">100%</span></td><td><span class="status-dot s-ok">Selesai</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
-          <tr><td><code>PO/UTM/202611/00001</code></td><td>06/11</td><td>PT Sumber Oli Jaya</td><td>Utama</td><td><code>RQ/…00002</code></td><td class="rp">3.600.000</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:0"></div></div><span class="small text-muted">0%</span></td><td><span class="status-dot s-mute">Dibatalkan</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>PO/BKS/202611/00005</code></td><td>13/11/2026</td><td>UD Sinar Spare</td><td>Bekasi</td><td><code>RQ/…00005</code></td><td class="rp">14.500.000</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:0"></div></div><span class="small text-muted">0%</span></td><td><span class="status-dot s-mute">Draft</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>PO/BKS/202611/00004</code></td><td>13/11/2026</td><td>CV Mitra Otomotif</td><td>Bekasi</td><td><code>RQ/…00005</code></td><td class="rp">10.920.000</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:0"></div></div><span class="small text-muted">0%</span></td><td><span class="status-dot s-wait">Diterbitkan</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>PO/BKS/202611/00003</code></td><td>12/11/2026</td><td>PT Sumber Oli Jaya</td><td>Bekasi</td><td><code>RQ/…00005</code></td><td class="rp">12.900.000</td><td><div class="progress" style="height:7px"><div class="progress-bar bg-warning" style="width:78%"></div></div><span class="small text-muted">78%</span></td><td><span class="status-dot s-wait">Diterima Sebagian</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>PO/UTM/202611/00002</code></td><td>08/11/2026</td><td>CV Mitra Otomotif</td><td>Utama</td><td><code>RQ/…00003</code></td><td class="rp">6.450.000</td><td><div class="progress" style="height:7px"><div class="progress-bar bg-success" style="width:100%"></div></div><span class="small text-muted">100%</span></td><td><span class="status-dot s-ok">Selesai</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
+          <tr><td><code>PO/UTM/202611/00001</code></td><td>06/11/2026</td><td>PT Sumber Oli Jaya</td><td>Utama</td><td><code>RQ/…00002</code></td><td class="rp">3.600.000</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:0"></div></div><span class="small text-muted">0%</span></td><td><span class="status-dot s-bad">Dibatalkan</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Lihat</a></td></tr>
         </tbody></table></div>
     </div>
   </div>
-  <div class="note mt-2"><b>Catatan:</b> Pada Draft, hanya <i>Terbitkan</i> dan <i>Batalkan</i> yang ada — baris PO tidak bisa diedit (harga &amp; qty adalah hasil approval). Ikon ✕ memunculkan konfirmasi. Kolom <i>Diterima</i> = persen qty yang sudah diposting.</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 17</span></div>
+  <div class="note mt-2"><b>Catatan:</b> penerbitan dan pembatalan dilakukan dari halaman detail pembelian (tombol <i>Terbitkan</i> / <i>Batalkan</i>), bukan dari daftar. Isi baris pembelian tidak dapat diubah: qty dan harga adalah hasil persetujuan. Kolom <i>Diterima</i> = persen qty yang sudah diposting.</div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 17</span></div>
 </section>
 
-<!-- ============ 14 PENERIMAAN ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">17</span><h2>UI · Penerimaan Barang (Pola Baru)</h2><span class="sub">Dibuat dari Pembelian · permission <code>receipt.create</code> per cabang</span></div>
+  <div class="pg-head"><span class="no">17</span><h2>Penerimaan Barang dari Pembelian</h2><span class="sub">Dibuat dari Pembelian yang sudah diterbitkan · per cabang</span></div>
   <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/penerimaan-barang/create?po=3</span><span class="who">Login: Petugas Gudang (Bekasi)</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/goods-receipts/create?po=3</span><span class="who">Login: Petugas Gudang (Bekasi)</span></div>
     <div class="frame-body">
       <div class="page-heading"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-truck"></i></span><div><p class="eyebrow">Penerimaan Barang</p><h1>Penerimaan Barang Baru</h1></div></div>
         <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a></div></div>
@@ -871,15 +856,15 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       <div class="d-flex justify-content-end gap-2"><a class="btn btn-outline-secondary">Batal</a><a class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan Draft</a></div>
     </div>
   </div>
-  <div class="callout mt-2"><b>Posting tidak berubah:</b> tombol <i>Posting</i> di detail Penerimaan tetap menambah <code>on_hand_qty</code>, menghitung ulang average cost (harga dari PO), menulis kartu stok, <u>lalu</u> menambah <code>qty_received</code> di baris PO dan memperbarui status PO — semua dalam satu transaksi dengan lock; sisa dicek ulang saat posting (cegah kelebihan bila dua draft diposting bergantian).</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 18</span></div>
+  <div class="callout mt-2"><b>Posting tetap seperti sekarang:</b> tombol <i>Posting</i> di detail Penerimaan menambah stok, menghitung ulang harga rata-rata, dan menulis Kartu Stok; <u>sekaligus</u> menambah qty diterima pada Pembelian dan memperbarui statusnya (Diterima Sebagian / Selesai). Semua berlangsung dalam satu proses yang aman, dan sisa dicek ulang saat posting sehingga dua draft penerimaan tidak dapat melebihi jumlah yang dipesan.</div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 18</span></div>
 </section>
 
 <section class="pg">
-  <div class="pg-head"><span class="no">18</span><h2>UI · Daftar &amp; Detail Penerimaan (Perubahan)</h2><span class="sub">Kolom baru: Supplier &amp; No. Pembelian · data lama tetap tampil</span></div>
+  <div class="pg-head"><span class="no">18</span><h2>Daftar &amp; Detail Penerimaan (Perubahan)</h2><span class="sub">Kolom baru: Supplier &amp; No. Pembelian · data lama tetap tampil</span></div>
   <div class="split" style="grid-template-columns:1fr; gap:10px">
   <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/penerimaan-barang</span><span class="who">Login: Petugas Gudang (Bekasi)</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/goods-receipts</span><span class="who">Login: Petugas Gudang (Bekasi)</span></div>
     <div class="frame-body" style="padding-bottom:14px">
       <div class="page-heading" style="margin-bottom:.7rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-truck"></i></span><div><p class="eyebrow">Persediaan</p><h1 style="font-size:1.35rem">Penerimaan Barang</h1><p class="text-muted mb-0 small">Penerimaan barang berdasarkan pembelian ke supplier.</p></div></div></div>
       <div class="card mb-2"><div class="card-body p-2 d-flex gap-2 align-items-center"><i class="bi bi-search ms-2 text-muted"></i><input class="form-control form-control-sm border-0" placeholder="Cari nomor penerimaan / PO..." style="flex:1"><div class="form-select form-select-sm" style="width:150px">Semua Cabang</div><div class="form-select form-select-sm" style="width:170px">Semua Status</div><a class="btn btn-outline-primary btn-sm">Terapkan</a><a class="btn btn-primary btn-sm ms-2"><i class="bi bi-plus-lg"></i> Penerimaan Baru</a></div></div>
@@ -894,17 +879,16 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
   </div>
   </div>
   <div class="split mt-2" style="grid-template-columns:1fr 1fr; gap:16px">
-    <div class="callout"><b>Detail Penerimaan:</b> header menambah kartu <i>Supplier</i> dan <i>No. Pembelian</i> (tautan ke PO); tabel baris menambah kolom <i>Dipesan</i> dan <i>Sisa setelah penerimaan ini</i>. Tombol Ubah / Posting / Batalkan tidak berubah.</div>
+    <div class="callout"><b>Detail Penerimaan:</b> header menambah kartu <i>Supplier</i> dan <i>No. Pembelian</i> (tautan ke PO); tabel baris menambah kolom <i>Dipesan</i> dan <i>Sisa Pembelian</i>. Tombol Ubah / Posting / Batalkan tidak berubah.</div>
     <div class="callout warn"><b>Data lama:</b> penerimaan tanpa PO tetap tampil dengan “—”. Draft lama tanpa PO masih boleh diedit/diposting/dibatalkan; membuat penerimaan baru tanpa PO ditutup. Import Excel baris penerimaan dihapus dari form baru karena baris kini berasal dari PO.</div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 19</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 19</span></div>
 </section>
 
-<!-- ============ 16 LAPORAN ============ -->
 <section class="pg">
-  <div class="pg-head"><span class="no">19</span><h2>UI · Laporan Permintaan Barang</h2><span class="sub">Menu: Laporan → Laporan Permintaan Barang · permission <code>report.purchase_request.view</code> · Excel &amp; PDF</span></div>
+  <div class="pg-head"><span class="no">19</span><h2>Laporan Permintaan Barang</h2><span class="sub">Menu: Laporan → Laporan Permintaan Barang · Excel &amp; PDF</span></div>
   <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/laporan/permintaan-barang?mode=rekap</span><span class="who">Login: Manager</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/reports/purchase-requests?mode=rekap</span><span class="who">Login: Manager</span></div>
     <div class="frame-body">
       <div class="page-heading" style="margin-bottom:.8rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-clipboard-data"></i></span><div><p class="eyebrow">Laporan</p><h1 style="font-size:1.4rem">Laporan Permintaan Barang</h1></div></div>
         <div class="heading-actions"><a class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a><a class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> PDF</a></div></div>
@@ -929,13 +913,13 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       <div class="small text-muted mt-2">Mode <b>Detail</b>: satu baris per barang — Kode, Sparepart, Qty, Supplier, Harga, Subtotal, plus nomor &amp; status permintaan; filter tambahan <i>Sparepart</i>. Lama Proses = dari tanggal pengajuan sampai keputusan terakhir (atau sampai sekarang jika masih berjalan).</div>
     </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 20</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 20</span></div>
 </section>
 
 <section class="pg">
-  <div class="pg-head"><span class="no">20</span><h2>UI · Laporan Pembelian Barang</h2><span class="sub">Tiga tampilan: Rekap · Detail · Per Supplier — plus filter “Belum selesai diterima” (outstanding)</span></div>
+  <div class="pg-head"><span class="no">20</span><h2>Laporan Pembelian Barang</h2><span class="sub">Tiga tampilan: Rekap · Detail · Per Supplier — plus filter “Belum selesai diterima”</span></div>
   <div class="frame">
-    <div class="frame-bar"><span class="dots"></span><span class="url">/laporan/pembelian-barang?mode=rekap&amp;outstanding=1</span><span class="who">Login: Manager</span></div>
+    <div class="frame-bar"><span class="dots"></span><span class="url">/reports/purchase-orders?mode=rekap&amp;outstanding=1</span><span class="who">Login: Manager</span></div>
     <div class="frame-body">
       <div class="page-heading" style="margin-bottom:.8rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-cart-check"></i></span><div><p class="eyebrow">Laporan</p><h1 style="font-size:1.4rem">Laporan Pembelian Barang</h1></div></div>
         <div class="heading-actions"><a class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a><a class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> PDF</a></div></div>
@@ -953,8 +937,8 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       <div class="card"><table class="table table-sm align-middle mb-0" style="font-size:.82rem">
         <thead><tr><th>No. Pembelian</th><th>Tanggal</th><th>Supplier</th><th>Cabang</th><th class="text-end">Nilai PO (Rp)</th><th class="text-end">Diterima (Rp)</th><th class="text-end">Outstanding (Rp)</th><th class="text-end">% Terima</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td><code>PO/BKS/202611/00005</code></td><td>13/11</td><td>UD Sinar Spare</td><td>Bekasi</td><td class="rp">14.500.000</td><td class="rp">0</td><td class="rp">14.500.000</td><td class="rp">0%</td><td><span class="status-dot s-mute">Draft</span></td></tr>
-          <tr><td><code>PO/BKS/202611/00004</code></td><td>13/11</td><td>CV Mitra Otomotif</td><td>Bekasi</td><td class="rp">10.920.000</td><td class="rp">0</td><td class="rp">10.920.000</td><td class="rp">0%</td><td><span class="status-dot s-mute">Draft</span></td></tr>
+          <tr><td><code>PO/BKS/202611/00005</code></td><td>13/11</td><td>UD Sinar Spare</td><td>Bekasi</td><td class="rp">14.500.000</td><td class="rp">0</td><td class="rp">14.500.000</td><td class="rp">0%</td><td><span class="status-dot s-wait">Diterbitkan</span></td></tr>
+          <tr><td><code>PO/BKS/202611/00004</code></td><td>13/11</td><td>CV Mitra Otomotif</td><td>Bekasi</td><td class="rp">10.920.000</td><td class="rp">0</td><td class="rp">10.920.000</td><td class="rp">0%</td><td><span class="status-dot s-wait">Diterbitkan</span></td></tr>
           <tr><td><code>PO/BKS/202611/00003</code></td><td>12/11</td><td>PT Sumber Oli Jaya</td><td>Bekasi</td><td class="rp">12.900.000</td><td class="rp">9.500.000</td><td class="rp">3.400.000</td><td class="rp">78%</td><td><span class="status-dot s-wait">Diterima Sebagian</span></td></tr>
         </tbody></table></div>
       <div class="row g-3 mt-1">
@@ -963,81 +947,110 @@ table.doc td{ padding:5px 8px; border:1px solid var(--color-border); vertical-al
       </div>
     </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 21</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 21</span></div>
 </section>
 
-<!-- ============ 18 LAPORAN PENERIMAAN & RINGKASAN ============ -->
 <section class="pg">
-  <div class="pg-head"><span class="no">21</span><h2>Laporan Penerimaan Barang (Perubahan) &amp; Daftar Tahap Kerja</h2><span class="sub">Setelah rancangan disetujui, ini menjadi dasar rencana implementasi</span></div>
-  <div class="split" style="grid-template-columns:1.1fr 1fr; gap:20px">
-    <div>
-      <b style="font-size:12.5px">Perubahan pada Laporan Penerimaan Barang</b>
-      <table class="doc mt-1">
-        <tr><th>Bagian</th><th>Perubahan</th></tr>
-        <tr><td>Filter</td><td>+ <b>Supplier</b> (Select2). Filter lain tetap (cabang, status, tanggal, mode rekap/detail, sparepart).</td></tr>
-        <tr><td>Mode Rekap</td><td>+ kolom <b>Supplier</b> dan <b>No. Pembelian</b>.</td></tr>
-        <tr><td>Mode Detail</td><td>+ kolom Supplier, No. Pembelian, <b>Qty Dipesan</b> pada PO (pembanding qty diterima).</td></tr>
-        <tr><td>Data lama</td><td>Supplier &amp; No. Pembelian tampil “—”; ikut ringkasan total seperti sebelumnya.</td></tr>
-        <tr><td>Export</td><td>Excel &amp; PDF ikut kolom baru (<code>GoodsReceiptReportExport</code>, view pdf).</td></tr>
-      </table>
-      <div class="callout mt-2"><b>Tidak diubah:</b> Kartu Stok (referensi tetap <code>goods_receipt_line</code>), Laporan Stok Sparepart, perhitungan average cost / HPP, dan Laporan Laba Kotor.</div>
-      <div class="callout warn" style="margin-top:6px"><b>Audit log:</b> perubahan Pengaturan Approval, ajukan approval, setuju, tolak, terbitkan PO, batalkan PO, dan posting penerimaan dicatat di audit log yang sudah ada (siapa, kapan, sebelum/sesudah).</div>
-    </div>
-    <div>
-      <b style="font-size:12.5px">Tahap Implementasi yang Diusulkan</b>
-      <table class="doc mt-1">
-        <tr><th>#</th><th>Tahap</th><th>Isi</th></tr>
-        <tr><td>1</td><td><b>Supplier &amp; Permission</b></td><td>Master supplier + seed semua permission baru + sidebar</td></tr>
-        <tr><td>2</td><td><b>Permintaan Barang</b></td><td>Buat/ubah/batal, daftar, detail, penentuan supplier &amp; harga</td></tr>
-        <tr><td>3</td><td><b>Approval Berjenjang</b></td><td><b>Pengaturan Approval</b> (level, approver, aturan nominal), <code>ApprovalChainResolver</code>, ajukan, setuju/tolak, inbox, audit</td></tr>
-        <tr><td>4</td><td><b>Pembelian Barang</b></td><td>Generate PO otomatis, daftar/detail, terbitkan/batal, cetak PO</td></tr>
-        <tr><td>5</td><td><b>Refactor Penerimaan</b></td><td>Dari PO, sisa qty, update progres PO, kolom baru &amp; data lama</td></tr>
-        <tr><td>6</td><td><b>Laporan</b></td><td>2 laporan baru + perubahan laporan penerimaan, export</td></tr>
-      </table>
-      <div class="note mt-2">Setiap tahap: migrasi + feature test sendiri (otorisasi per permission, transisi status, <b>batas nominal 10 jt / 50 jt</b>, urutan approval, klik ganda/konkurensi, qty melebihi sisa) dan bisa dijalankan/diperiksa sebelum tahap berikutnya.</div>
-      <div class="callout ok mt-2"><b>Menunggu persetujuan Anda.</b> Setelah rancangan ini disetujui (atau direvisi), saya susun rencana implementasi terperinci dan mulai membangun dari tahap 1 di branch <code>feature/permintaan-pembelian-barang</code>.</div>
+  <div class="pg-head"><span class="no">21</span><h2>Laporan Penerimaan Barang (Perubahan)</h2><span class="sub">Kolom dan filter baru; data lama tetap tampil</span></div>
+  <div class="frame">
+    <div class="frame-bar"><span class="dots"></span><span class="url">/reports/goods-receipts?mode=detail</span><span class="who">Login: Petugas Gudang (Bekasi)</span></div>
+    <div class="frame-body">
+      <div class="page-heading" style="margin-bottom:.8rem"><div class="page-heading-copy"><span class="page-icon"><i class="bi bi-box-arrow-in-down"></i></span><div><p class="eyebrow">Reporting</p><h1 style="font-size:1.4rem">Laporan Penerimaan Barang</h1></div></div>
+        <div class="heading-actions"><a class="btn btn-outline-secondary btn-sm"><i class="bi bi-download"></i> Export</a></div></div>
+      <div class="card mb-3"><div class="card-body p-2 d-flex gap-2 align-items-center flex-wrap">
+        <div class="form-select form-select-sm" style="width:170px">Semua Cabang Saya</div><input class="form-control form-control-sm" style="width:125px" value="01/08/2026"><span class="small">s/d</span><input class="form-control form-control-sm" style="width:125px" value="30/11/2026">
+        <div class="form-select form-select-sm" style="width:120px">Semua</div>
+        <div class="form-select form-select-sm" style="width:190px;border-color:#86EFAC">PT Sumber Oli Jaya <span class="badge text-bg-success" style="font-size:.55rem">BARU</span></div>
+        <div class="form-select form-select-sm" style="width:150px">Detail (per item)</div></div></div>
+      <div class="card"><table class="table table-sm align-middle mb-0" style="font-size:.8rem">
+        <thead><tr><th>No. Dokumen</th><th>Tanggal</th><th>Cabang</th><th>Supplier <span class="badge text-bg-success" style="font-size:.5rem">BARU</span></th><th>No. Pembelian <span class="badge text-bg-success" style="font-size:.5rem">BARU</span></th><th>Status</th><th>Kode</th><th>Nama Sparepart</th><th class="text-end">Qty Dipesan <span class="badge text-bg-success" style="font-size:.5rem">BARU</span></th><th class="text-end">Qty</th><th class="text-end">Harga Beli</th><th class="text-end">Total</th></tr></thead>
+        <tbody>
+          <tr><td><code>PB/BKS/…00011</code></td><td>18/11</td><td>Bekasi</td><td>PT Sumber Oli Jaya</td><td><code>PO/BKS/…00003</code></td><td><span class="status-dot s-ok">Diposting</span></td><td><code>OLI-001</code></td><td>Oli Mesin 10W-40 1L</td><td class="rp">120</td><td class="rp">80</td><td class="rp">85.000</td><td class="rp">6.800.000</td></tr>
+          <tr><td><code>PB/BKS/…00011</code></td><td>18/11</td><td>Bekasi</td><td>PT Sumber Oli Jaya</td><td><code>PO/BKS/…00003</code></td><td><span class="status-dot s-ok">Diposting</span></td><td><code>FLT-014</code></td><td>Filter Oli Avanza</td><td class="rp">60</td><td class="rp">60</td><td class="rp">45.000</td><td class="rp">2.700.000</td></tr>
+          <tr><td><code>PB/BKS/…00003</code></td><td>14/08</td><td>Bekasi</td><td class="text-muted">-</td><td class="text-muted">- <span class="tag s">data lama</span></td><td><span class="status-dot s-ok">Diposting</span></td><td><code>OLI-002</code></td><td>Oli Gardan</td><td class="rp text-muted">-</td><td class="rp">5</td><td class="rp">40.000</td><td class="rp">200.000</td></tr>
+        </tbody></table></div>
     </div>
   </div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 22</span></div>
+  <div class="split mt-2" style="grid-template-columns:1fr 1fr; gap:16px">
+    <div class="callout"><b>Yang berubah:</b> filter <i>Supplier</i>; kolom <i>Supplier</i> dan <i>No. Pembelian</i> pada tampilan Rekap dan Detail; kolom <i>Qty Dipesan</i> pada Detail (pembanding qty yang diterima). Excel dan PDF ikut. Ringkasan total tidak berubah.</div>
+    <div class="callout warn"><b>Data lama:</b> penerimaan sebelum modul ini tampil dengan tanda “-” untuk supplier dan nomor pembelian, tetap ikut dihitung dalam total, dan tidak lolos filter supplier. Kartu Stok, Laporan Stok, perhitungan HPP, dan Laporan Laba Kotor tidak berubah.</div>
+  </div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 22</span></div>
 </section>
 
-<!-- ============ 19 KEPUTUSAN ============ -->
+
 <section class="pg">
-  <div class="pg-head"><span class="no">22</span><h2>Keputusan &amp; Asumsi untuk Diperiksa</h2><span class="sub">Hal yang sudah Anda setujui vs. yang saya putuskan sendiri</span></div>
+  <div class="pg-head"><span class="no">22</span><h2>Jejak Audit &amp; Pengamanan Data</h2><span class="sub">Agar proses dapat dipertanggungjawabkan dan angka tetap benar</span></div>
   <div class="split" style="grid-template-columns:1fr 1fr; gap:22px">
     <div>
-      <b style="font-size:12.5px"><i class="bi bi-check2-square text-success"></i> Sudah Anda setujui</b>
-      <ol class="note" style="padding-left:18px;margin-top:6px">
-        <li>Permintaan per cabang (Kepala Bengkel); Kepala Gudang, approver, Pembelian <b>lintas cabang</b>.</li>
-        <li>Approval berjenjang berdasarkan total. Aturan awal: ≤10 jt Manager · ≤50 jt +Direktur · di atasnya +CEO.</li>
-        <li><b>Konfigurasi dinamis:</b> level (tambah / ubah nama / urutan), user per level, dan aturan nominal (batas &amp; level per baris) diatur di Pengaturan Approval — tanpa mengubah kode.</li>
-        <li>Kepala Gudang mengisi <b>supplier + harga</b> per barang; satu barang satu supplier.</li>
-        <li>Pembelian otomatis per supplier saat approval selesai; diterbitkan oleh petugas; status Draft → Diterbitkan → Sebagian → Selesai.</li>
-        <li>Penerimaan wajib dari PO, boleh bertahap, tidak melebihi sisa, harga dari PO; data lama tetap terlihat.</li>
-        <li>Master Supplier global.</li>
-        <li>Ditolak = final, mulai dari awal.</li>
-      </ol>
+      <b style="font-size:12.5px">Yang tercatat di Audit Log</b>
+      <table class="doc mt-1">
+        <tr><th>Kejadian</th><th>Dicatat</th></tr>
+        <tr><td>Permintaan diajukan untuk approval</td><td>Siapa, kapan, total, dan rantai level</td></tr>
+        <tr><td>Permintaan disetujui</td><td>Siapa, level mana, kapan, apakah level terakhir</td></tr>
+        <tr><td>Permintaan ditolak</td><td>Siapa, level mana, alasan</td></tr>
+        <tr><td>Permintaan dibatalkan</td><td>Siapa, status sebelumnya, alasan</td></tr>
+        <tr><td>Pembelian diterbitkan / dibatalkan</td><td>Siapa dan kapan</td></tr>
+        <tr><td>Pengaturan Approval diubah</td><td>Isi sebelum dan sesudah (level, approver, aturan)</td></tr>
+        <tr><td>Penerimaan diposting</td><td>Tercatat di Kartu Stok (pergerakan stok) seperti sebelumnya</td></tr>
+      </table>
+      <div class="note mt-2">Setiap persetujuan juga tersimpan pada permintaan itu sendiri (nama, waktu, catatan) dan tampil di bagian <i>Progres Approval</i>.</div>
     </div>
     <div>
-      <b style="font-size:12.5px"><i class="bi bi-exclamation-circle text-warning"></i> Keputusan saya — mohon dikoreksi bila keliru</b>
-      <ol class="note" style="padding-left:18px;margin-top:6px">
-        <li>Penolakan <b>wajib alasan</b>; tidak ada “salin ke permintaan baru”.</li>
-        <li>Permintaan hanya bisa diubah/dibatalkan pemohon selama belum ada supplier terisi; setelah itu terkunci.</li>
-        <li>Satu orang hanya boleh memproses <b>satu level</b> per permintaan.</li>
-        <li>Nomor dokumen <code>RQ/…</code> (permintaan) dan <code>PO/…</code> (pembelian); penerimaan tetap <code>PB/…</code>.</li>
-        <li>PO dibatalkan = final, tidak mengembalikan baris ke permintaan; hanya bila belum ada penerimaan terposting.</li>
-        <li>Draft penerimaan lama tanpa PO masih boleh diselesaikan; yang baru wajib PO. Import Excel baris penerimaan dihapus.</li>
-        <li>Permission laporan baru bersifat global (semua cabang).</li>
-        <li>Satu level boleh punya beberapa approver (salah satu cukup); rantai &amp; approver disalin (snapshot) saat pengajuan, jadi mengubah pengaturan tidak memengaruhi permintaan berjalan.</li>
-        <li>Pemohon/pengaju tidak boleh menyetujui permintaannya sendiri; Ajukan Approval diblok bila ada level tanpa approver aktif.</li>
-        <li>Level yang dipakai aturan tidak bisa dihapus/dinonaktifkan; data awal (Manager, Direktur, CEO + 3 aturan) disemai lewat migrasi dan bebas diubah.</li>
-        <li>Pembatalan permintaan oleh pemohon dicatat dengan status “Dibatalkan”.</li>
-      </ol>
+      <b style="font-size:12.5px">Pengamanan yang dijaga sistem</b>
+      <ul class="note" style="padding-left:16px;margin-top:6px;font-size:11.5px">
+        <li><b>Satu keputusan sekali saja.</b> Bila dua approver menekan Setuju bersamaan atau tombol ditekan dua kali, hanya satu yang berlaku; yang lain mendapat pesan bahwa permintaan sudah diproses. Pembelian tidak akan terbentuk ganda.</li>
+        <li><b>Halaman lama tidak menyetujui langkah yang salah.</b> Form keputusan membawa nomor langkahnya; bila langkah itu sudah diputuskan orang lain, keputusan ditolak dengan pesan.</li>
+        <li><b>Penerimaan tidak bisa melebihi pesanan.</b> Qty dicek saat dibuat dan sekali lagi saat diposting. Bila dua draft penerimaan bersaing untuk sisa yang sama, yang kedua ditolak tanpa mengubah stok.</li>
+        <li><b>Permintaan hanya untuk barang yang kurang.</b> Aturan stok minimal dicek saat simpan dan diulang saat data tersimpan, sehingga perubahan stok di waktu yang sama tidak meloloskan permintaan.</li>
+        <li><b>Total dihitung server.</b> Angka di layar hanya bantuan; total, subtotal, dan harga pembelian selalu dihitung ulang dan harga penerimaan diambil dari pembelian.</li>
+        <li><b>Tidak ada rantai buntu.</b> Pengajuan ditolak bila tidak ada orang yang berhak menyelesaikan rantainya; permintaan yang tertahan diberi peringatan dan dapat dibatalkan.</li>
+        <li><b>Perubahan pengaturan tidak merusak yang berjalan.</b> Permintaan yang sudah diajukan memakai rantai dan approver saat diajukan.</li>
+      </ul>
     </div>
   </div>
-  <div class="callout mt-3"><b>Di luar lingkup (sengaja):</b> pembayaran/hutang ke supplier, retur pembelian, pembalikan penerimaan yang sudah diposting (tetap lewat Stock Adjustment), serta notifikasi email/WhatsApp ke approver (bisa jadi peningkatan berikutnya).</div>
-  <div class="pg-foot"><span>Rancangan Permintaan/Pembelian/Penerimaan Barang</span><span>Hal. 23</span></div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 23</span></div>
 </section>
+
+
+<section class="pg">
+  <div class="pg-head"><span class="no">23</span><h2>Persiapan Penggunaan &amp; Ruang Lingkup</h2><span class="sub">Yang perlu disiapkan sebelum modul dipakai</span></div>
+  <div class="split" style="grid-template-columns:1.1fr 1fr; gap:22px">
+    <div>
+      <b style="font-size:12.5px"><i class="bi bi-list-check text-success"></i> Checklist persiapan</b>
+      <table class="doc mt-1">
+        <tr><th style="width:26px">#</th><th>Langkah</th><th style="width:120px">Siapa</th></tr>
+        <tr><td>1</td><td>Menjalankan pembaruan sistem (pembaruan database serta menu dan hak akses baru).</td><td>Tim teknis</td></tr>
+        <tr><td>2</td><td>Mengisi master <b>Supplier</b>.</td><td>Admin / Pembelian</td></tr>
+        <tr><td>3</td><td>Mengisi <b>stok minimal</b> di Master Sparepart tiap cabang. Barang tanpa stok minimal tidak dapat diminta.</td><td>Admin / Gudang</td></tr>
+        <tr><td>4</td><td>Mengatur <b>level, approver, dan aturan nominal</b> di Pengaturan Approval. Aturan awal (10 jt / 50 jt) sudah tersedia; level baru belum punya approver. Pastikan tiap level yang dipakai punya cukup orang.</td><td>Admin / Pimpinan</td></tr>
+        <tr><td>5</td><td>Memberi hak akses sesuai peran (Kepala Bengkel, Kepala Gudang, Pembelian, laporan) di layar Users.</td><td>Admin</td></tr>
+        <tr><td>6</td><td>Uji coba satu alur lengkap dengan data contoh: permintaan → approval → pembelian → penerimaan → laporan.</td><td>Semua peran</td></tr>
+        <tr><td>7</td><td>Pelatihan singkat per peran (alur, aturan stok minimal, pembatasan approver, cara membatalkan).</td><td>Tim proyek</td></tr>
+      </table>
+    </div>
+    <div>
+      <b style="font-size:12.5px"><i class="bi bi-check2-square text-success"></i> Termasuk dalam modul ini</b>
+      <ul class="note" style="padding-left:16px;margin:4px 0 10px">
+        <li>Master Supplier, Permintaan Barang, Pengaturan Approval, Approval Permintaan.</li>
+        <li>Pembelian Barang (terbit, batal, cetak PO) dan Penerimaan dari Pembelian.</li>
+        <li>Laporan Permintaan, Laporan Pembelian, perubahan Laporan Penerimaan; export Excel dan PDF.</li>
+      </ul>
+      <b style="font-size:12.5px"><i class="bi bi-dash-circle text-secondary"></i> Di luar lingkup (dapat menjadi pengembangan lanjutan)</b>
+      <ul class="note" style="padding-left:16px;margin:4px 0 10px">
+        <li>Pembayaran dan hutang ke supplier.</li>
+        <li>Retur pembelian.</li>
+        <li>Pembatalan penerimaan yang sudah diposting (koreksi lewat Stock Adjustment seperti sekarang).</li>
+        <li>Notifikasi email atau WhatsApp ke approver.</li>
+        <li>Satu barang dipecah ke lebih dari satu supplier dalam satu permintaan.</li>
+        <li>Persetujuan pada Pembelian (persetujuan hanya pada Permintaan).</li>
+      </ul>
+      <div class="callout ok"><b>Siap diuji.</b> Modul ini telah dibangun dan diuji otomatis; langkah berikutnya adalah uji coba bersama pengguna dengan data contoh sebelum dipakai sehari-hari.</div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>Modul Pengadaan Barang · Sistem Manajemen Bengkel</span><span>Hal. 24</span></div>
+</section>
+
 
 </body>
 </html>

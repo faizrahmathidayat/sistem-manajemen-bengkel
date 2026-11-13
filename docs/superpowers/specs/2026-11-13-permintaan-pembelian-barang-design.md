@@ -1,6 +1,6 @@
 # Permintaan Barang, Pembelian Barang & Perubahan Penerimaan Barang — Design
 
-Status: menunggu persetujuan user (rancangan lengkap + mockup UI ada di PDF `2026-11-13-permintaan-pembelian-barang-rancangan.pdf`)
+Status: **diimplementasikan** (branch `feature/permintaan-pembelian-barang`); dokumen ini sudah diperbarui sesuai perilaku final (14 Nov 2026). Rancangan untuk client + mockup UI ada di PDF `2026-11-13-permintaan-pembelian-barang-rancangan.pdf`.
 
 ## Tujuan
 
@@ -57,7 +57,9 @@ Stok bertambah tanpa melalui permintaan yang disetujui; approver menyetujui di l
 ## Keputusan saya (default, mohon dikoreksi jika salah)
 
 - Penolakan wajib alasan; Permintaan yang ditolak **final** (buat ulang dari awal, tanpa tombol salin).
-- Permintaan hanya bisa diubah/dibatalkan pembuatnya selama status "Menunggu Supplier" dan belum ada supplier yang diisi; setelah itu terkunci.
+- **Stok minimal (blokir ketat, dikonfirmasi user):** hanya barang dengan **stok tersedia (on_hand − reserved) < stok minimal** cabang yang boleh diminta. Dicek saat simpan, dan dicek ulang di dalam transaksi penyimpanan dengan lock baris stok (urut `sparepart_branch_id`) agar perubahan stok bersamaan tidak meloloskan permintaan. Barang tanpa stok minimal (0) tidak dapat diminta. Pencarian sparepart di form hanya menampilkan barang yang memenuhi.
+- **Pembatalan (dikonfirmasi user):** `waiting_supplier` → pemohon (walau supplier sudah terisi) atau pemegang `assign_supplier` (Kepala Gudang), alasan opsional; `waiting_approval` → hanya Kepala Gudang, alasan wajib, langkah pending di-`void`, keputusan yang sudah masuk tetap; `approved`/`rejected`/`cancelled` final (permintaan yang sudah disetujui dibatalkan lewat pembatalan Pembelian). Kolom `cancel_reason`, `cancelled_at`, `cancelled_by`. Mengubah isi permintaan tetap hanya oleh pemohon dan hanya sebelum ada supplier terisi.
+- **Kelayakan rantai:** *Ajukan Approval* ditolak (dengan pesan) bila rantai mustahil diselesaikan — pemohon/pengaju dikecualikan dan tiap langkah butuh orang berbeda; permintaan yang tertahan (semua approver langkah aktif nonaktif) diberi peringatan, dapat dimuat ulang approvernya oleh admin atau dibatalkan Kepala Gudang. Form keputusan membawa `step_no` sehingga halaman lama tidak dapat menyetujui langkah yang salah.
 - Satu orang hanya boleh menyetujui **satu level** per permintaan (meski terdaftar di beberapa level).
 - Nomor dokumen: Permintaan `RQ`, Pembelian `PO` (format `DocumentNumberGenerator` yang ada); Penerimaan tetap `PB`.
 - Pembelian yang dibatalkan bersifat final dan tidak mengembalikan baris ke Permintaan (permintaan baru harus dibuat). Pembelian hanya bisa dibatalkan jika belum ada penerimaan terposting.
@@ -66,7 +68,7 @@ Stok bertambah tanpa melalui permintaan yang disetujui; approver menyetujui di l
 
 ## Status & alur
 
-**Permintaan** (`purchase_requests.status`): `waiting_supplier` → `waiting_approval` → `approved` | `rejected`; `cancelled` (oleh pembuat, sebelum assign). Posisi approval = level pending terkecil.
+**Permintaan** (`purchase_requests.status`): `waiting_supplier` → `waiting_approval` → `approved` | `rejected`; `cancelled` (lihat aturan pembatalan di atas; dari `waiting_supplier` atau `waiting_approval`). Posisi approval = level pending terkecil.
 
 **Approval** (`purchase_request_approvals.status`): `pending` | `approved` | `rejected` | `void` (level yang tidak sempat diproses karena ditolak).
 
@@ -79,7 +81,7 @@ Stok bertambah tanpa melalui permintaan yang disetujui; approver menyetujui di l
 Tabel baru (semua `bigint` PK, `HasAudit` created_by/updated_by + timestamps, engine MySQL, mengikuti konvensi existing):
 
 - `suppliers`: code (unique), name, contact_person, phone, address, is_active.
-- `purchase_requests`: number (unique), branch_id, request_date, status, total_amount (snapshot saat diajukan), notes, submitted_at, submitted_by, rejected_reason.
+- `purchase_requests`: number (unique), branch_id, request_date, status, total_amount (snapshot saat diajukan), notes, submitted_at, submitted_by, rejected_reason, cancel_reason, cancelled_at, cancelled_by.
 - `purchase_request_lines`: purchase_request_id, sparepart_branch_id, qty (>0), supplier_id (null sampai di-assign), unit_price, line_total, sort_order.
 - Konfigurasi approval (diatur admin): `approval_levels` (name unik, sort_order, is_active); `approval_level_users` (approval_level_id, user_id, unique); `approval_rules` (max_amount inklusif, NULL = tanpa batas hanya pada aturan terakhir; sort_order); `approval_rule_levels` (approval_rule_id, approval_level_id, unique).
 - Snapshot per permintaan: `purchase_request_approvals` (purchase_request_id, step_no 1..n, approval_level_id nullable, level_name, status, acted_by, acted_at, notes) dan `purchase_request_approval_users` (purchase_request_approval_id, user_id). Dibuat saat "Ajukan Approval" oleh `ApprovalChainResolver`: pilih aturan dengan batas terkecil ≥ total, urutkan level menurut `sort_order`, pastikan tiap level punya ≥ 1 user aktif, lalu salin.
@@ -106,8 +108,8 @@ Check constraint mengikuti pola `goods_receipt_lines` (qty > 0, harga ≥ 0).
 
 | Menu | Scope | Permission |
 |---|---|---|
-| Permintaan Barang | per cabang | `purchase_request.view`, `purchase_request.create` (buat/ubah/batalkan) |
-| Penentuan Supplier | global | `purchase_request.view_all`, `purchase_request.assign_supplier` (assign + ajukan approval) |
+| Permintaan Barang | per cabang | `purchase_request.view`, `purchase_request.create` (buat/ubah; batalkan miliknya selama menunggu supplier) |
+| Penentuan Supplier | global | `purchase_request.view_all`, `purchase_request.assign_supplier` (assign + ajukan approval + batalkan permintaan, termasuk yang sedang menunggu approval) |
 | Pengaturan Approval (Administrasi) | global | `approval_setting.view`, `approval_setting.manage` |
 | Approval Permintaan | — | tanpa kode permission: akses = user ada di snapshot approver level yang sedang giliran |
 | Pembelian Barang | global | `purchase_order.view`, `purchase_order.issue`, `purchase_order.cancel` |
@@ -119,7 +121,7 @@ Penerimaan memakai `receipt.*` yang sudah ada (per cabang). Policy baru: `Purcha
 
 ## Layar
 
-Detail setiap layar (mockup) ada di PDF. Ringkas: Supplier (list+form); Permintaan (list, buat, detail dengan 4 kondisi); Pengaturan Approval (tab Level & Approver, tab Aturan Nominal); Inbox Approval; Pembelian (list, detail); Penerimaan (buat dari Pembelian, list dengan kolom baru); tiga laporan; sidebar grup "Pembelian".
+Detail setiap layar (mockup) ada di PDF. Ringkas: Supplier (list+form); Permintaan (list, buat dengan kolom Stok Tersedia / Minimal, detail: tentukan supplier, menunggu approval dengan panel Progres Approval, modal Tolak dan Batalkan, hasil Ditolak/Dibatalkan); Pengaturan Approval (tab Level & Approver, tab Aturan Nominal); Inbox Approval; Pembelian (list, detail); Penerimaan (buat dari Pembelian, list dengan kolom baru); tiga laporan; sidebar grup "Pembelian".
 
 ## Laporan
 

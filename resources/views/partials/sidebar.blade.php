@@ -124,7 +124,7 @@
     @endcan
 @endif
 
-@if ($user && ($user->can('user.view') || $user->can('audit_log.view')))
+@if ($user && ($user->can('user.view') || $user->can('audit_log.view') || $user->can('approval_setting.view')))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Administrasi</div>
     @can('user.view')
         <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
@@ -136,6 +136,12 @@
         <a href="{{ route('audit-logs.index') }}" class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-journal-text"></i></span>
             <span class="nav-text">Audit Log</span>
+        </a>
+    @endcan
+    @can('approval_setting.view')
+        <a href="{{ route('approval-settings.index') }}" class="nav-link {{ request()->routeIs('approval-settings.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-sliders"></i></span>
+            <span class="nav-text">Pengaturan Approval</span>
         </a>
     @endcan
 @endif

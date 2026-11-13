@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApprovalSettingController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BranchController;
@@ -166,6 +167,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stock-card', [StockCardController::class, 'index'])->name('stock-card.index');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+
+    Route::prefix('approval-settings')->name('approval-settings.')->group(function () {
+        Route::get('/', [ApprovalSettingController::class, 'index'])->name('index');
+        Route::put('/levels', [ApprovalSettingController::class, 'saveLevels'])->name('save-levels');
+        Route::put('/rules', [ApprovalSettingController::class, 'saveRules'])->name('save-rules');
+        Route::get('/preview', [ApprovalSettingController::class, 'preview'])->name('preview');
+        Route::get('/lookup-users', [ApprovalSettingController::class, 'lookupUsers'])->name('lookup-users');
+    });
 
     Route::prefix('lookup')->name('lookup.')->group(function () {
         Route::get('/customers', [LookupController::class, 'customers'])->name('customers');

@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ApprovalChainException;
+use App\Http\Requests\ApprovePurchaseRequestRequest;
 use App\Http\Requests\AssignPurchaseRequestSuppliersRequest;
+use App\Http\Requests\RejectPurchaseRequestRequest;
 use App\Http\Requests\StorePurchaseRequestRequest;
 use App\Http\Requests\UpdatePurchaseRequestRequest;
 use App\Models\Branch;
 use App\Models\PurchaseRequest;
 use App\Models\SparepartBranch;
 use App\Models\User;
+use App\Services\ApprovalChainResolver;
 use App\Services\AuditLogger;
 use App\Services\DocumentNumberGenerator;
+use App\Services\PurchaseRequestService;
 use App\Support\AuditEvent;
 use App\Support\PurchaseRequestStatus;
 use Illuminate\Http\Request;
@@ -92,13 +97,33 @@ class PurchaseRequestController extends Controller
             ->with('status', 'Permintaan barang berhasil dibuat.');
     }
 
-    public function show(PurchaseRequest $purchaseRequest)
+    public function show(PurchaseRequest $purchaseRequest, ApprovalChainResolver $resolver)
     {
         $this->authorize('view', $purchaseRequest);
 
-        $purchaseRequest->load(['branch', 'creator', 'lines.sparepartBranch.sparepart', 'lines.supplier']);
+        $purchaseRequest->load([
+            'branch', 'creator', 'lines.sparepartBranch.sparepart', 'lines.supplier',
+            'approvals.users', 'approvals.actor', 'purchaseOrders.supplier',
+        ]);
 
-        return view('purchase-requests.show', ['purchaseRequest' => $purchaseRequest]);
+        // For the warehouse head: which chain "Ajukan Approval" would create right now.
+        $submitPreview = null;
+        if (auth()->user()->can('submit', $purchaseRequest) && $purchaseRequest->isAssignmentComplete()) {
+            try {
+                $submitPreview = [
+                    'total' => $purchaseRequest->computeTotal(),
+                    'steps' => $resolver->resolve($purchaseRequest->computeTotal()),
+                    'userNames' => \App\Models\User::pluck('name', 'id'),
+                ];
+            } catch (ApprovalChainException $e) {
+                $submitPreview = ['error' => $e->getMessage()];
+            }
+        }
+
+        return view('purchase-requests.show', [
+            'purchaseRequest' => $purchaseRequest,
+            'submitPreview' => $submitPreview,
+        ]);
     }
 
     public function edit(PurchaseRequest $purchaseRequest)
@@ -157,6 +182,58 @@ class PurchaseRequestController extends Controller
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)
             ->with('status', 'Permintaan barang berhasil dibatalkan.');
+    }
+
+    public function submit(PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
+    {
+        $this->authorize('submit', $purchaseRequest);
+
+        try {
+            $service->submit($purchaseRequest, auth()->user());
+        } catch (ApprovalChainException | \DomainException $e) {
+            return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-requests.show', $purchaseRequest)
+            ->with('status', 'Permintaan berhasil diajukan untuk approval.');
+    }
+
+    public function approve(ApprovePurchaseRequestRequest $request, PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
+    {
+        try {
+            $service->approve($purchaseRequest, $request->user(), $request->input('note'));
+        } catch (\DomainException $e) {
+            return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-requests.show', $purchaseRequest)
+            ->with('status', 'Persetujuan Anda berhasil dicatat.');
+    }
+
+    public function reject(RejectPurchaseRequestRequest $request, PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
+    {
+        try {
+            $service->reject($purchaseRequest, $request->user(), $request->input('reason'));
+        } catch (\DomainException $e) {
+            return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-requests.show', $purchaseRequest)
+            ->with('status', 'Permintaan telah ditolak.');
+    }
+
+    public function reloadApprovers(PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
+    {
+        $this->authorize('reloadApprovers', $purchaseRequest);
+
+        try {
+            $service->reloadApprovers($purchaseRequest, auth()->user());
+        } catch (ApprovalChainException | \DomainException $e) {
+            return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-requests.show', $purchaseRequest)
+            ->with('status', 'Approver langkah saat ini berhasil dimuat ulang.');
     }
 
     /**

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\ApprovalSettingController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
@@ -168,6 +169,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
+    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+
     Route::prefix('approval-settings')->name('approval-settings.')->group(function () {
         Route::get('/', [ApprovalSettingController::class, 'index'])->name('index');
         Route::put('/levels', [ApprovalSettingController::class, 'saveLevels'])->name('save-levels');
@@ -210,6 +213,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{purchaseRequest}', [PurchaseRequestController::class, 'update'])->name('update');
         Route::patch('/{purchaseRequest}/cancel', [PurchaseRequestController::class, 'cancel'])->name('cancel');
         Route::patch('/{purchaseRequest}/assign-suppliers', [PurchaseRequestController::class, 'assignSuppliers'])->name('assign-suppliers');
+        Route::patch('/{purchaseRequest}/submit', [PurchaseRequestController::class, 'submit'])->name('submit');
+        Route::patch('/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('approve');
+        Route::patch('/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('reject');
+        Route::patch('/{purchaseRequest}/reload-approvers', [PurchaseRequestController::class, 'reloadApprovers'])->name('reload-approvers');
     });
 
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {

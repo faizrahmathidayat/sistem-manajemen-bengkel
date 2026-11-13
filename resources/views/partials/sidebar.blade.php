@@ -62,12 +62,23 @@
 @endif
 
 @php($showPurchaseRequests = $user && ($user->branchesWithPermission('purchase_request.view')->isNotEmpty() || $user->can('purchase_request.view_all') || $user->can('purchase_request.assign_supplier')))
-@if ($showPurchaseRequests)
+@php($showApprovals = $user && app(\App\Services\PurchaseRequestService::class)->isApprover($user))
+@if ($showPurchaseRequests || $showApprovals)
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Pembelian</div>
     @if ($showPurchaseRequests)
         <a href="{{ route('purchase-requests.index') }}" class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-clipboard-plus"></i></span>
             <span class="nav-text">Permintaan Barang</span>
+        </a>
+    @endif
+    @if ($showApprovals)
+        @php($waitingCount = app(\App\Services\PurchaseRequestService::class)->waitingFor($user)->count())
+        <a href="{{ route('approvals.index') }}" class="nav-link {{ request()->routeIs('approvals.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-patch-check"></i></span>
+            <span class="nav-text">Approval Permintaan</span>
+            @if ($waitingCount > 0)
+                <span class="badge bg-danger ms-auto">{{ $waitingCount }}</span>
+            @endif
         </a>
     @endif
 @endif

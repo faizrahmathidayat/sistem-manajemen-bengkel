@@ -70,6 +70,24 @@
     </div>
 </form>
 
+@if (isset($submitPreview) && $submitPreview)
+    <div class="panel mt-3">
+        <h2 class="section-title mb-2"><i class="bi bi-patch-check"></i><span>Pratinjau Rantai Approval</span></h2>
+        @if (isset($submitPreview['error']))
+            <div class="alert alert-danger mb-0">{{ $submitPreview['error'] }} Permintaan belum dapat diajukan.</div>
+        @else
+            <div class="small text-muted mb-1">Total Rp {{ number_format($submitPreview['total'], 0, ',', '.') }}. Saat Ajukan Approval ditekan, rantai berikut dibentuk:</div>
+            <div>
+                @foreach ($submitPreview['steps'] as $step)
+                    <b>{{ $step['level_name'] }}</b>
+                    <span class="text-muted">({{ collect($step['user_ids'])->map(function ($id) use ($submitPreview) { return $submitPreview['userNames'][$id] ?? ('#' . $id); })->implode(', ') }})</span>
+                    @if (! $loop->last) <i class="bi bi-arrow-right mx-1"></i> @endif
+                @endforeach
+            </div>
+        @endif
+    </div>
+@endif
+
 @push('scripts')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

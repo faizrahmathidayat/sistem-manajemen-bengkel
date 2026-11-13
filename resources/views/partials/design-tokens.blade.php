@@ -745,6 +745,25 @@
     .status-dot.status-warning { color: var(--color-warning); }
     .status-dot.status-danger { color: var(--color-danger); }
 
+    /* Approval stepper (purchase request approval chain) */
+    .stepper { display: flex; align-items: flex-start; }
+    .stepper .stp { flex: 1; position: relative; text-align: center; }
+    .stepper .stp:not(:last-child)::after {
+        content: ''; position: absolute; top: 17px; left: calc(50% + 22px); right: calc(-50% + 22px);
+        height: 3px; background: var(--color-border);
+    }
+    .stepper .stp.done:not(:last-child)::after { background: var(--color-success); }
+    .stepper .stp .dot {
+        width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 5px; display: grid; place-items: center;
+        border: 2px solid var(--color-border); background: var(--color-surface); color: var(--color-ink-muted); font-weight: 800;
+    }
+    .stepper .stp.done .dot { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+    .stepper .stp.now .dot { background: color-mix(in srgb, var(--color-warning) 18%, transparent); border-color: var(--color-warning); color: var(--color-warning); }
+    .stepper .stp.bad .dot { background: var(--color-danger); border-color: var(--color-danger); color: #fff; }
+    .stepper .stp.void .dot { border-style: dashed; opacity: .6; }
+    .stepper .stp b { display: block; font-size: .85rem; }
+    .stepper .stp small { display: block; color: var(--color-ink-muted); font-size: .74rem; line-height: 1.3; }
+
     /* Stat cards */
     .stat-card {
         border: 1px solid var(--color-border);

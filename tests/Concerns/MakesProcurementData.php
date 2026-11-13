@@ -74,6 +74,36 @@ trait MakesProcurementData
         return $request->fresh('lines');
     }
 
+    /**
+     * Replace the seeded config with Manager(1) / Direktur(2) / CEO(3), one fresh active user each,
+     * and the 10 jt / 50 jt / unbounded rules. Returns the three levels (users via ->users).
+     */
+    protected function makeStandardApprovalConfig(): array
+    {
+        $this->resetApprovalConfig();
+        $manager = $this->makeApprovalLevel('Manager', 1, [$this->makeUser()]);
+        $director = $this->makeApprovalLevel('Direktur', 2, [$this->makeUser()]);
+        $ceo = $this->makeApprovalLevel('CEO', 3, [$this->makeUser()]);
+        $this->makeApprovalRule(10000000, [$manager], 1);
+        $this->makeApprovalRule(50000000, [$manager, $director], 2);
+        $this->makeApprovalRule(null, [$manager, $director, $ceo], 3);
+
+        return [$manager->load('users'), $director->load('users'), $ceo->load('users')];
+    }
+
+    /** A request whose single line is fully assigned so that its total equals $total exactly. */
+    protected function makeAssignedRequest(Branch $branch, int $total, array $overrides = []): PurchaseRequest
+    {
+        $supplier = $this->makeSupplier();
+
+        return $this->makePurchaseRequest($branch, [[
+            'sparepart_branch_id' => $this->makeSparepartBranch($branch)->id,
+            'qty' => 1,
+            'supplier_id' => $supplier->id,
+            'unit_price' => $total,
+        ]], $overrides);
+    }
+
     /** Wipe the migration-seeded Manager/Direktur/CEO levels and rules so a test controls its own config. */
     protected function resetApprovalConfig(): void
     {

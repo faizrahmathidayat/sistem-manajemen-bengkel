@@ -12,6 +12,7 @@ use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptLine;
 use App\Models\InventoryMovement;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderLine;
 use App\Models\SparepartBranchStock;
 use App\Services\DocumentNumberGenerator;
 use App\Services\InventoryCostService;
@@ -268,43 +269,55 @@ class GoodsReceiptController extends Controller
     {
         $this->authorize('post', $goodsReceipt);
 
-        DB::transaction(function () use ($goodsReceipt) {
-            $fresh = GoodsReceipt::whereKey($goodsReceipt->id)->lockForUpdate()->first();
-            if ($fresh->status !== GoodsReceiptStatus::DRAFT) {
-                return;
-            }
+        try {
+            DB::transaction(function () use ($goodsReceipt) {
+                // Lock order (see plan Global Constraints): receipt -> purchase order ->
+                // purchase order lines (id asc) -> stock rows (sparepart_branch_id asc).
+                $fresh = GoodsReceipt::whereKey($goodsReceipt->id)->lockForUpdate()->first();
+                if ($fresh->status !== GoodsReceiptStatus::DRAFT) {
+                    return;
+                }
 
-            $lines = $fresh->lines()->reorder()->orderBy('sparepart_branch_id')->get();
+                $lines = $fresh->lines()->reorder()->orderBy('sparepart_branch_id')->get();
 
-            foreach ($lines as $line) {
-                $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                [$order, $orderLines, $receivedByOrderLine] = $this->lockPurchaseOrderForPosting($fresh, $lines);
 
-                $qtyBefore = (float) $stock->on_hand_qty;
-                $stock->average_cost = app(InventoryCostService::class)->recalculateOnReceipt(
-                    $qtyBefore, (float) $stock->average_cost, (float) $line->qty, (float) $line->purchase_price
-                );
-                $stock->on_hand_qty += $line->qty;
-                $stock->save();
+                foreach ($lines as $line) {
+                    $stock = SparepartBranchStock::where('sparepart_branch_id', $line->sparepart_branch_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
 
-                InventoryMovement::create([
-                    'movement_at' => now(),
-                    'branch_id' => $fresh->branch_id,
-                    'sparepart_branch_id' => $line->sparepart_branch_id,
-                    'movement_type' => InventoryMovementType::RECEIPT,
-                    'qty_in' => $line->qty,
-                    'qty_out' => 0,
-                    'balance_after' => $stock->on_hand_qty,
-                    'reference_type' => 'goods_receipt_line',
-                    'reference_id' => $line->id,
-                    'created_by' => auth()->id(),
-                ]);
-            }
+                    $qtyBefore = (float) $stock->on_hand_qty;
+                    $stock->average_cost = app(InventoryCostService::class)->recalculateOnReceipt(
+                        $qtyBefore, (float) $stock->average_cost, (float) $line->qty, (float) $line->purchase_price
+                    );
+                    $stock->on_hand_qty += $line->qty;
+                    $stock->save();
 
-            $fresh->status = GoodsReceiptStatus::POSTED;
-            $fresh->save();
-        });
+                    InventoryMovement::create([
+                        'movement_at' => now(),
+                        'branch_id' => $fresh->branch_id,
+                        'sparepart_branch_id' => $line->sparepart_branch_id,
+                        'movement_type' => InventoryMovementType::RECEIPT,
+                        'qty_in' => $line->qty,
+                        'qty_out' => 0,
+                        'balance_after' => $stock->on_hand_qty,
+                        'reference_type' => 'goods_receipt_line',
+                        'reference_id' => $line->id,
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+
+                if ($order) {
+                    $this->applyReceiptToPurchaseOrder($order, $orderLines, $receivedByOrderLine);
+                }
+
+                $fresh->status = GoodsReceiptStatus::POSTED;
+                $fresh->save();
+            });
+        } catch (\DomainException $e) {
+            return redirect()->route('goods-receipts.show', $goodsReceipt)->with('error', $e->getMessage());
+        }
 
         return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil diposting.');
     }
@@ -324,6 +337,76 @@ class GoodsReceiptController extends Controller
         });
 
         return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil dibatalkan.');
+    }
+
+    /**
+     * For a receipt that came from a purchase order: lock the order and the order lines it
+     * touches, and verify under the lock that the order is still receivable and that no order
+     * line would be over-received (two drafts can both look valid until the first one posts).
+     * Legacy receipts (no purchase order) return [null, empty, empty] and skip all of this.
+     *
+     * @return array{0: ?PurchaseOrder, 1: \Illuminate\Support\Collection, 2: \Illuminate\Support\Collection}
+     *
+     * @throws \DomainException with a user-facing message when the receipt can no longer be posted
+     */
+    protected function lockPurchaseOrderForPosting(GoodsReceipt $receipt, $lines): array
+    {
+        if (! $receipt->purchase_order_id) {
+            return [null, collect(), collect()];
+        }
+
+        $order = PurchaseOrder::whereKey($receipt->purchase_order_id)->lockForUpdate()->firstOrFail();
+        if (! in_array($order->status, PurchaseOrderStatus::RECEIVABLE, true)) {
+            throw new \DomainException('Pembelian sudah tidak dapat menerima barang (status: '
+                . (PurchaseOrderStatus::LABELS[$order->status] ?? $order->status) . ').');
+        }
+
+        if ($lines->contains(function ($line) {
+            return ! $line->purchase_order_line_id;
+        })) {
+            throw new \DomainException('Ada baris penerimaan yang tidak terhubung ke baris pembelian.');
+        }
+
+        $receivedByOrderLine = $lines->groupBy('purchase_order_line_id')->map(function ($group) {
+            return (float) $group->sum('qty');
+        });
+
+        $orderLines = PurchaseOrderLine::whereIn('id', $receivedByOrderLine->keys()->all())
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        foreach ($receivedByOrderLine as $orderLineId => $qty) {
+            $orderLine = $orderLines->get($orderLineId);
+            if (! $orderLine || (int) $orderLine->purchase_order_id !== (int) $order->id) {
+                throw new \DomainException('Baris penerimaan tidak sesuai dengan pembelian.');
+            }
+            if ($qty > $orderLine->remainingQty() + 0.0005) {
+                $orderLine->loadMissing('sparepartBranch.sparepart');
+                throw new \DomainException('Qty melebihi sisa pembelian untuk ' . $orderLine->sparepartBranch->sparepart->code
+                    . ' (sisa ' . rtrim(rtrim(number_format($orderLine->remainingQty(), 3, '.', ''), '0'), '.') . ').');
+            }
+        }
+
+        return [$order, $orderLines, $receivedByOrderLine];
+    }
+
+    /** Add the posted quantities to the order lines and move the order to partial/completed. */
+    protected function applyReceiptToPurchaseOrder(PurchaseOrder $order, $orderLines, $receivedByOrderLine): void
+    {
+        foreach ($receivedByOrderLine as $orderLineId => $qty) {
+            $orderLine = $orderLines->get($orderLineId);
+            $orderLine->qty_received = round((float) $orderLine->qty_received + $qty, 3);
+            $orderLine->save();
+        }
+
+        $complete = $order->lines()->get()->every(function ($line) {
+            return $line->remainingQty() <= 0;
+        });
+
+        $order->status = $complete ? PurchaseOrderStatus::COMPLETED : PurchaseOrderStatus::PARTIALLY_RECEIVED;
+        $order->save();
     }
 
     /**

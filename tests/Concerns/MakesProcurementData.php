@@ -8,8 +8,10 @@ use App\Models\Branch;
 use App\Models\PurchaseRequest;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
+use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\PurchaseOrderGenerator;
 use Illuminate\Support\Facades\DB;
 
 trait MakesProcurementData
@@ -102,6 +104,20 @@ trait MakesProcurementData
             'supplier_id' => $supplier->id,
             'unit_price' => $total,
         ]], $overrides);
+    }
+
+    /** A PO with two lines (120 @ 85.000 and 60 @ 45.000) in the given status. */
+    protected function makeIssuedPurchaseOrder(Branch $branch, string $status = 'issued'): PurchaseOrder
+    {
+        $supplier = $this->makeSupplier();
+        $request = $this->makePurchaseRequest($branch, [
+            ['sparepart_branch_id' => $this->makeSparepartBranch($branch)->id, 'qty' => 120, 'supplier_id' => $supplier->id, 'unit_price' => 85000],
+            ['sparepart_branch_id' => $this->makeSparepartBranch($branch)->id, 'qty' => 60, 'supplier_id' => $supplier->id, 'unit_price' => 45000],
+        ]);
+        $order = (new PurchaseOrderGenerator())->generateFor($request)->first();
+        $order->update(['status' => $status]);
+
+        return $order->fresh(['lines', 'supplier', 'branch']);
     }
 
     /** Wipe the migration-seeded Manager/Direktur/CEO levels and rules so a test controls its own config. */

@@ -25,6 +25,15 @@ class PurchaseRequestApprovalFlowTest extends TestCase
         return User::find($user->id);
     }
 
+    protected function requester($branch): User
+    {
+        $user = User::factory()->create();
+        $this->grantBranch($user, $branch, 'purchase_request.view');
+        $this->grantBranch($user, $branch, 'purchase_request.create');
+
+        return User::find($user->id);
+    }
+
     protected function submitted(int $total, ?User $requester = null): PurchaseRequest
     {
         $bks = $this->makeBranch('BKS');
@@ -403,5 +412,106 @@ class PurchaseRequestApprovalFlowTest extends TestCase
             ->assertRedirect(route('purchase-requests.show', $request));
 
         $this->assertStringContainsString('sudah diproses', session('error'));
+    }
+
+    public function test_requester_can_cancel_after_suppliers_were_filled_in(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $owner = $this->requester($bks);
+        $request = $this->actingAs($owner)->makeAssignedRequest($bks, 5000000);
+
+        $this->actingAs($owner)->patch("/purchase-requests/{$request->id}/cancel")
+            ->assertRedirect(route('purchase-requests.show', $request));
+
+        $request->refresh();
+        $this->assertSame(PurchaseRequestStatus::CANCELLED, $request->status);
+        $this->assertSame($owner->id, (int) $request->cancelled_by);
+        $this->assertNotNull($request->cancelled_at);
+    }
+
+    public function test_warehouse_head_can_cancel_someone_elses_request_before_submission(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $request = $this->actingAs($this->requester($bks))->makeAssignedRequest($bks, 5000000);
+
+        $this->actingAs($this->gudang())->patch("/purchase-requests/{$request->id}/cancel", ['reason' => 'Salah input'])
+            ->assertRedirect();
+
+        $request->refresh();
+        $this->assertSame(PurchaseRequestStatus::CANCELLED, $request->status);
+        $this->assertSame('Salah input', $request->cancel_reason);
+    }
+
+    public function test_cancelling_a_request_in_approval_needs_a_reason_and_voids_the_open_steps(): void
+    {
+        [$manager, $director] = $this->makeStandardApprovalConfig();
+        $request = $this->submitted(38320000);
+        $gudang = $this->gudang();
+
+        $this->actingAs($gudang)->patch("/purchase-requests/{$request->id}/cancel")->assertSessionHasErrors('reason');
+        $this->assertSame(PurchaseRequestStatus::WAITING_APPROVAL, $request->fresh()->status);
+
+        // Manager already approved step 1; the cancellation must keep that record and void only step 2.
+        app(PurchaseRequestService::class)->approve($request->fresh(), $manager->users->first());
+        $this->actingAs($gudang)->patch("/purchase-requests/{$request->id}/cancel", ['reason' => 'Kebutuhan dibatalkan'])
+            ->assertRedirect(route('purchase-requests.show', $request));
+
+        $request->refresh();
+        $this->assertSame(PurchaseRequestStatus::CANCELLED, $request->status);
+        $this->assertSame('Kebutuhan dibatalkan', $request->cancel_reason);
+        $this->assertSame($gudang->id, (int) $request->cancelled_by);
+        $steps = $request->approvals()->orderBy('step_no')->get();
+        $this->assertSame(PurchaseRequestApprovalStatus::APPROVED, $steps[0]->status);
+        $this->assertSame(PurchaseRequestApprovalStatus::VOID, $steps[1]->status);
+        $this->assertDatabaseHas('audit_logs', ['event' => 'purchase_request.cancelled', 'auditable_id' => $request->id]);
+
+        // Nobody can decide it any more and no purchase order appears.
+        $this->actingAs($director->users->first())->patch("/purchase-requests/{$request->id}/approve")->assertForbidden();
+        $this->assertSame(0, $request->purchaseOrders()->count());
+    }
+
+    public function test_approved_requests_cannot_be_cancelled_and_a_second_cancel_is_refused(): void
+    {
+        [$manager] = $this->makeStandardApprovalConfig();
+        $approved = $this->submitted(5000000);
+        app(PurchaseRequestService::class)->approve($approved, $manager->users->first());
+        $gudang = $this->gudang();
+
+        $this->actingAs($gudang)->patch("/purchase-requests/{$approved->id}/cancel", ['reason' => 'x'])->assertForbidden();
+        $this->assertSame(PurchaseRequestStatus::APPROVED, $approved->fresh()->status);
+
+        $other = $this->submitted(6000000);
+        $this->actingAs($gudang)->patch("/purchase-requests/{$other->id}/cancel", ['reason' => 'x'])->assertRedirect();
+        $this->actingAs($gudang)->patch("/purchase-requests/{$other->id}/cancel", ['reason' => 'x'])->assertForbidden();
+        $this->assertSame(1, \App\Models\AuditLog::where('event', 'purchase_request.cancelled')->where('auditable_id', $other->id)->count());
+    }
+
+    public function test_a_stale_cancel_by_the_requester_is_refused_once_the_request_entered_approval(): void
+    {
+        $this->makeStandardApprovalConfig();
+        $bks = $this->makeBranch('BKS');
+        $requester = $this->makeUser();
+        $request = $this->actingAs($requester)->makeAssignedRequest($bks, 5000000);
+        $stale = PurchaseRequest::find($request->id);          // loaded while still waiting for supplier
+
+        app(PurchaseRequestService::class)->submit($request, $this->gudang()); // the warehouse head submits meanwhile
+
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        app(PurchaseRequestService::class)->cancel($stale, User::find($requester->id), null);
+    }
+
+    public function test_show_offers_cancel_with_a_reason_box_and_shows_who_cancelled_and_why(): void
+    {
+        $this->makeStandardApprovalConfig();
+        $request = $this->submitted(5000000);
+        $gudang = $this->gudang();
+
+        $this->actingAs($gudang)->get("/purchase-requests/{$request->id}")->assertOk()
+            ->assertSee('Batalkan Permintaan')->assertSee(route('purchase-requests.cancel', $request), false);
+
+        $this->actingAs($gudang)->patch("/purchase-requests/{$request->id}/cancel", ['reason' => 'Anggaran dipotong']);
+
+        $this->actingAs($gudang)->get("/purchase-requests/{$request->id}")->assertOk()
+            ->assertSee('dibatalkan')->assertSee('Anggaran dipotong')->assertDontSee('Batalkan Permintaan');
     }
 }

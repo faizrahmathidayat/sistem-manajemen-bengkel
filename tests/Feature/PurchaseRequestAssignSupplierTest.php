@@ -143,7 +143,8 @@ class PurchaseRequestAssignSupplierTest extends TestCase
             'request_date' => '2026-11-14',
             'lines' => [['sparepart_branch_id' => $lineA->sparepart_branch_id, 'qty' => 1]],
         ])->assertForbidden();
-        $this->actingAs($owner)->patch("/purchase-requests/{$request->id}/cancel")->assertForbidden();
+        // Cancelling stays possible (and is covered elsewhere); only editing the content is locked.
+        $this->assertTrue($owner->can('cancel', $request->fresh()));
     }
 
     public function test_show_renders_assignment_form_for_warehouse_head_and_read_only_for_requester(): void

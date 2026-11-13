@@ -14,11 +14,13 @@ class PurchaseRequest extends Model
     protected $fillable = [
         'number', 'branch_id', 'request_date', 'status', 'notes', 'total_amount',
         'submitted_at', 'submitted_by', 'rejected_reason',
+        'cancel_reason', 'cancelled_at', 'cancelled_by',
     ];
 
     protected $casts = [
         'request_date' => 'date',
         'submitted_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'total_amount' => 'decimal:2',
     ];
 
@@ -39,6 +41,11 @@ class PurchaseRequest extends Model
     public function submitter()
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function canceller()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function lines()

@@ -130,6 +130,53 @@ class PurchaseRequestService
     }
 
     /**
+     * Cancel a request that is still waiting for a supplier or for approval. Authorization is
+     * evaluated again on the locked row: the status may have moved since the page was loaded
+     * (e.g. the requester's stale click after the warehouse head submitted it).
+     *
+     * @throws AuthorizationException the actor may no longer cancel it
+     * @throws \DomainException       it is no longer cancellable, or a reason is missing
+     */
+    public function cancel(PurchaseRequest $purchaseRequest, User $actor, ?string $reason): void
+    {
+        DB::transaction(function () use ($purchaseRequest, $actor, $reason) {
+            $fresh = PurchaseRequest::whereKey($purchaseRequest->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($fresh->status, [PurchaseRequestStatus::WAITING_SUPPLIER, PurchaseRequestStatus::WAITING_APPROVAL], true)) {
+                throw new \DomainException('Permintaan ini sudah tidak dapat dibatalkan.');
+            }
+            if (! $actor->can('cancel', $fresh)) {
+                throw new AuthorizationException('Anda tidak berwenang membatalkan permintaan ini.');
+            }
+
+            $reason = $reason !== null ? trim($reason) : '';
+            $previous = $fresh->status;
+            if ($previous === PurchaseRequestStatus::WAITING_APPROVAL) {
+                if ($reason === '') {
+                    throw new \DomainException('Alasan pembatalan wajib diisi untuk permintaan yang sedang menunggu approval.');
+                }
+                // Keep what was already decided; only the steps that never got their turn are voided.
+                $fresh->approvals()
+                    ->where('status', PurchaseRequestApprovalStatus::PENDING)
+                    ->update(['status' => PurchaseRequestApprovalStatus::VOID]);
+            }
+
+            $fresh->update([
+                'status' => PurchaseRequestStatus::CANCELLED,
+                'cancel_reason' => $reason !== '' ? $reason : null,
+                'cancelled_at' => now(),
+                'cancelled_by' => $actor->id,
+            ]);
+
+            (new AuditLogger())->log(
+                AuditEvent::PURCHASE_REQUEST_CANCELLED, $fresh->branch_id, $fresh,
+                ['status' => $previous],
+                ['status' => PurchaseRequestStatus::CANCELLED, 'reason' => $reason !== '' ? $reason : null]
+            );
+        });
+    }
+
+    /**
      * Repair path for a stuck request: every approver snapshotted on the current step has
      * been deactivated. Copies the level's current active users onto that step.
      *

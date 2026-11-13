@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\ApprovalChainException;
 use App\Http\Requests\ApprovePurchaseRequestRequest;
 use App\Http\Requests\AssignPurchaseRequestSuppliersRequest;
+use App\Http\Requests\CancelPurchaseRequestRequest;
 use App\Http\Requests\RejectPurchaseRequestRequest;
 use App\Http\Requests\StorePurchaseRequestRequest;
 use App\Http\Requests\UpdatePurchaseRequestRequest;
@@ -107,7 +108,7 @@ class PurchaseRequestController extends Controller
         $this->authorize('view', $purchaseRequest);
 
         $purchaseRequest->load([
-            'branch', 'creator', 'lines.sparepartBranch.sparepart', 'lines.supplier',
+            'branch', 'creator', 'canceller', 'lines.sparepartBranch.sparepart', 'lines.supplier',
             'approvals.users', 'approvals.actor', 'purchaseOrders.supplier',
         ]);
 
@@ -167,24 +168,16 @@ class PurchaseRequestController extends Controller
             ->with('status', 'Permintaan barang berhasil diperbarui.');
     }
 
-    public function cancel(PurchaseRequest $purchaseRequest)
+    public function cancel(CancelPurchaseRequestRequest $request, PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
     {
-        $this->authorize('cancel', $purchaseRequest);
-
-        DB::transaction(function () use ($purchaseRequest) {
-            $fresh = $this->lockEditable($purchaseRequest);
-
-            $fresh->status = PurchaseRequestStatus::CANCELLED;
-            $fresh->save();
-
-            (new AuditLogger())->log(
-                AuditEvent::PURCHASE_REQUEST_CANCELLED,
-                $fresh->branch_id,
-                $fresh,
-                ['status' => PurchaseRequestStatus::WAITING_SUPPLIER],
-                ['status' => PurchaseRequestStatus::CANCELLED]
-            );
-        });
+        try {
+            $service->cancel($purchaseRequest, $request->user(), $request->input('reason'));
+        } catch (\DomainException $e) {
+            return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
+        } catch (AuthorizationException $e) {
+            return redirect()->route('purchase-requests.show', $purchaseRequest)
+                ->with('error', 'Anda tidak lagi berwenang membatalkan permintaan ini karena statusnya sudah berubah.');
+        }
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)
             ->with('status', 'Permintaan barang berhasil dibatalkan.');

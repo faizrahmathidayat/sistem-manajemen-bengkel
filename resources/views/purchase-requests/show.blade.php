@@ -17,11 +17,9 @@
                 </a>
             @endcan
             @can('cancel', $purchaseRequest)
-                <form method="POST" action="{{ route('purchase-requests.cancel', $purchaseRequest) }}" class="d-inline" onsubmit="return confirm('Batalkan permintaan ini?');">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit" class="btn btn-outline-danger btn-sm">Batalkan</button>
-                </form>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                    <i class="bi bi-slash-circle"></i> Batalkan Permintaan
+                </button>
             @endcan
             @can('submit', $purchaseRequest)
                 <form method="POST" action="{{ route('purchase-requests.submit', $purchaseRequest) }}" class="d-inline" onsubmit="this.querySelector('button').disabled = true;">
@@ -62,6 +60,21 @@
             <strong><i class="bi bi-x-octagon"></i> Permintaan ditolak.</strong>
             <div>Alasan: {{ $purchaseRequest->rejected_reason }}</div>
             <div class="small">Permintaan ini sudah tidak berlaku. Silakan buat permintaan baru.</div>
+        </div>
+    @endif
+
+    @if ($purchaseRequest->status === \App\Support\PurchaseRequestStatus::CANCELLED)
+        <div class="alert alert-secondary">
+            <strong><i class="bi bi-slash-circle"></i> Permintaan dibatalkan</strong>
+            @if ($purchaseRequest->canceller)
+                oleh {{ $purchaseRequest->canceller->name }}
+            @endif
+            @if ($purchaseRequest->cancelled_at)
+                pada {{ $purchaseRequest->cancelled_at->format('d/m/Y H:i') }}
+            @endif
+            @if ($purchaseRequest->cancel_reason)
+                <div>Alasan: {{ $purchaseRequest->cancel_reason }}</div>
+            @endif
         </div>
     @endif
 
@@ -139,6 +152,37 @@
             </table>
         </div>
     </div>
+    @endcan
+
+    @can('cancel', $purchaseRequest)
+        @php($reasonRequired = $purchaseRequest->status === \App\Support\PurchaseRequestStatus::WAITING_APPROVAL)
+        <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <form method="POST" action="{{ route('purchase-requests.cancel', $purchaseRequest) }}" class="modal-content" onsubmit="this.querySelector('[type=submit]').disabled = true;">
+                    @csrf
+                    @method('PATCH')
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-slash-circle text-danger"></i> Batalkan permintaan ini?</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small mb-2">
+                            <b>{{ $purchaseRequest->number }}</b> akan dibatalkan dan <b>tidak dapat dilanjutkan</b>.
+                            @if ($reasonRequired)
+                                Permintaan ini sedang menunggu approval; langkah approval yang belum diproses akan dihentikan.
+                            @endif
+                        </p>
+                        <label class="form-label" for="cancelReason">Alasan {{ $reasonRequired ? '' : '(opsional)' }} @if ($reasonRequired)<span class="text-danger">*</span>@endif</label>
+                        <textarea name="reason" id="cancelReason" class="form-control @error('reason') is-invalid @enderror" rows="3" maxlength="1000" {{ $reasonRequired ? 'required' : '' }}>{{ old('reason') }}</textarea>
+                        @error('reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Kembali</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-slash-circle"></i> Ya, Batalkan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     @endcan
 
     @php($currentStepNo = optional($purchaseRequest->approvals->firstWhere('status', 'pending'))->step_no)

@@ -44,7 +44,7 @@
 
     @if ($firstPending && app(\App\Services\PurchaseRequestService::class)->isStuck($purchaseRequest))
         <div class="alert alert-warning py-2 small mt-3 mb-2">
-            Tidak ada approver langkah {{ $firstPending->level_name }} yang dapat memutuskan (nonaktif, pemohon/pengaju, atau sudah memproses langkah lain), sehingga permintaan ini tertahan. Hubungi admin.
+            Tidak ada approver langkah {{ $firstPending->level_name }} yang dapat memutuskan (nonaktif, pemohon/pengaju, atau sudah memproses langkah lain), sehingga permintaan ini tertahan. Hubungi admin atau batalkan permintaan ini.
         </div>
         @can('reloadApprovers', $purchaseRequest)
             <form method="POST" action="{{ route('purchase-requests.reload-approvers', $purchaseRequest) }}">

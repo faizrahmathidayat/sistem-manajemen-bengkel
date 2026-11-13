@@ -23,9 +23,24 @@ class PurchaseRequestPolicy
         return $this->isEditableByCreator($user, $purchaseRequest);
     }
 
+    /**
+     * Before submission the requester or the warehouse head may cancel (even after suppliers were
+     * filled in); once it is in approval only the warehouse head may, with a reason. Approved,
+     * rejected and cancelled requests are final (an approved one is undone via its purchase orders).
+     */
     public function cancel(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $this->isEditableByCreator($user, $purchaseRequest);
+        if ($purchaseRequest->status === PurchaseRequestStatus::WAITING_SUPPLIER) {
+            return $user->hasPermissionTo('purchase_request.assign_supplier')
+                || ((int) $purchaseRequest->created_by === (int) $user->id
+                    && $user->hasPermissionToInBranch('purchase_request.create', $purchaseRequest->branch_id));
+        }
+
+        if ($purchaseRequest->status === PurchaseRequestStatus::WAITING_APPROVAL) {
+            return $user->hasPermissionTo('purchase_request.assign_supplier');
+        }
+
+        return false;
     }
 
     public function assignSupplier(User $user, PurchaseRequest $purchaseRequest): bool

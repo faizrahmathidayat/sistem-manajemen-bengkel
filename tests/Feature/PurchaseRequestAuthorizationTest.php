@@ -82,17 +82,6 @@ class PurchaseRequestAuthorizationTest extends TestCase
         $this->assertFalse($owner->can('cancel', $request));
     }
 
-    public function test_update_and_cancel_are_denied_once_any_line_has_a_supplier(): void
-    {
-        $bks = $this->makeBranch('BKS');
-        $owner = $this->requester($bks);
-        $supplier = $this->makeSupplier();
-        $request = $this->requestBy($owner, $bks, [], ['supplier_id' => $supplier->id]);
-
-        $this->assertFalse($owner->can('update', $request));
-        $this->assertFalse($owner->can('cancel', $request));
-    }
-
     public function test_assign_supplier_requires_global_permission_and_waiting_status(): void
     {
         $bks = $this->makeBranch('BKS');
@@ -107,5 +96,55 @@ class PurchaseRequestAuthorizationTest extends TestCase
 
         $request->update(['status' => PurchaseRequestStatus::WAITING_APPROVAL]);
         $this->assertFalse($gudang->can('assignSupplier', $request->fresh()));
+    }
+
+    public function test_requester_can_still_cancel_after_a_supplier_was_assigned_but_can_no_longer_edit(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $owner = $this->requester($bks);
+        $supplier = $this->makeSupplier();
+        $request = $this->requestBy($owner, $bks, [], ['supplier_id' => $supplier->id]);
+
+        $this->assertFalse($owner->can('update', $request));
+        $this->assertTrue($owner->can('cancel', $request));
+    }
+
+    public function test_assign_supplier_holders_can_cancel_while_waiting_for_supplier_or_approval(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $request = $this->requestBy($this->requester($bks), $bks);
+        $gudang = User::factory()->create();
+        $this->grantGlobal($gudang, 'purchase_request.assign_supplier');
+        $gudang = User::find($gudang->id);
+
+        $this->assertTrue($gudang->can('cancel', $request));
+        $this->assertFalse($gudang->can('update', $request));
+
+        $request->update(['status' => PurchaseRequestStatus::WAITING_APPROVAL]);
+        $this->assertTrue($gudang->can('cancel', $request->fresh()));
+    }
+
+    public function test_requester_without_assign_permission_cannot_cancel_once_it_is_in_approval(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $owner = $this->requester($bks);
+        $request = $this->requestBy($owner, $bks, ['status' => PurchaseRequestStatus::WAITING_APPROVAL]);
+
+        $this->assertFalse($owner->can('cancel', $request));
+    }
+
+    public function test_nobody_can_cancel_approved_rejected_or_cancelled_requests(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $owner = $this->requester($bks);
+        $gudang = User::factory()->create();
+        $this->grantGlobal($gudang, 'purchase_request.assign_supplier');
+        $gudang = User::find($gudang->id);
+
+        foreach ([PurchaseRequestStatus::APPROVED, PurchaseRequestStatus::REJECTED, PurchaseRequestStatus::CANCELLED] as $status) {
+            $request = $this->requestBy($owner, $bks, ['status' => $status]);
+            $this->assertFalse($owner->can('cancel', $request), $status);
+            $this->assertFalse($gudang->can('cancel', $request), $status);
+        }
     }
 }

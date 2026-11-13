@@ -164,7 +164,7 @@
     @endcan
 @endif
 
-@if ($user && ($user->branchesWithPermission('report.pkb.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice.view')->isNotEmpty() || $user->branchesWithPermission('report.workshop_performance.view')->isNotEmpty() || $user->branchesWithPermission('report.receivable.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice_pkb_gap.view')->isNotEmpty() || $user->branchesWithPermission('report.sparepart.view')->isNotEmpty() || $user->branchesWithPermission('report.gross_profit.view')->isNotEmpty()))
+@if ($user && ($user->branchesWithPermission('report.pkb.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice.view')->isNotEmpty() || $user->branchesWithPermission('report.workshop_performance.view')->isNotEmpty() || $user->branchesWithPermission('report.receivable.view')->isNotEmpty() || $user->branchesWithPermission('report.invoice_pkb_gap.view')->isNotEmpty() || $user->branchesWithPermission('report.sparepart.view')->isNotEmpty() || $user->branchesWithPermission('report.gross_profit.view')->isNotEmpty() || $user->can('report.purchase_request.view') || $user->can('report.purchase_order.view')))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Reporting</div>
     @if ($user->branchesWithPermission('report.pkb.view')->isNotEmpty())
         <a href="{{ route('reports.pkb.index') }}" class="nav-link {{ request()->routeIs('reports.pkb.*') ? 'active' : '' }}">
@@ -202,6 +202,12 @@
             <span class="nav-text">Laporan Stok</span>
         </a>
     @endif
+    @can('report.purchase_request.view')
+        <a href="{{ route('reports.purchase-requests.index') }}" class="nav-link {{ request()->routeIs('reports.purchase-requests.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-clipboard-data"></i></span>
+            <span class="nav-text">Laporan Permintaan Barang</span>
+        </a>
+    @endcan
     @if ($user->branchesWithPermission('report.goods_receipt.view')->isNotEmpty())
         <a href="{{ route('reports.goods-receipts.index') }}" class="nav-link {{ request()->routeIs('reports.goods-receipts.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-box-arrow-in-down"></i></span>

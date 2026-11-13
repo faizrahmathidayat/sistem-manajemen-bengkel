@@ -28,6 +28,7 @@ use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseRequestController;
+use App\Http\Controllers\PurchaseRequestReportController;
 use App\Http\Controllers\RackController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SparepartBranchController;
@@ -321,6 +322,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/sparepart-stock/export-excel', [SparepartStockReportController::class, 'exportExcel'])->name('sparepart-stock.export-excel');
         Route::get('/sparepart-stock/pdf-preview', [SparepartStockReportController::class, 'previewPdf'])->name('sparepart-stock.pdf-preview');
         Route::get('/sparepart-stock/pdf-download', [SparepartStockReportController::class, 'downloadPdf'])->name('sparepart-stock.pdf-download');
+        Route::get('/purchase-requests', [PurchaseRequestReportController::class, 'index'])->name('purchase-requests.index');
+        Route::get('/purchase-requests/export-excel', [PurchaseRequestReportController::class, 'exportExcel'])->name('purchase-requests.export-excel');
+        Route::get('/purchase-requests/pdf-preview', [PurchaseRequestReportController::class, 'previewPdf'])->name('purchase-requests.pdf-preview');
+        Route::get('/purchase-requests/pdf-download', [PurchaseRequestReportController::class, 'downloadPdf'])->name('purchase-requests.pdf-download');
         Route::get('/goods-receipts', [GoodsReceiptReportController::class, 'index'])->name('goods-receipts.index');
         Route::get('/goods-receipts/export-excel', [GoodsReceiptReportController::class, 'exportExcel'])->name('goods-receipts.export-excel');
         Route::get('/goods-receipts/pdf-preview', [GoodsReceiptReportController::class, 'previewPdf'])->name('goods-receipts.pdf-preview');

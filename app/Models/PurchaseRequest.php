@@ -57,6 +57,58 @@ class PurchaseRequest extends Model
     }
 
     /**
+     * Where the request stands, as one line of text for lists and reports. Needs `approvals` loaded.
+     */
+    public function positionLabel(): string
+    {
+        $approvals = $this->approvals;
+
+        switch ($this->status) {
+            case PurchaseRequestStatus::WAITING_SUPPLIER:
+                return 'Menunggu penentuan supplier';
+            case PurchaseRequestStatus::WAITING_APPROVAL:
+                $pending = $approvals->firstWhere('status', 'pending');
+
+                return $pending
+                    ? sprintf('Menunggu %s (%d/%d)', $pending->level_name, $pending->step_no, $approvals->count())
+                    : 'Menunggu approval';
+            case PurchaseRequestStatus::APPROVED:
+                $last = $approvals->sortBy('step_no')->last();
+
+                return 'Disetujui' . ($last && $last->acted_at ? ' ' . $last->level_name . ' ' . $last->acted_at->format('d/m') : '');
+            case PurchaseRequestStatus::REJECTED:
+                $rejected = $approvals->firstWhere('status', 'rejected');
+
+                return 'Ditolak' . ($rejected ? ' ' . $rejected->level_name . ($rejected->notes ? ' — ' . $rejected->notes : '') : '');
+            case PurchaseRequestStatus::CANCELLED:
+                return 'Dibatalkan';
+        }
+
+        return '-';
+    }
+
+    /**
+     * Whole days from submission to the last decision (or until now while still running);
+     * null when the request was never submitted for approval. Needs `approvals` loaded.
+     */
+    public function processDays(): ?int
+    {
+        if (! $this->submitted_at) {
+            return null;
+        }
+
+        $end = now();
+        if ($this->status !== PurchaseRequestStatus::WAITING_APPROVAL) {
+            $lastDecision = $this->approvals->pluck('acted_at')->filter()->max();
+            if ($lastDecision) {
+                $end = $lastDecision;
+            }
+        }
+
+        return (int) $this->submitted_at->diffInDays($end);
+    }
+
+    /**
      * True when every line has a supplier and a unit price above zero.
      */
     public function isAssignmentComplete(): bool

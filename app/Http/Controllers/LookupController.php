@@ -130,11 +130,15 @@ class LookupController extends Controller
 
     public function reportSpareparts(Request $request)
     {
-        $branchIds = auth()->user()->branchesWithPermission('report.goods_receipt.view')->pluck('id');
-        abort_if($branchIds->isEmpty(), 403);
+        $user = auth()->user();
+        $query = Sparepart::query();
 
-        $query = Sparepart::query()
-            ->whereIn('id', SparepartBranch::whereIn('branch_id', $branchIds)->select('sparepart_id'));
+        // The procurement reports are global (all branches); the goods receipt report is per branch.
+        if (! ($user->can('report.purchase_request.view') || $user->can('report.purchase_order.view'))) {
+            $branchIds = $user->branchesWithPermission('report.goods_receipt.view')->pluck('id');
+            abort_if($branchIds->isEmpty(), 403);
+            $query->whereIn('id', SparepartBranch::whereIn('branch_id', $branchIds)->select('sparepart_id'));
+        }
         $ids = array_map('intval', (array) $request->query('ids', []));
 
         if (! empty($ids)) {
@@ -217,7 +221,11 @@ class LookupController extends Controller
     public function suppliers(Request $request)
     {
         $user = $request->user();
-        abort_unless($user->can('supplier.view') || $user->can('purchase_request.assign_supplier'), 403);
+        abort_unless(
+            $user->can('supplier.view') || $user->can('purchase_request.assign_supplier')
+                || $user->can('report.purchase_request.view') || $user->can('report.purchase_order.view'),
+            403
+        );
 
         $query = Supplier::query();
         $ids = array_map('intval', (array) $request->query('ids', []));

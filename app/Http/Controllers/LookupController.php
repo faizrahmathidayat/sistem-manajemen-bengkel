@@ -223,7 +223,8 @@ class LookupController extends Controller
         $user = $request->user();
         abort_unless(
             $user->can('supplier.view') || $user->can('purchase_request.assign_supplier')
-                || $user->can('report.purchase_request.view') || $user->can('report.purchase_order.view'),
+                || $user->can('report.purchase_request.view') || $user->can('report.purchase_order.view')
+                || $user->branchesWithPermission('report.goods_receipt.view')->isNotEmpty(),
             403
         );
 

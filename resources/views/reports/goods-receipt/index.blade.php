@@ -54,6 +54,14 @@
                         <option value="detail" {{ $mode === 'detail' ? 'selected' : '' }}>Detail (per item)</option>
                     </select>
                 </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Supplier</label>
+                    <select name="supplier_id" id="goodsReceiptReportSupplier" class="form-select form-select-sm">
+                        @if ($supplier)
+                            <option value="{{ $supplier->id }}" selected>{{ $supplier->label }}</option>
+                        @endif
+                    </select>
+                </div>
                 <div class="col-md-4" id="goodsReceiptReportSparepartGroup" {!! $mode === 'detail' ? '' : 'style="display:none"' !!}>
                     <label class="form-label small">Sparepart</label>
                     <select name="sparepart_id" id="goodsReceiptReportSparepart" class="form-select form-select-sm" {{ $mode === 'detail' ? '' : 'disabled' }}>
@@ -107,9 +115,12 @@
                         <th>No. Dokumen</th>
                         <th>Tanggal</th>
                         <th>Cabang</th>
+                        <th>Supplier</th>
+                        <th>No. Pembelian</th>
                         <th>Status</th>
                         <th>Kode</th>
                         <th>Nama Sparepart</th>
+                        <th class="text-end">Qty Dipesan</th>
                         <th class="text-end">Qty</th>
                         <th class="text-end">Harga Beli</th>
                         <th class="text-end">Total</th>
@@ -122,16 +133,19 @@
                             <td>{{ $receipt->number }}</td>
                             <td>{{ $receipt->receipt_date->format('d/m/Y') }}</td>
                             <td>{{ $receipt->branch->name }}</td>
+                            <td>{{ $receipt->purchaseOrder ? $receipt->purchaseOrder->supplier->name : '-' }}</td>
+                            <td>{!! $receipt->purchaseOrder ? '<code>' . e($receipt->purchaseOrder->number) . '</code>' : '-' !!}</td>
                             <td><span class="status-dot {{ $statusClasses[$receipt->status] ?? 'status-active' }}">{{ $statusLabels[$receipt->status] ?? $receipt->status }}</span></td>
                             <td><code>{{ $line->sparepartBranch->sparepart->code }}</code></td>
                             <td>{{ $line->sparepartBranch->sparepart->name }}</td>
+                            <td class="text-end">{{ $line->purchaseOrderLine ? number_format((float) $line->purchaseOrderLine->qty_ordered, 0, ',', '.') : '-' }}</td>
                             <td class="text-end">{{ number_format((float) $line->qty, 0, ',', '.') }}</td>
                             <td class="text-end">{{ number_format((float) $line->purchase_price, 0, ',', '.') }}</td>
                             <td class="text-end">{{ number_format((float) $line->line_total, 0, ',', '.') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="p-0">
+                            <td colspan="12" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-box-arrow-in-down',
                                     'title' => 'Belum ada data penerimaan',
@@ -152,6 +166,8 @@
                         <th>No. Dokumen</th>
                         <th>Tanggal</th>
                         <th>Cabang</th>
+                        <th>Supplier</th>
+                        <th>No. Pembelian</th>
                         <th>No. Referensi</th>
                         <th>Status</th>
                         <th class="text-end">Jumlah Item</th>
@@ -165,6 +181,8 @@
                             <td>{{ $receipt->number }}</td>
                             <td>{{ $receipt->receipt_date->format('d/m/Y') }}</td>
                             <td>{{ $receipt->branch->name }}</td>
+                            <td>{{ $receipt->purchaseOrder ? $receipt->purchaseOrder->supplier->name : '-' }}</td>
+                            <td>{!! $receipt->purchaseOrder ? '<code>' . e($receipt->purchaseOrder->number) . '</code>' : '-' !!}</td>
                             <td>{{ $receipt->reference_number ?? '-' }}</td>
                             <td><span class="status-dot {{ $statusClasses[$receipt->status] ?? 'status-active' }}">{{ $statusLabels[$receipt->status] ?? $receipt->status }}</span></td>
                             <td class="text-end">{{ number_format($receipt->lines_count, 0, ',', '.') }}</td>
@@ -173,7 +191,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="p-0">
+                            <td colspan="10" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-box-arrow-in-down',
                                     'title' => 'Belum ada data penerimaan',
@@ -227,6 +245,11 @@
                 hidden.setAttribute('data-branch-hidden', '1');
                 form.appendChild(hidden);
             });
+        });
+
+        initAjaxSelect(document.getElementById('goodsReceiptReportSupplier'), {
+            endpoint: '{{ route('lookup.suppliers') }}',
+            placeholder: '-- Semua Supplier --',
         });
 
         // Sparepart filter: AJAX Select2, shown only in detail mode.

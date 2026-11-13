@@ -6,8 +6,10 @@ use App\Exports\GoodsReceiptReportExport;
 use App\Http\Controllers\Concerns\HandlesReportExport;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptLine;
+use App\Models\PurchaseOrder;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
+use App\Models\Supplier;
 use App\Support\GoodsReceiptStatus;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +44,7 @@ class GoodsReceiptReportController extends Controller
             'dateTo' => $filters['dateTo'],
             'mode' => $filters['mode'],
             'sparepartId' => $filters['sparepartId'],
+            'supplier' => $filters['supplierId'] ? Supplier::find($filters['supplierId']) : null,
         ]);
     }
 
@@ -103,7 +106,8 @@ class GoodsReceiptReportController extends Controller
         ], true) ? $status : null;
 
         $mode = request('mode') === 'detail' ? 'detail' : 'rekap';
-        $sparepartId = (int) request('sparepart_id');
+        $sparepartId = is_scalar(request('sparepart_id')) ? (int) request('sparepart_id') : 0;
+        $supplierId = is_scalar(request('supplier_id')) ? (int) request('supplier_id') : 0;
 
         return [
             'branchIds' => $branchIds,
@@ -111,6 +115,8 @@ class GoodsReceiptReportController extends Controller
             'dateFrom' => $this->parseDate(request('date_from')),
             'dateTo' => $this->parseDate(request('date_to')),
             'mode' => $mode,
+            // Receipts from before purchase orders existed have no supplier and never match this filter.
+            'supplierId' => $supplierId > 0 ? $supplierId : null,
             // The sparepart filter is a detail-mode concern; rekap rows are whole documents.
             'sparepartId' => $mode === 'detail' && $sparepartId > 0 ? $sparepartId : null,
         ];
@@ -125,7 +131,7 @@ class GoodsReceiptReportController extends Controller
             $query = GoodsReceiptLine::query()
                 ->join('goods_receipts', 'goods_receipts.id', '=', 'goods_receipt_lines.goods_receipt_id')
                 ->select('goods_receipt_lines.*')
-                ->with(['goodsReceipt.branch', 'sparepartBranch.sparepart'])
+                ->with(['goodsReceipt.branch', 'goodsReceipt.purchaseOrder.supplier', 'sparepartBranch.sparepart', 'purchaseOrderLine'])
                 ->when($filters['sparepartId'], fn ($q, $id) => $q->whereIn(
                     'goods_receipt_lines.sparepart_branch_id',
                     SparepartBranch::where('sparepart_id', $id)->select('id')
@@ -152,7 +158,7 @@ class GoodsReceiptReportController extends Controller
                 DB::table('goods_receipt_lines')->selectRaw('COALESCE(SUM(line_total), 0)')->whereColumn('goods_receipt_lines.goods_receipt_id', 'goods_receipts.id'),
                 'total_nilai'
             )
-            ->with('branch');
+            ->with(['branch', 'purchaseOrder.supplier']);
         $this->applyReceiptFilters($query, $filters, $permittedBranches);
 
         return $query->orderByDesc('goods_receipts.receipt_date')->orderByDesc('goods_receipts.id');
@@ -185,6 +191,10 @@ class GoodsReceiptReportController extends Controller
         $query->whereIn('goods_receipts.branch_id', $permittedBranches->pluck('id'))
             ->when($filters['branchIds'], fn ($q) => $q->whereIn('goods_receipts.branch_id', $filters['branchIds']))
             ->when($filters['status'], fn ($q, $status) => $q->where('goods_receipts.status', $status))
+            ->when($filters['supplierId'], fn ($q, $id) => $q->whereIn(
+                'goods_receipts.purchase_order_id',
+                PurchaseOrder::where('supplier_id', $id)->select('id')
+            ))
             ->when($filters['dateFrom'], fn ($q, $d) => $q->whereDate('goods_receipts.receipt_date', '>=', $d))
             ->when($filters['dateTo'], fn ($q, $d) => $q->whereDate('goods_receipts.receipt_date', '<=', $d));
     }
@@ -200,9 +210,11 @@ class GoodsReceiptReportController extends Controller
         if ($filters['sparepartId'] && ($sparepart = Sparepart::find($filters['sparepartId']))) {
             $sparepartLabel = " · Sparepart: {$sparepart->code} — {$sparepart->name}";
         }
+        $supplierLabel = $filters['supplierId'] && ($supplier = Supplier::find($filters['supplierId']))
+            ? " · Supplier: {$supplier->name}" : '';
         $modeLabel = $filters['mode'] === 'detail' ? 'Detail' : 'Rekap';
 
-        return "Cabang: {$branchLabel} · Status: {$statusLabel} · Tanggal: {$dateLabel}{$sparepartLabel} · Tampilan: {$modeLabel}";
+        return "Cabang: {$branchLabel} · Status: {$statusLabel} · Tanggal: {$dateLabel}{$supplierLabel}{$sparepartLabel} · Tampilan: {$modeLabel}";
     }
 
     protected function parseDate(?string $value): ?string

@@ -39,8 +39,8 @@ class GoodsReceiptReportExport implements FromQuery, WithHeadings, WithMapping, 
     public function headings(): array
     {
         return $this->mode === 'detail'
-            ? ['No. Dokumen', 'Tanggal', 'Cabang', 'Status', 'Kode', 'Nama Sparepart', 'Qty', 'Harga Beli', 'Total']
-            : ['No. Dokumen', 'Tanggal', 'Cabang', 'No. Referensi', 'Status', 'Jumlah Item', 'Total Qty', 'Total Nilai'];
+            ? ['No. Dokumen', 'Tanggal', 'Cabang', 'Supplier', 'No. Pembelian', 'Status', 'Kode', 'Nama Sparepart', 'Qty Dipesan', 'Qty', 'Harga Beli', 'Total']
+            : ['No. Dokumen', 'Tanggal', 'Cabang', 'Supplier', 'No. Pembelian', 'No. Referensi', 'Status', 'Jumlah Item', 'Total Qty', 'Total Nilai'];
     }
 
     public function map($row): array
@@ -52,9 +52,12 @@ class GoodsReceiptReportExport implements FromQuery, WithHeadings, WithMapping, 
                 $receipt->number,
                 $receipt->receipt_date->format('d/m/Y'),
                 $receipt->branch->name,
+                $receipt->purchaseOrder ? $receipt->purchaseOrder->supplier->name : '-',
+                $receipt->purchaseOrder ? $receipt->purchaseOrder->number : '-',
                 self::STATUS_LABELS[$receipt->status] ?? $receipt->status,
                 $row->sparepartBranch->sparepart->code,
                 $row->sparepartBranch->sparepart->name,
+                $row->purchaseOrderLine ? (float) $row->purchaseOrderLine->qty_ordered : '-',
                 (float) $row->qty,
                 (float) $row->purchase_price,
                 (float) $row->line_total,
@@ -65,6 +68,8 @@ class GoodsReceiptReportExport implements FromQuery, WithHeadings, WithMapping, 
             $row->number,
             $row->receipt_date->format('d/m/Y'),
             $row->branch->name,
+            $row->purchaseOrder ? $row->purchaseOrder->supplier->name : '-',
+            $row->purchaseOrder ? $row->purchaseOrder->number : '-',
             $row->reference_number ?? '-',
             self::STATUS_LABELS[$row->status] ?? $row->status,
             (int) $row->lines_count,

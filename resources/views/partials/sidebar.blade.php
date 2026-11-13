@@ -208,6 +208,12 @@
             <span class="nav-text">Laporan Permintaan Barang</span>
         </a>
     @endcan
+    @can('report.purchase_order.view')
+        <a href="{{ route('reports.purchase-orders.index') }}" class="nav-link {{ request()->routeIs('reports.purchase-orders.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-cart-check"></i></span>
+            <span class="nav-text">Laporan Pembelian Barang</span>
+        </a>
+    @endcan
     @if ($user->branchesWithPermission('report.goods_receipt.view')->isNotEmpty())
         <a href="{{ route('reports.goods-receipts.index') }}" class="nav-link {{ request()->routeIs('reports.goods-receipts.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-box-arrow-in-down"></i></span>

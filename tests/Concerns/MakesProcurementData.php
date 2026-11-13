@@ -107,9 +107,9 @@ trait MakesProcurementData
     }
 
     /** A PO with two lines (120 @ 85.000 and 60 @ 45.000) in the given status. */
-    protected function makeIssuedPurchaseOrder(Branch $branch, string $status = 'issued'): PurchaseOrder
+    protected function makeIssuedPurchaseOrder(Branch $branch, string $status = 'issued', ?Supplier $supplier = null): PurchaseOrder
     {
-        $supplier = $this->makeSupplier();
+        $supplier = $supplier ?: $this->makeSupplier();
         $request = $this->makePurchaseRequest($branch, [
             ['sparepart_branch_id' => $this->makeSparepartBranch($branch)->id, 'qty' => 120, 'supplier_id' => $supplier->id, 'unit_price' => 85000],
             ['sparepart_branch_id' => $this->makeSparepartBranch($branch)->id, 'qty' => 60, 'supplier_id' => $supplier->id, 'unit_price' => 45000],

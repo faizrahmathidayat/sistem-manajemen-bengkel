@@ -46,6 +46,11 @@ class PurchaseRequest extends Model
         return $this->hasMany(PurchaseRequestLine::class)->orderBy('sort_order');
     }
 
+    public function purchaseOrders()
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
+
     public function approvals()
     {
         return $this->hasMany(PurchaseRequestApproval::class)->orderBy('step_no');

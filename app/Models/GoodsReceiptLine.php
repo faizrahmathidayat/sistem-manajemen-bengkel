@@ -11,7 +11,7 @@ class GoodsReceiptLine extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'goods_receipt_id', 'sparepart_branch_id', 'qty', 'purchase_price', 'line_total', 'sort_order',
+        'goods_receipt_id', 'sparepart_branch_id', 'purchase_order_line_id', 'qty', 'purchase_price', 'line_total', 'sort_order',
     ];
 
     protected $casts = [
@@ -23,6 +23,11 @@ class GoodsReceiptLine extends Model
     public function goodsReceipt()
     {
         return $this->belongsTo(GoodsReceipt::class);
+    }
+
+    public function purchaseOrderLine()
+    {
+        return $this->belongsTo(PurchaseOrderLine::class);
     }
 
     public function sparepartBranch()

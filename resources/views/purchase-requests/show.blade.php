@@ -78,7 +78,13 @@
                     <tbody>
                         @forelse ($purchaseRequest->purchaseOrders as $order)
                             <tr>
-                                <td><code>{{ $order->number }}</code></td>
+                                <td>
+                                    @can('view', $order)
+                                        <a href="{{ route('purchase-orders.show', $order) }}"><code>{{ $order->number }}</code></a>
+                                    @else
+                                        <code>{{ $order->number }}</code>
+                                    @endcan
+                                </td>
                                 <td>{{ $order->supplier->name }}</td>
                                 <td class="text-end">{{ number_format($order->total_amount, 0, ',', '.') }}</td>
                                 <td>{{ \App\Support\PurchaseOrderStatus::LABELS[$order->status] ?? $order->status }}</td>

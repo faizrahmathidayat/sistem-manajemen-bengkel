@@ -63,7 +63,8 @@
 
 @php($showPurchaseRequests = $user && ($user->branchesWithPermission('purchase_request.view')->isNotEmpty() || $user->can('purchase_request.view_all') || $user->can('purchase_request.assign_supplier')))
 @php($showApprovals = $user && app(\App\Services\PurchaseRequestService::class)->isApprover($user))
-@if ($showPurchaseRequests || $showApprovals)
+@php($showPurchaseOrders = $user && $user->can('purchase_order.view'))
+@if ($showPurchaseRequests || $showApprovals || $showPurchaseOrders)
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Pembelian</div>
     @if ($showPurchaseRequests)
         <a href="{{ route('purchase-requests.index') }}" class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}">
@@ -79,6 +80,12 @@
             @if ($waitingCount > 0)
                 <span class="badge bg-danger ms-auto">{{ $waitingCount }}</span>
             @endif
+        </a>
+    @endif
+    @if ($showPurchaseOrders)
+        <a href="{{ route('purchase-orders.index') }}" class="nav-link {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-cart-check"></i></span>
+            <span class="nav-text">Pembelian Barang</span>
         </a>
     @endif
 @endif

@@ -12,7 +12,7 @@ class GoodsReceipt extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'number', 'branch_id', 'receipt_date', 'reference_number', 'status', 'notes',
+        'number', 'branch_id', 'purchase_order_id', 'receipt_date', 'reference_number', 'status', 'notes',
     ];
 
     protected $casts = [
@@ -26,6 +26,11 @@ class GoodsReceipt extends Model
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
     public function lines()

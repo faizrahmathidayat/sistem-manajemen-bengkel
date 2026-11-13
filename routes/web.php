@@ -26,6 +26,7 @@ use App\Http\Controllers\ReceivableReportController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\RackController;
 use App\Http\Controllers\ServiceCatalogController;
@@ -217,6 +218,14 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('approve');
         Route::patch('/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('reject');
         Route::patch('/{purchaseRequest}/reload-approvers', [PurchaseRequestController::class, 'reloadApprovers'])->name('reload-approvers');
+    });
+
+    Route::prefix('purchase-orders')->name('purchase-orders.')->group(function () {
+        Route::get('/', [PurchaseOrderController::class, 'index'])->name('index');
+        Route::get('/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->name('show');
+        Route::get('/{purchaseOrder}/print', [PurchaseOrderController::class, 'print'])->name('print');
+        Route::patch('/{purchaseOrder}/issue', [PurchaseOrderController::class, 'issue'])->name('issue');
+        Route::patch('/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('cancel');
     });
 
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {

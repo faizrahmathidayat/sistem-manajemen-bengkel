@@ -18,6 +18,7 @@ use App\Services\DocumentNumberGenerator;
 use App\Services\PurchaseRequestService;
 use App\Support\AuditEvent;
 use App\Support\PurchaseRequestStatus;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -201,9 +202,11 @@ class PurchaseRequestController extends Controller
     public function approve(ApprovePurchaseRequestRequest $request, PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
     {
         try {
-            $service->approve($purchaseRequest, $request->user(), $request->input('note'));
+            $service->approve($purchaseRequest, $request->user(), $request->input('note'), $this->expectedStep($request));
         } catch (\DomainException $e) {
             return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
+        } catch (AuthorizationException $e) {
+            return $this->alreadyDecided($purchaseRequest);
         }
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)
@@ -213,9 +216,11 @@ class PurchaseRequestController extends Controller
     public function reject(RejectPurchaseRequestRequest $request, PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
     {
         try {
-            $service->reject($purchaseRequest, $request->user(), $request->input('reason'));
+            $service->reject($purchaseRequest, $request->user(), $request->input('reason'), $this->expectedStep($request));
         } catch (\DomainException $e) {
             return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
+        } catch (AuthorizationException $e) {
+            return $this->alreadyDecided($purchaseRequest);
         }
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)
@@ -307,6 +312,20 @@ class PurchaseRequestController extends Controller
                 ])
                 ->values()
         );
+    }
+
+    protected function expectedStep(Request $request): ?int
+    {
+        $step = $request->input('step_no');
+
+        return is_numeric($step) ? (int) $step : null;
+    }
+
+    /** The decision lost a race (someone else decided first) — explain instead of a bare 403. */
+    protected function alreadyDecided(PurchaseRequest $purchaseRequest)
+    {
+        return redirect()->route('purchase-requests.show', $purchaseRequest)
+            ->with('error', 'Permintaan ini sudah diproses oleh pengguna lain atau langkah approval sudah berpindah.');
     }
 
     protected function viewableBranches(User $user)

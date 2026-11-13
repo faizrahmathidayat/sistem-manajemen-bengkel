@@ -42,14 +42,16 @@
         <div class="small text-muted mt-3">Total Rp {{ number_format($purchaseRequest->total_amount, 0, ',', '.') }} — rantai dibentuk saat pengajuan.</div>
     @endif
 
-    @can('reloadApprovers', $purchaseRequest)
-        @if ($firstPending && $firstPending->users->where('is_active', true)->isEmpty())
-            <form method="POST" action="{{ route('purchase-requests.reload-approvers', $purchaseRequest) }}" class="mt-3">
+    @if ($firstPending && app(\App\Services\PurchaseRequestService::class)->isStuck($purchaseRequest))
+        <div class="alert alert-warning py-2 small mt-3 mb-2">
+            Tidak ada approver langkah {{ $firstPending->level_name }} yang dapat memutuskan (nonaktif, pemohon/pengaju, atau sudah memproses langkah lain), sehingga permintaan ini tertahan. Hubungi admin.
+        </div>
+        @can('reloadApprovers', $purchaseRequest)
+            <form method="POST" action="{{ route('purchase-requests.reload-approvers', $purchaseRequest) }}">
                 @csrf
                 @method('PATCH')
-                <div class="alert alert-warning py-2 small mb-2">Semua approver langkah {{ $firstPending->level_name }} sudah tidak aktif, sehingga permintaan ini tertahan.</div>
                 <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Muat Ulang Approver</button>
             </form>
-        @endif
-    @endcan
+        @endcan
+    @endif
 </div>

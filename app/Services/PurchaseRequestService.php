@@ -43,6 +43,7 @@ class PurchaseRequestService
 
             $total = $fresh->computeTotal();
             $steps = (new ApprovalChainResolver())->resolve($total);
+            $this->assertChainCompletable($steps, $fresh, $actor);
 
             foreach ($steps as $index => $step) {
                 $approval = $fresh->approvals()->create([
@@ -73,10 +74,10 @@ class PurchaseRequestService
      * @throws AuthorizationException the actor may not decide the current step
      * @throws \DomainException       the request is not waiting for approval
      */
-    public function approve(PurchaseRequest $purchaseRequest, User $actor, ?string $note = null): void
+    public function approve(PurchaseRequest $purchaseRequest, User $actor, ?string $note = null, ?int $expectedStep = null): void
     {
-        DB::transaction(function () use ($purchaseRequest, $actor, $note) {
-            [$fresh, $step] = $this->lockCurrentStep($purchaseRequest, $actor);
+        DB::transaction(function () use ($purchaseRequest, $actor, $note, $expectedStep) {
+            [$fresh, $step] = $this->lockCurrentStep($purchaseRequest, $actor, $expectedStep);
 
             $step->update([
                 'status' => PurchaseRequestApprovalStatus::APPROVED,
@@ -99,15 +100,15 @@ class PurchaseRequestService
         });
     }
 
-    public function reject(PurchaseRequest $purchaseRequest, User $actor, string $reason): void
+    public function reject(PurchaseRequest $purchaseRequest, User $actor, string $reason, ?int $expectedStep = null): void
     {
         $reason = trim($reason);
         if ($reason === '') {
             throw new \InvalidArgumentException('Alasan penolakan wajib diisi.');
         }
 
-        DB::transaction(function () use ($purchaseRequest, $actor, $reason) {
-            [$fresh, $step] = $this->lockCurrentStep($purchaseRequest, $actor);
+        DB::transaction(function () use ($purchaseRequest, $actor, $reason, $expectedStep) {
+            [$fresh, $step] = $this->lockCurrentStep($purchaseRequest, $actor, $expectedStep);
 
             $step->update([
                 'status' => PurchaseRequestApprovalStatus::REJECTED,
@@ -188,6 +189,30 @@ class PurchaseRequestService
         return $step !== null && $this->mayDecide($purchaseRequest, $step, $user);
     }
 
+    /**
+     * True when nobody can decide the current step any more (every approver snapshotted on it
+     * is inactive, is the requester/submitter, or already decided another step).
+     */
+    public function isStuck(PurchaseRequest $purchaseRequest): bool
+    {
+        if ($purchaseRequest->status !== PurchaseRequestStatus::WAITING_APPROVAL) {
+            return false;
+        }
+
+        $step = $this->currentStep($purchaseRequest, false);
+        if (! $step) {
+            return false;
+        }
+
+        foreach ($step->users()->get() as $user) {
+            if ($this->mayDecide($purchaseRequest, $step, $user)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /** True when the user is configured as an approver anywhere (level setting or a request snapshot). */
     public function isApprover(User $user): bool
     {
@@ -229,7 +254,7 @@ class PurchaseRequestService
      *
      * @return array{0: PurchaseRequest, 1: PurchaseRequestApproval}
      */
-    protected function lockCurrentStep(PurchaseRequest $purchaseRequest, User $actor): array
+    protected function lockCurrentStep(PurchaseRequest $purchaseRequest, User $actor, ?int $expectedStep = null): array
     {
         $fresh = PurchaseRequest::whereKey($purchaseRequest->id)->lockForUpdate()->firstOrFail();
 
@@ -238,11 +263,72 @@ class PurchaseRequestService
         }
 
         $step = $this->currentStep($fresh, true);
+
+        // The decision form names the step it was rendered for. If someone else decided that
+        // step meanwhile, refuse instead of silently deciding the next step on the user's behalf.
+        if ($step && $expectedStep !== null && (int) $step->step_no !== $expectedStep) {
+            throw new \DomainException('Langkah approval ini sudah diproses oleh pengguna lain. Muat ulang halaman untuk melihat status terbaru.');
+        }
+
         if (! $step || ! $this->mayDecide($fresh, $step, $actor)) {
             throw new AuthorizationException('Anda tidak berwenang memutuskan langkah approval ini.');
         }
 
         return [$fresh, $step];
+    }
+
+    /**
+     * A chain is only worth creating if distinct people can actually complete it: the requester
+     * and the submitter may not decide, and one person may decide only one step. Without this a
+     * request could sit in "waiting approval" with no way forward and no way to cancel it.
+     *
+     * @param array<int, array{level_id:int, level_name:string, user_ids:int[]}> $steps
+     *
+     * @throws ApprovalChainException
+     */
+    protected function assertChainCompletable(array $steps, PurchaseRequest $purchaseRequest, User $submitter): void
+    {
+        $excluded = array_filter([(int) $purchaseRequest->created_by, (int) $submitter->id]);
+        $eligible = [];
+
+        foreach ($steps as $step) {
+            $users = array_values(array_diff($step['user_ids'], $excluded));
+            if (empty($users)) {
+                throw new ApprovalChainException(
+                    "Level {$step['level_name']} hanya memiliki approver yang tidak boleh memproses permintaan ini "
+                    . '(pemohon atau pengaju). Tambahkan approver lain di Pengaturan Approval.'
+                );
+            }
+            $eligible[] = $users;
+        }
+
+        if (! $this->hasDistinctAssignment($eligible, 0, [])) {
+            throw new ApprovalChainException(
+                'Rantai approval tidak dapat diselesaikan: satu orang tidak boleh memproses lebih dari satu level. '
+                . 'Tambahkan approver lain pada level yang berbagi approver di Pengaturan Approval.'
+            );
+        }
+    }
+
+    /** Can every step get a different user? (small backtracking search; chains have a handful of steps) */
+    protected function hasDistinctAssignment(array $eligible, int $index, array $used): bool
+    {
+        if ($index === count($eligible)) {
+            return true;
+        }
+
+        foreach ($eligible[$index] as $userId) {
+            if (isset($used[$userId])) {
+                continue;
+            }
+            $used[$userId] = true;
+            if ($this->hasDistinctAssignment($eligible, $index + 1, $used)) {
+                return true;
+            }
+            unset($used[$userId]);
+        }
+
+        return false;
     }
 
     protected function currentStep(PurchaseRequest $purchaseRequest, bool $lock): ?PurchaseRequestApproval

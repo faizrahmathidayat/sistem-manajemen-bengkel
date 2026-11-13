@@ -173,6 +173,7 @@ class PurchaseRequestApprovalFlowTest extends TestCase
     {
         [$manager] = $this->makeStandardApprovalConfig();
         $requester = $manager->users->first(); // the manager also happens to be the requester
+        $manager->users()->attach($this->makeUser()->id);               // someone else can still decide
         $request = $this->submitted(5000000, $requester);
 
         $this->assertSame($requester->id, (int) $request->created_by);
@@ -184,6 +185,7 @@ class PurchaseRequestApprovalFlowTest extends TestCase
     {
         [$manager] = $this->makeStandardApprovalConfig();
         $submitter = $manager->users->first();
+        $manager->users()->attach($this->makeUser()->id);               // someone else can still decide
         $this->grantGlobal($submitter, 'purchase_request.assign_supplier');
         $bks = $this->makeBranch('BKS');
         $request = $this->makeAssignedRequest($bks, 5000000);
@@ -196,8 +198,9 @@ class PurchaseRequestApprovalFlowTest extends TestCase
     {
         [$manager, $director] = $this->makeStandardApprovalConfig();
         $both = $this->makeUser();
+        $other = $this->makeUser();
         $manager->users()->sync([$both->id]);
-        $director->users()->sync([$both->id]);
+        $director->users()->sync([$both->id, $other->id]);
         $request = $this->submitted(38320000);
 
         $this->actingAs($both)->patch("/purchase-requests/{$request->id}/approve")->assertRedirect();
@@ -294,5 +297,111 @@ class PurchaseRequestApprovalFlowTest extends TestCase
         $events = AuditLog::where('auditable_id', $request->id)->pluck('event')->all();
         $this->assertContains('purchase_request.submitted', $events);
         $this->assertContains('purchase_request.approved', $events);
+    }
+
+    public function test_submit_is_refused_when_one_person_is_the_only_approver_of_two_levels(): void
+    {
+        [$manager, $director] = $this->makeStandardApprovalConfig();
+        $solo = $this->makeUser();
+        $manager->users()->sync([$solo->id]);
+        $director->users()->sync([$solo->id]);
+        $bks = $this->makeBranch('BKS');
+        $request = $this->makeAssignedRequest($bks, 38320000);
+
+        $this->actingAs($this->gudang())->patch("/purchase-requests/{$request->id}/submit")->assertRedirect();
+
+        $this->assertStringContainsString('lebih dari satu level', session('error'));
+        $this->assertSame(PurchaseRequestStatus::WAITING_SUPPLIER, $request->fresh()->status);
+        $this->assertSame(0, $request->approvals()->count());
+    }
+
+    public function test_submit_is_refused_when_the_only_approver_of_a_level_is_the_submitter_or_requester(): void
+    {
+        [$manager] = $this->makeStandardApprovalConfig();
+        $bks = $this->makeBranch('BKS');
+        $gudang = $this->gudang();
+        $manager->users()->sync([$gudang->id]);                  // the warehouse head is the sole Manager
+        $request = $this->makeAssignedRequest($bks, 5000000);
+
+        $this->actingAs($gudang)->patch("/purchase-requests/{$request->id}/submit")->assertRedirect();
+        $this->assertStringContainsString('Manager', session('error'));
+        $this->assertSame(PurchaseRequestStatus::WAITING_SUPPLIER, $request->fresh()->status);
+
+        $requester = $this->makeUser();
+        $manager->users()->sync([$requester->id]);               // the requester is the sole Manager
+        $own = $this->actingAs($requester)->makeAssignedRequest($bks, 5000000);
+        $this->actingAs($this->gudang())->patch("/purchase-requests/{$own->id}/submit")->assertRedirect();
+        $this->assertSame(PurchaseRequestStatus::WAITING_SUPPLIER, $own->fresh()->status);
+    }
+
+    public function test_chain_is_accepted_when_distinct_people_can_complete_it(): void
+    {
+        [$manager, $director] = $this->makeStandardApprovalConfig();
+        $shared = $this->makeUser();
+        $other = $this->makeUser();
+        $manager->users()->sync([$shared->id]);
+        $director->users()->sync([$shared->id, $other->id]);      // shared decides L1, other decides L2
+        $bks = $this->makeBranch('BKS');
+        $request = $this->makeAssignedRequest($bks, 38320000);
+
+        $this->actingAs($this->gudang())->patch("/purchase-requests/{$request->id}/submit");
+
+        $this->assertSame(PurchaseRequestStatus::WAITING_APPROVAL, $request->fresh()->status);
+    }
+
+    public function test_show_warns_that_the_request_is_stuck_and_offers_reload_to_admins_only(): void
+    {
+        [$manager] = $this->makeStandardApprovalConfig();
+        $request = $this->submitted(5000000);
+        $manager->users->first()->update(['is_active' => false]);
+        $admin = User::factory()->create();
+        $this->grantGlobal($admin, 'approval_setting.manage');
+        $admin = User::find($admin->id);
+
+        $this->actingAs($admin)->get("/purchase-requests/{$request->id}")->assertOk()->assertSee('tertahan')->assertSee('Muat Ulang Approver');
+        $this->actingAs($this->gudang())->get("/purchase-requests/{$request->id}")->assertOk()->assertSee('tertahan')->assertDontSee('Muat Ulang Approver');
+    }
+
+    public function test_a_stale_step_number_is_refused_with_a_friendly_message_and_does_not_approve_the_next_step(): void
+    {
+        [$manager, $director] = $this->makeStandardApprovalConfig();
+        $a = $this->makeUser();
+        $b = $this->makeUser();
+        $c = $this->makeUser();
+        $manager->users()->sync([$a->id, $b->id]);
+        $director->users()->sync([$b->id, $c->id]);
+        $request = $this->submitted(38320000);
+
+        // A decides step 1. B's page was opened earlier and still posts step 1.
+        $this->actingAs($a)->patch("/purchase-requests/{$request->id}/approve", ['step_no' => 1]);
+        $this->actingAs($b)->patch("/purchase-requests/{$request->id}/approve", ['step_no' => 1])
+            ->assertRedirect(route('purchase-requests.show', $request));
+
+        $this->assertStringContainsString('sudah', session('error'));
+        $this->assertSame(PurchaseRequestStatus::WAITING_APPROVAL, $request->fresh()->status);
+        $this->assertSame(1, $request->approvals()->where('status', PurchaseRequestApprovalStatus::PENDING)->count());
+
+        // A fresh form for step 2 works.
+        $this->actingAs($b)->patch("/purchase-requests/{$request->id}/approve", ['step_no' => 2])->assertSessionHasNoErrors();
+        $this->assertSame(PurchaseRequestStatus::APPROVED, $request->fresh()->status);
+    }
+
+    public function test_a_refusal_raised_inside_the_service_is_shown_as_a_flash_not_a_bare_403(): void
+    {
+        [$manager] = $this->makeStandardApprovalConfig();
+        $request = $this->submitted(5000000);
+        $this->app->bind(PurchaseRequestService::class, function () {
+            return new class extends PurchaseRequestService {
+                public function approve(PurchaseRequest $purchaseRequest, User $actor, ?string $note = null, ?int $expectedStep = null): void
+                {
+                    throw new \Illuminate\Auth\Access\AuthorizationException('lost the race');
+                }
+            };
+        });
+
+        $this->actingAs($manager->users->first())->patch("/purchase-requests/{$request->id}/approve")
+            ->assertRedirect(route('purchase-requests.show', $request));
+
+        $this->assertStringContainsString('sudah diproses', session('error'));
     }
 }

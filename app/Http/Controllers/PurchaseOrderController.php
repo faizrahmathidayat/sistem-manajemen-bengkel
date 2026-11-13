@@ -91,6 +91,14 @@ class PurchaseOrderController extends Controller
         $this->authorize('cancel', $purchaseOrder);
 
         DB::transaction(function () use ($purchaseOrder) {
+            // Same lock order as posting a receipt (receipt -> purchase order): lock this order's
+            // draft receipts first, otherwise a concurrent post and cancel can deadlock.
+            GoodsReceipt::where('purchase_order_id', $purchaseOrder->id)
+                ->where('status', GoodsReceiptStatus::DRAFT)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
             $fresh = PurchaseOrder::whereKey($purchaseOrder->id)->lockForUpdate()->firstOrFail();
 
             // Re-check under the lock: a receipt may have been posted since the policy ran.

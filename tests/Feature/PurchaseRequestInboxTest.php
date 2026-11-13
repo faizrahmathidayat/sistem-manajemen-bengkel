@@ -64,7 +64,7 @@ class PurchaseRequestInboxTest extends TestCase
         [$manager, $director] = $this->makeStandardApprovalConfig();
         $both = $this->makeUser();
         $manager->users()->sync([$both->id]);
-        $director->users()->sync([$both->id]);
+        $director->users()->sync([$both->id, $this->makeUser()->id]);
         $request = $this->submit(38320000, 'RQ/BKS/202611/10004');
 
         app(PurchaseRequestService::class)->approve($request, $both);

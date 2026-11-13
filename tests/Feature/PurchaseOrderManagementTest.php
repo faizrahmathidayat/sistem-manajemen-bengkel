@@ -176,4 +176,35 @@ class PurchaseOrderManagementTest extends TestCase
         $this->grantGlobal($other, 'dashboard.view');
         $this->actingAs(User::find($other->id))->get('/dashboard')->assertDontSee(route('purchase-orders.index'), false);
     }
+
+    public function test_cancel_locks_draft_receipts_before_the_purchase_order(): void
+    {
+        $order = $this->makeOrder(['status' => PurchaseOrderStatus::ISSUED]);
+        GoodsReceipt::create([
+            'number' => 'PB/BKS/202611/00020', 'branch_id' => $order->branch_id, 'receipt_date' => '2026-11-18',
+            'purchase_order_id' => $order->id, 'status' => GoodsReceiptStatus::DRAFT,
+        ]);
+        $locks = [];
+        \DB::listen(function ($query) use (&$locks) {
+            if (stripos($query->sql, 'for update') !== false) {
+                $locks[] = $query->sql;
+            }
+        });
+
+        $this->actingAs($this->buyer())->patch("/purchase-orders/{$order->id}/cancel")->assertRedirect();
+
+        $receiptLock = $orderLock = null;
+        foreach ($locks as $position => $sql) {
+            if ($receiptLock === null && strpos($sql, 'goods_receipts') !== false) {
+                $receiptLock = $position;
+            }
+            if ($orderLock === null && strpos($sql, 'from `purchase_orders`') !== false) {
+                $orderLock = $position;
+            }
+        }
+        $this->assertNotNull($receiptLock, 'draft receipts must be locked');
+        $this->assertNotNull($orderLock, 'purchase order must be locked');
+        // Posting takes receipt -> purchase order; cancelling must use the same order.
+        $this->assertLessThan($orderLock, $receiptLock);
+    }
 }

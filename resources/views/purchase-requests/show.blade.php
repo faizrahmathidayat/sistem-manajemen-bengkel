@@ -141,12 +141,14 @@
     </div>
     @endcan
 
+    @php($currentStepNo = optional($purchaseRequest->approvals->firstWhere('status', 'pending'))->step_no)
     @can('approve', $purchaseRequest)
         <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
                 <form method="POST" action="{{ route('purchase-requests.approve', $purchaseRequest) }}" class="modal-content" onsubmit="this.querySelector('[type=submit]').disabled = true;">
                     @csrf
                     @method('PATCH')
+                    <input type="hidden" name="step_no" value="{{ $currentStepNo }}">
                     <div class="modal-header">
                         <h5 class="modal-title"><i class="bi bi-check-circle text-success"></i> Setujui Permintaan</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
@@ -171,6 +173,7 @@
                 <form method="POST" action="{{ route('purchase-requests.reject', $purchaseRequest) }}" class="modal-content" onsubmit="this.querySelector('[type=submit]').disabled = true;">
                     @csrf
                     @method('PATCH')
+                    <input type="hidden" name="step_no" value="{{ $currentStepNo }}">
                     <div class="modal-header">
                         <h5 class="modal-title"><i class="bi bi-x-circle text-danger"></i> Tolak Permintaan</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>

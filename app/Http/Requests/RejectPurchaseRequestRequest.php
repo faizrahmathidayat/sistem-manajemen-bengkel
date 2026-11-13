@@ -15,6 +15,7 @@ class RejectPurchaseRequestRequest extends FormRequest
     {
         return [
             'reason' => ['required', 'string', 'max:1000'],
+            'step_no' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

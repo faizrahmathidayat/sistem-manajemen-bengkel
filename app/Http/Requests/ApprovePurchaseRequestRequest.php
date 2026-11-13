@@ -15,6 +15,7 @@ class ApprovePurchaseRequestRequest extends FormRequest
     {
         return [
             'note' => ['nullable', 'string', 'max:500'],
+            'step_no' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

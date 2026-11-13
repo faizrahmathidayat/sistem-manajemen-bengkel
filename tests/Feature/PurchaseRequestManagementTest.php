@@ -217,6 +217,7 @@ class PurchaseRequestManagementTest extends TestCase
         $utm = $this->makeBranch('UTM', 'Cabang Utama');
         $sp = $this->makeSparepartBranch($bks, 'OLI-001');
         SparepartBranchStock::where('sparepart_branch_id', $sp->id)->update(['on_hand_qty' => 14]);
+        $sp->update(['minimum_stock' => 20]); // below the minimum, so it can be requested
         $owner = $this->requester($bks);
 
         $json = $this->actingAs($owner)->getJson('/purchase-requests/lookup/spareparts?branch_id=' . $bks->id . '&q=OLI')
@@ -226,5 +227,119 @@ class PurchaseRequestManagementTest extends TestCase
 
         $this->getJson('/purchase-requests/lookup/spareparts?branch_id=' . $utm->id . '&q=OLI')->assertForbidden();
         $this->getJson('/purchase-requests/lookup/spareparts?q=OLI')->assertStatus(400);
+    }
+
+    protected function setStock(\App\Models\SparepartBranch $sparepartBranch, float $onHand, float $minimum, float $reserved = 0): void
+    {
+        SparepartBranchStock::where('sparepart_branch_id', $sparepartBranch->id)->update(['on_hand_qty' => $onHand, 'reserved_qty' => $reserved]);
+        $sparepartBranch->update(['minimum_stock' => $minimum]);
+    }
+
+    public function test_store_only_accepts_spareparts_whose_stock_is_below_the_minimum(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $below = $this->makeSparepartBranch($bks);
+        $atMinimum = $this->makeSparepartBranch($bks);
+        $above = $this->makeSparepartBranch($bks);
+        $noMinimum = $this->makeSparepartBranch($bks);
+        $this->setStock($below, 3, 10);
+        $this->setStock($atMinimum, 10, 10);
+        $this->setStock($above, 25, 10);
+        $this->setStock($noMinimum, 0, 0);
+        $owner = $this->requester($bks);
+
+        foreach ([$atMinimum, $above, $noMinimum] as $blocked) {
+            $this->actingAs($owner)->post('/purchase-requests', $this->payload($bks, [
+                ['sparepart_branch_id' => $blocked->id, 'qty' => 5],
+            ]))->assertSessionHasErrors('lines.0.sparepart_branch_id');
+        }
+        $this->assertSame(0, PurchaseRequest::count());
+
+        $this->actingAs($owner)->post('/purchase-requests', $this->payload($bks, [
+            ['sparepart_branch_id' => $below->id, 'qty' => 5],
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame(1, PurchaseRequest::count());
+    }
+
+    public function test_stock_is_measured_as_available_stock_so_reserved_quantity_counts(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $reservedHeavily = $this->makeSparepartBranch($bks);   // 12 on hand, 5 reserved by PKB -> 7 available
+        $plentiful = $this->makeSparepartBranch($bks);         // 12 on hand, none reserved -> 12 available
+        $this->setStock($reservedHeavily, 12, 10, 5);
+        $this->setStock($plentiful, 12, 10, 0);
+        $owner = $this->requester($bks);
+
+        $this->actingAs($owner)->post('/purchase-requests', $this->payload($bks, [
+            ['sparepart_branch_id' => $plentiful->id, 'qty' => 5],
+        ]))->assertSessionHasErrors('lines.0.sparepart_branch_id');
+
+        $this->actingAs($owner)->post('/purchase-requests', $this->payload($bks, [
+            ['sparepart_branch_id' => $reservedHeavily->id, 'qty' => 5],
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame(1, PurchaseRequest::count());
+    }
+
+    public function test_the_stock_rule_message_names_the_stock_and_minimum(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $sp = $this->makeSparepartBranch($bks);
+        $this->setStock($sp, 25, 10);
+
+        $response = $this->actingAs($this->requester($bks))->post('/purchase-requests', $this->payload($bks, [
+            ['sparepart_branch_id' => $sp->id, 'qty' => 5],
+        ]));
+
+        $message = session('errors')->first('lines.0.sparepart_branch_id');
+        $this->assertStringContainsString('stok minimal', $message);
+        $this->assertStringContainsString('tersedia', $message);
+        $this->assertStringContainsString('25', $message);
+        $this->assertStringContainsString('10', $message);
+    }
+
+    public function test_update_applies_the_same_stock_rule(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $below = $this->makeSparepartBranch($bks);
+        $above = $this->makeSparepartBranch($bks);
+        $this->setStock($below, 1, 10);
+        $this->setStock($above, 50, 10);
+        $owner = $this->requester($bks);
+        $request = $this->actingAs($owner)->makePurchaseRequest($bks, [['sparepart_branch_id' => $below->id, 'qty' => 2]]);
+
+        $this->put("/purchase-requests/{$request->id}", [
+            'request_date' => '2026-11-14',
+            'lines' => [['sparepart_branch_id' => $above->id, 'qty' => 2]],
+        ])->assertSessionHasErrors('lines.0.sparepart_branch_id');
+
+        $this->assertSame($below->id, (int) $request->fresh()->lines->first()->sparepart_branch_id);
+    }
+
+    public function test_sparepart_search_lists_only_below_minimum_items_but_ids_still_resolve_any(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $below = $this->makeSparepartBranch($bks, 'OLI-001');
+        $above = $this->makeSparepartBranch($bks, 'OLI-002');
+        $this->setStock($below, 2, 10);
+        $this->setStock($above, 40, 10);
+        $owner = $this->requester($bks);
+
+        $search = $this->actingAs($owner)->getJson('/purchase-requests/lookup/spareparts?branch_id=' . $bks->id . '&q=OLI')->assertOk()->json();
+        $this->assertCount(1, $search);
+        $this->assertSame($below->id, $search[0]['id']);
+        $this->assertSame(10.0, (float) $search[0]['minimum_stock']);
+        $this->assertSame(2.0, (float) $search[0]['available_qty']);
+
+        // Re-selecting lines of an existing/old-input request must still resolve, whatever the stock is now.
+        $resolved = $this->getJson('/purchase-requests/lookup/spareparts?branch_id=' . $bks->id . '&ids[]=' . $above->id)->assertOk()->json();
+        $this->assertSame($above->id, $resolved[0]['id']);
+    }
+
+    public function test_the_form_explains_the_stock_rule(): void
+    {
+        $bks = $this->makeBranch('BKS');
+
+        $this->actingAs($this->requester($bks))->get('/purchase-requests/create')
+            ->assertOk()->assertSee('stok di bawah stok minimal');
     }
 }

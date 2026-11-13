@@ -294,7 +294,11 @@ class PurchaseRequestController extends Controller
                 return response()->json([]);
             }
             $escaped = addcslashes($term, '%_\\');
+            // Only items whose available stock fell below the minimum can be requested.
             $query->where('is_active', true)
+                ->whereHas('stock', function ($inner) {
+                    $inner->whereRaw('sparepart_branch_stocks.on_hand_qty - sparepart_branch_stocks.reserved_qty < sparepart_branches.minimum_stock');
+                })
                 ->whereHas('sparepart', function ($inner) use ($escaped) {
                     $inner->where('name', 'like', "%{$escaped}%")->orWhere('code', 'like', "%{$escaped}%");
                 });
@@ -309,6 +313,8 @@ class PurchaseRequestController extends Controller
                     'text' => $sb->sparepart->code . ' — ' . $sb->sparepart->name,
                     'code' => $sb->sparepart->code,
                     'on_hand_qty' => (float) ($sb->stock ? $sb->stock->on_hand_qty : 0),
+                    'available_qty' => (float) ($sb->stock ? $sb->stock->available_qty : 0),
+                    'minimum_stock' => (float) $sb->minimum_stock,
                 ])
                 ->values()
         );

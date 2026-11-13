@@ -31,7 +31,7 @@ trait MakesProcurementData
 
         return SparepartBranch::firstOrCreate(
             ['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id],
-            ['selling_price' => $price]
+            ['selling_price' => $price, 'minimum_stock' => 10]
         );
     }
 

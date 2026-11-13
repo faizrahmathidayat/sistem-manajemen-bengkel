@@ -18,6 +18,11 @@ trait ValidatesPurchaseRequestLines
         }));
     }
 
+    private function plain(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
+    }
+
     protected function lineRules(): array
     {
         return [
@@ -45,6 +50,19 @@ trait ValidatesPurchaseRequestLines
             $sparepartBranch = SparepartBranch::find($sparepartBranchId);
             if (! $sparepartBranch || ! $sparepartBranch->is_active || (int) $sparepartBranch->branch_id !== $branchId) {
                 $validator->errors()->add("lines.{$index}.sparepart_branch_id", 'Sparepart tidak aktif atau bukan dari cabang permintaan ini.');
+                continue;
+            }
+
+            // Requests are only for items that ran low: available stock (on hand minus what PKBs
+            // have reserved) must be below the branch's minimum stock.
+            $available = $sparepartBranch->stock ? (float) $sparepartBranch->stock->available_qty : 0.0;
+            $minimum = (float) $sparepartBranch->minimum_stock;
+            if (! ($available < $minimum)) {
+                $validator->errors()->add(
+                    "lines.{$index}.sparepart_branch_id",
+                    'Stok tersedia ' . $this->plain($available) . ' belum di bawah stok minimal ' . $this->plain($minimum)
+                    . '. Permintaan hanya untuk barang yang stok tersedianya di bawah stok minimal.'
+                );
                 continue;
             }
 

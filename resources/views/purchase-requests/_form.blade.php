@@ -46,12 +46,13 @@
         <div>
             <h2 class="h5 mb-1 section-title"><i class="bi bi-nut"></i><span>Barang yang Diminta</span></h2>
             <p class="text-muted mb-0 small">Supplier dan harga ditentukan oleh Kepala Gudang pada tahap berikutnya.</p>
+            <p class="text-muted mb-0 small"><i class="bi bi-info-circle"></i> Hanya barang dengan stok di bawah stok minimal yang dapat diminta (stok tersedia = stok fisik dikurangi yang sudah dipesan PKB).</p>
         </div>
         <button type="button" class="btn btn-outline-primary btn-sm" id="addPrLine" disabled>+ Tambah Sparepart</button>
     </div>
     <div class="row g-2 small text-muted mb-1 fw-bold">
         <div class="col-md-6">Sparepart</div>
-        <div class="col-md-2">Stok Saat Ini</div>
+        <div class="col-md-2">Stok Tersedia / Minimal</div>
         <div class="col-md-2">Qty Diminta</div>
         <div class="col-md-2"></div>
     </div>
@@ -106,8 +107,8 @@
     let currentBranchId = initialBranchId ? String(initialBranchId) : null;
     let lineCount = 0;
 
-    function formatStock(value) {
-        return Number(value).toLocaleString('id-ID');
+    function formatStock(item) {
+        return Number(item.available_qty).toLocaleString('id-ID') + ' / ' + Number(item.minimum_stock).toLocaleString('id-ID');
     }
 
     function clearLines() {
@@ -135,7 +136,7 @@
             endpoint: endpoint,
             extraParams: function () { return { branch_id: currentBranchId }; },
             placeholder: '-- Pilih Sparepart --',
-            onSelect: function (item) { stock.textContent = formatStock(item.on_hand_qty); },
+            onSelect: function (item) { stock.textContent = formatStock(item); },
         });
         $(select).on('select2:clear', function () { stock.textContent = '—'; });
 
@@ -154,7 +155,7 @@
                     id: line.sparepart_branch_id,
                     extraParams: function () { return { branch_id: currentBranchId }; },
                 });
-                if (item) row.querySelector('.pr-stock').textContent = formatStock(item.on_hand_qty);
+                if (item) row.querySelector('.pr-stock').textContent = formatStock(item);
             }
         } finally {
             loadingEl.classList.add('d-none');

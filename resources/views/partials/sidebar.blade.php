@@ -61,7 +61,7 @@
     @endif
 @endif
 
-@if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view') || $user->can('mechanic.view') || $user->can('service.view') || $user->can('rack.view')))
+@if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view') || $user->can('mechanic.view') || $user->can('service.view') || $user->can('rack.view') || $user->can('supplier.view')))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Master Data</div>
     @can('branch.view')
         <a href="{{ route('branches.index') }}" class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}">
@@ -103,6 +103,12 @@
         <a href="{{ route('racks.index') }}" class="nav-link {{ request()->routeIs('racks.*') ? 'active' : '' }}">
             <span class="nav-icon"><i class="bi bi-grid-3x3-gap"></i></span>
             <span class="nav-text">Rack</span>
+        </a>
+    @endcan
+    @can('supplier.view')
+        <a href="{{ route('suppliers.index') }}" class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-shop-window"></i></span>
+            <span class="nav-text">Supplier</span>
         </a>
     @endcan
 @endif

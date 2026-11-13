@@ -31,6 +31,7 @@ use App\Http\Controllers\SparepartStockReportController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockCardController;
 use App\Http\Controllers\StockTransferController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserPermissionAssignmentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleReferenceController;
@@ -132,6 +133,14 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{rack}', [RackController::class, 'update'])->name('update');
     });
 
+    Route::prefix('suppliers')->name('suppliers.')->group(function () {
+        Route::get('/', [SupplierController::class, 'index'])->name('index');
+        Route::get('/create', [SupplierController::class, 'create'])->name('create');
+        Route::post('/', [SupplierController::class, 'store'])->name('store');
+        Route::get('/{supplier}/edit', [SupplierController::class, 'edit'])->name('edit');
+        Route::put('/{supplier}', [SupplierController::class, 'update'])->name('update');
+    });
+
     Route::prefix('sparepart-branches')->name('sparepart-branches.')->group(function () {
         Route::get('/', [SparepartBranchController::class, 'index'])->name('index');
         Route::get('/create', [SparepartBranchController::class, 'create'])->name('create');
@@ -162,6 +171,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/mechanics', [LookupController::class, 'mechanics'])->name('mechanics');
         Route::get('/spareparts', [LookupController::class, 'spareparts'])->name('spareparts');
         Route::get('/vehicles', [LookupController::class, 'vehicles'])->name('vehicles');
+        Route::get('/suppliers', [LookupController::class, 'suppliers'])->name('suppliers');
         Route::get('/report-spareparts', [LookupController::class, 'reportSpareparts'])->name('report-spareparts');
     });
 

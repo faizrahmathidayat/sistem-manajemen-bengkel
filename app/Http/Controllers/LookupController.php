@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Mechanic;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
+use App\Models\Supplier;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 
@@ -211,6 +212,34 @@ class LookupController extends Controller
         $label = $brandType !== '' ? "{$brandType} - {$plate}" : $plate;
 
         return $vehicle->customer ? "{$label} ({$vehicle->customer->name})" : $label;
+    }
+
+    public function suppliers(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->can('supplier.view') || $user->can('purchase_request.assign_supplier'), 403);
+
+        $query = Supplier::query();
+        $ids = array_map('intval', (array) $request->query('ids', []));
+
+        if (! empty($ids)) {
+            $query->whereIn('id', $ids);
+        } else {
+            $term = $this->searchTerm($request);
+            if ($term === null) {
+                return response()->json([]);
+            }
+            $like = '%' . addcslashes($term, '%_\\') . '%';
+            $query->where('is_active', true)->where(function ($inner) use ($like) {
+                $inner->where('name', 'like', $like)->orWhere('code', 'like', $like);
+            });
+        }
+
+        return response()->json(
+            $query->orderBy('name')->limit(20)->get()
+                ->map(fn (Supplier $supplier) => ['id' => $supplier->id, 'text' => $supplier->label])
+                ->values()
+        );
     }
 
     private function searchTerm(Request $request): ?string

@@ -74,6 +74,50 @@ class MenuPermissionSeederTest extends TestCase
         $this->assertDatabaseHas('permissions', ['code' => 'report.goods_receipt.view']);
     }
 
+    public function test_seeder_creates_procurement_menus_and_permissions(): void
+    {
+        $this->seed(MenuPermissionSeeder::class);
+
+        $menus = [
+            'pembelian.permintaan' => true,
+            'pembelian.penentuan_supplier' => false,
+            'pembelian.pembelian' => false,
+            'master.supplier' => false,
+            'administrasi.approval_setting' => false,
+            'reporting.purchase_request' => false,
+            'reporting.purchase_order' => false,
+        ];
+        foreach ($menus as $code => $branchScoped) {
+            $this->assertDatabaseHas('menus', ['code' => $code, 'is_branch_scoped' => $branchScoped]);
+        }
+
+        $codes = [
+            'purchase_request.view', 'purchase_request.create',
+            'purchase_request.view_all', 'purchase_request.assign_supplier',
+            'purchase_order.view', 'purchase_order.issue', 'purchase_order.cancel',
+            'supplier.view', 'supplier.create', 'supplier.edit',
+            'approval_setting.view', 'approval_setting.manage',
+            'report.purchase_request.view', 'report.purchase_order.view',
+        ];
+        foreach ($codes as $code) {
+            $this->assertDatabaseHas('permissions', ['code' => $code]);
+        }
+
+        $this->assertDatabaseMissing('permissions', ['code' => 'purchase_request.approve_manager']);
+        $this->assertSame(
+            'pembelian.permintaan',
+            Permission::where('code', 'purchase_request.create')->first()->menu->code
+        );
+    }
+
+    public function test_procurement_seed_is_idempotent(): void
+    {
+        $this->seed(MenuPermissionSeeder::class);
+        $this->seed(MenuPermissionSeeder::class);
+
+        $this->assertSame(1, Permission::where('code', 'purchase_order.issue')->count());
+    }
+
     public function test_seeds_invoice_share_whatsapp_permission(): void
     {
         $this->seed(MenuPermissionSeeder::class);

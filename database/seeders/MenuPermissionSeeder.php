@@ -136,6 +136,34 @@ class MenuPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'code' => 'pembelian.permintaan',
+                'name' => 'Permintaan Barang',
+                'is_branch_scoped' => true,
+                'permissions' => [
+                    ['code' => 'purchase_request.view', 'resource' => 'purchase_request', 'action' => 'view', 'description' => 'Melihat permintaan barang'],
+                    ['code' => 'purchase_request.create', 'resource' => 'purchase_request', 'action' => 'create', 'description' => 'Membuat, mengubah, dan membatalkan permintaan barang'],
+                ],
+            ],
+            [
+                'code' => 'pembelian.penentuan_supplier',
+                'name' => 'Penentuan Supplier',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'purchase_request.view_all', 'resource' => 'purchase_request', 'action' => 'view_all', 'description' => 'Melihat permintaan barang semua cabang'],
+                    ['code' => 'purchase_request.assign_supplier', 'resource' => 'purchase_request', 'action' => 'assign_supplier', 'description' => 'Menentukan supplier dan harga serta mengajukan approval'],
+                ],
+            ],
+            [
+                'code' => 'pembelian.pembelian',
+                'name' => 'Pembelian Barang',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'purchase_order.view', 'resource' => 'purchase_order', 'action' => 'view', 'description' => 'Melihat pembelian barang'],
+                    ['code' => 'purchase_order.issue', 'resource' => 'purchase_order', 'action' => 'issue', 'description' => 'Menerbitkan pembelian barang'],
+                    ['code' => 'purchase_order.cancel', 'resource' => 'purchase_order', 'action' => 'cancel', 'description' => 'Membatalkan pembelian barang'],
+                ],
+            ],
+            [
                 'code' => 'master.branch',
                 'name' => 'Cabang',
                 'is_branch_scoped' => false,
@@ -205,6 +233,16 @@ class MenuPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'code' => 'master.supplier',
+                'name' => 'Supplier',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'supplier.view', 'resource' => 'supplier', 'action' => 'view', 'description' => 'Melihat supplier'],
+                    ['code' => 'supplier.create', 'resource' => 'supplier', 'action' => 'create', 'description' => 'Membuat supplier'],
+                    ['code' => 'supplier.edit', 'resource' => 'supplier', 'action' => 'edit', 'description' => 'Mengubah supplier'],
+                ],
+            ],
+            [
                 'code' => 'administrasi.users',
                 'name' => 'Users',
                 'is_branch_scoped' => false,
@@ -236,6 +274,15 @@ class MenuPermissionSeeder extends Seeder
                 'is_branch_scoped' => false,
                 'permissions' => [
                     ['code' => 'audit_log.view', 'resource' => 'audit_log', 'action' => 'view', 'description' => 'Melihat audit log'],
+                ],
+            ],
+            [
+                'code' => 'administrasi.approval_setting',
+                'name' => 'Pengaturan Approval',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'approval_setting.view', 'resource' => 'approval_setting', 'action' => 'view', 'description' => 'Melihat pengaturan approval'],
+                    ['code' => 'approval_setting.manage', 'resource' => 'approval_setting', 'action' => 'manage', 'description' => 'Mengelola level, approver, dan aturan nominal approval'],
                 ],
             ],
             [
@@ -293,6 +340,22 @@ class MenuPermissionSeeder extends Seeder
                 'is_branch_scoped' => true,
                 'permissions' => [
                     ['code' => 'report.goods_receipt.view', 'resource' => 'report', 'action' => 'goods_receipt.view', 'description' => 'Melihat laporan penerimaan barang'],
+                ],
+            ],
+            [
+                'code' => 'reporting.purchase_request',
+                'name' => 'Laporan Permintaan Barang',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'report.purchase_request.view', 'resource' => 'report', 'action' => 'purchase_request.view', 'description' => 'Melihat laporan permintaan barang'],
+                ],
+            ],
+            [
+                'code' => 'reporting.purchase_order',
+                'name' => 'Laporan Pembelian Barang',
+                'is_branch_scoped' => false,
+                'permissions' => [
+                    ['code' => 'report.purchase_order.view', 'resource' => 'report', 'action' => 'purchase_order.view', 'description' => 'Melihat laporan pembelian barang'],
                 ],
             ],
             [

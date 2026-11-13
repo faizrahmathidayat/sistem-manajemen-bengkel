@@ -200,6 +200,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{purchaseRequest}/edit', [PurchaseRequestController::class, 'edit'])->name('edit');
         Route::put('/{purchaseRequest}', [PurchaseRequestController::class, 'update'])->name('update');
         Route::patch('/{purchaseRequest}/cancel', [PurchaseRequestController::class, 'cancel'])->name('cancel');
+        Route::patch('/{purchaseRequest}/assign-suppliers', [PurchaseRequestController::class, 'assignSuppliers'])->name('assign-suppliers');
     });
 
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {

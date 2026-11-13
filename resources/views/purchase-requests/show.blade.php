@@ -38,6 +38,9 @@
         </div>
     </div>
 
+    @can('assignSupplier', $purchaseRequest)
+        @include('purchase-requests._assign_form')
+    @else
     <div class="panel">
         <h2 class="section-title mb-2"><i class="bi bi-list-check"></i><span>Rincian Barang</span></h2>
         <div class="table-responsive">
@@ -76,4 +79,5 @@
             </table>
         </div>
     </div>
+    @endcan
 @endsection

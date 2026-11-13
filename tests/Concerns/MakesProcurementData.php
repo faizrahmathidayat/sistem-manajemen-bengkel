@@ -2,11 +2,15 @@
 
 namespace Tests\Concerns;
 
+use App\Models\ApprovalLevel;
+use App\Models\ApprovalRule;
 use App\Models\Branch;
 use App\Models\PurchaseRequest;
 use App\Models\Sparepart;
 use App\Models\SparepartBranch;
 use App\Models\Supplier;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 trait MakesProcurementData
 {
@@ -37,6 +41,11 @@ trait MakesProcurementData
         return Supplier::create(array_merge(['code' => $code, 'name' => 'Supplier ' . $code], $overrides));
     }
 
+    protected function makeUser(bool $active = true): User
+    {
+        return User::factory()->create(['is_active' => $active]);
+    }
+
     /**
      * @param array $lines each: ['sparepart_branch_id' => int, 'qty' => n, 'supplier_id' => ?int, 'unit_price' => ?n]
      */
@@ -63,5 +72,34 @@ trait MakesProcurementData
         }
 
         return $request->fresh('lines');
+    }
+
+    /** Wipe the migration-seeded Manager/Direktur/CEO levels and rules so a test controls its own config. */
+    protected function resetApprovalConfig(): void
+    {
+        DB::table('approval_rule_levels')->delete();
+        DB::table('approval_rules')->delete();
+        DB::table('approval_level_users')->delete();
+        DB::table('approval_levels')->delete();
+    }
+
+    protected function makeApprovalLevel(string $name, int $sortOrder, array $users = [], bool $active = true): ApprovalLevel
+    {
+        $level = ApprovalLevel::create(['name' => $name, 'sort_order' => $sortOrder, 'is_active' => $active]);
+        $level->users()->sync(array_map(function ($user) {
+            return $user->id;
+        }, $users));
+
+        return $level;
+    }
+
+    protected function makeApprovalRule(?float $maxAmount, array $levels, int $sortOrder): ApprovalRule
+    {
+        $rule = ApprovalRule::create(['max_amount' => $maxAmount, 'sort_order' => $sortOrder]);
+        $rule->levels()->sync(array_map(function ($level) {
+            return $level->id;
+        }, $levels));
+
+        return $rule;
     }
 }

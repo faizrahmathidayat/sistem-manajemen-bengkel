@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Concerns;
 
 use App\Models\SparepartBranch;
+use App\Support\PurchaseRequestStockRule;
 
 trait ValidatesPurchaseRequestLines
 {
@@ -16,11 +17,6 @@ trait ValidatesPurchaseRequestLines
         return array_values(array_filter($lines, function ($line) {
             return is_array($line) && ! empty($line['sparepart_branch_id']);
         }));
-    }
-
-    private function plain(float $value): string
-    {
-        return rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
     }
 
     protected function lineRules(): array
@@ -57,12 +53,8 @@ trait ValidatesPurchaseRequestLines
             // have reserved) must be below the branch's minimum stock.
             $available = $sparepartBranch->stock ? (float) $sparepartBranch->stock->available_qty : 0.0;
             $minimum = (float) $sparepartBranch->minimum_stock;
-            if (! ($available < $minimum)) {
-                $validator->errors()->add(
-                    "lines.{$index}.sparepart_branch_id",
-                    'Stok tersedia ' . $this->plain($available) . ' belum di bawah stok minimal ' . $this->plain($minimum)
-                    . '. Permintaan hanya untuk barang yang stok tersedianya di bawah stok minimal.'
-                );
+            if ($message = PurchaseRequestStockRule::violation($available, $minimum)) {
+                $validator->errors()->add("lines.{$index}.sparepart_branch_id", $message);
                 continue;
             }
 

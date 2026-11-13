@@ -342,4 +342,59 @@ class PurchaseRequestManagementTest extends TestCase
         $this->actingAs($this->requester($bks))->get('/purchase-requests/create')
             ->assertOk()->assertSee('stok di bawah stok minimal');
     }
+
+    /**
+     * Stock can rise between form validation and the insert (e.g. a receipt is posted at that
+     * moment). The rule is therefore checked again inside the transaction, under a row lock.
+     * The listener below plays that "other transaction": it bumps the stock the first time the
+     * given query runs, which is after validation passed but before the request is saved.
+     */
+    protected function raiseStockWhen(string $sqlFragment, int $onHand): void
+    {
+        $done = false;
+        \DB::listen(function ($query) use (&$done, $sqlFragment, $onHand) {
+            if (! $done && stripos($query->sql, $sqlFragment) !== false) {
+                $done = true;
+                \DB::table('sparepart_branch_stocks')->update(['on_hand_qty' => $onHand]);
+            }
+        });
+    }
+
+    public function test_store_rechecks_the_stock_rule_inside_the_transaction_and_saves_nothing_on_a_late_change(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $sp = $this->makeSparepartBranch($bks);
+        $this->setStock($sp, 2, 10);
+        $owner = $this->requester($bks);
+
+        $this->raiseStockWhen('document_number_sequences', 50);
+        $response = $this->actingAs($owner)->post('/purchase-requests', $this->payload($bks, [
+            ['sparepart_branch_id' => $sp->id, 'qty' => 5],
+        ]));
+
+        $response->assertSessionHasErrors('lines.0.sparepart_branch_id');
+        $this->assertSame(0, PurchaseRequest::count());
+        $this->assertSame(0, \App\Models\PurchaseRequestLine::count());
+    }
+
+    public function test_update_rechecks_the_stock_rule_inside_the_transaction_and_keeps_the_old_lines(): void
+    {
+        $bks = $this->makeBranch('BKS');
+        $old = $this->makeSparepartBranch($bks);
+        $new = $this->makeSparepartBranch($bks);
+        $this->setStock($old, 1, 10);
+        $this->setStock($new, 2, 10);
+        $owner = $this->requester($bks);
+        $request = $this->actingAs($owner)->makePurchaseRequest($bks, [['sparepart_branch_id' => $old->id, 'qty' => 3]]);
+
+        $this->raiseStockWhen('limit 1 for update', 50);
+        $this->put("/purchase-requests/{$request->id}", [
+            'request_date' => '2026-11-14',
+            'lines' => [['sparepart_branch_id' => $new->id, 'qty' => 4]],
+        ])->assertSessionHasErrors('lines.0.sparepart_branch_id');
+
+        $lines = $request->fresh()->lines;
+        $this->assertCount(1, $lines);
+        $this->assertSame($old->id, (int) $lines->first()->sparepart_branch_id);
+    }
 }

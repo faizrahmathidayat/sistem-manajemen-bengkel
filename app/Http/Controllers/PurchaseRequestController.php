@@ -11,6 +11,7 @@ use App\Http\Requests\UpdatePurchaseRequestRequest;
 use App\Models\Branch;
 use App\Models\PurchaseRequest;
 use App\Models\SparepartBranch;
+use App\Models\SparepartBranchStock;
 use App\Models\User;
 use App\Services\ApprovalChainResolver;
 use App\Services\AuditLogger;
@@ -18,9 +19,11 @@ use App\Services\DocumentNumberGenerator;
 use App\Services\PurchaseRequestService;
 use App\Support\AuditEvent;
 use App\Support\PurchaseRequestStatus;
+use App\Support\PurchaseRequestStockRule;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseRequestController extends Controller
 {
@@ -89,6 +92,7 @@ class PurchaseRequestController extends Controller
                 'status' => PurchaseRequestStatus::WAITING_SUPPLIER,
             ]);
 
+            $this->assertStockStillLow($data['lines']);
             $this->syncLines($purchaseRequest, $data['lines']);
 
             return $purchaseRequest;
@@ -155,6 +159,7 @@ class PurchaseRequestController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
 
+            $this->assertStockStillLow($data['lines']);
             $this->syncLines($fresh, $data['lines']);
         });
 
@@ -361,6 +366,42 @@ class PurchaseRequestController extends Controller
         );
 
         return $fresh;
+    }
+
+    /**
+     * Re-check the "stock below minimum" rule inside the saving transaction. The form validation
+     * runs before the transaction, so stock may have risen since (a receipt posted meanwhile);
+     * the stock rows are locked (ascending id, like every other stock writer) and read again.
+     * A violation rolls the whole save back.
+     *
+     * @throws ValidationException
+     */
+    protected function assertStockStillLow(array $lines): void
+    {
+        $ids = collect($lines)->pluck('sparepart_branch_id')->map(fn ($id) => (int) $id)->unique()->sort()->values();
+
+        $stocks = SparepartBranchStock::whereIn('sparepart_branch_id', $ids)
+            ->orderBy('sparepart_branch_id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('sparepart_branch_id');
+        $minimums = SparepartBranch::whereIn('id', $ids)->pluck('minimum_stock', 'id');
+
+        $errors = [];
+        foreach (array_values($lines) as $index => $line) {
+            $id = (int) $line['sparepart_branch_id'];
+            $stock = $stocks->get($id);
+            $available = $stock ? (float) $stock->available_qty : 0.0;
+
+            $message = PurchaseRequestStockRule::violation($available, (float) ($minimums[$id] ?? 0));
+            if ($message) {
+                $errors["lines.{$index}.sparepart_branch_id"] = $message;
+            }
+        }
+
+        if (! empty($errors)) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     protected function syncLines(PurchaseRequest $purchaseRequest, array $lines): void

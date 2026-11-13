@@ -61,6 +61,17 @@
     @endif
 @endif
 
+@php($showPurchaseRequests = $user && ($user->branchesWithPermission('purchase_request.view')->isNotEmpty() || $user->can('purchase_request.view_all') || $user->can('purchase_request.assign_supplier')))
+@if ($showPurchaseRequests)
+    <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Pembelian</div>
+    @if ($showPurchaseRequests)
+        <a href="{{ route('purchase-requests.index') }}" class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}">
+            <span class="nav-icon"><i class="bi bi-clipboard-plus"></i></span>
+            <span class="nav-text">Permintaan Barang</span>
+        </a>
+    @endif
+@endif
+
 @if ($user && ($user->can('branch.view') || $user->can('customer.view') || $user->can('vehicle.view') || $user->can('vehicle_reference.view') || $user->can('mechanic.view') || $user->can('service.view') || $user->can('rack.view') || $user->can('supplier.view')))
     <div class="sidebar-heading px-2 mb-1 mt-2 text-uppercase">Master Data</div>
     @can('branch.view')

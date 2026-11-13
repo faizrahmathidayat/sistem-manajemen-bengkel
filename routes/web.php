@@ -24,6 +24,7 @@ use App\Http\Controllers\ReceivableReportController;
 use App\Http\Controllers\UserBranchAssignmentController;
 use App\Http\Controllers\UserBranchPermissionAssignmentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\RackController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SparepartBranchController;
@@ -188,6 +189,17 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{workOrder}/override-shortage', [WorkOrderController::class, 'overrideShortage'])->name('overrideShortage');
         Route::get('/{workOrder}/print', [WorkOrderController::class, 'printPdf'])->name('print');
         Route::get('/{workOrder}/print-estimate', [WorkOrderController::class, 'printEstimatePdf'])->name('print-estimate');
+    });
+
+    Route::prefix('purchase-requests')->name('purchase-requests.')->group(function () {
+        Route::get('/', [PurchaseRequestController::class, 'index'])->name('index');
+        Route::get('/create', [PurchaseRequestController::class, 'create'])->name('create');
+        Route::get('/lookup/spareparts', [PurchaseRequestController::class, 'lookupSpareparts'])->name('lookup.spareparts');
+        Route::post('/', [PurchaseRequestController::class, 'store'])->name('store');
+        Route::get('/{purchaseRequest}', [PurchaseRequestController::class, 'show'])->name('show');
+        Route::get('/{purchaseRequest}/edit', [PurchaseRequestController::class, 'edit'])->name('edit');
+        Route::put('/{purchaseRequest}', [PurchaseRequestController::class, 'update'])->name('update');
+        Route::patch('/{purchaseRequest}/cancel', [PurchaseRequestController::class, 'cancel'])->name('cancel');
     });
 
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {

@@ -231,6 +231,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('goods-receipts')->name('goods-receipts.')->group(function () {
         Route::get('/', [GoodsReceiptController::class, 'index'])->name('index');
         Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+        Route::get('/lookup/purchase-orders', [GoodsReceiptController::class, 'lookupPurchaseOrders'])->name('lookup.purchase-orders');
+        Route::get('/po-lines/{purchaseOrder}', [GoodsReceiptController::class, 'poLines'])->name('po-lines');
         Route::get('/import-template', [GoodsReceiptController::class, 'downloadImportTemplate'])->name('import-template');
         Route::post('/import-lines', [GoodsReceiptController::class, 'importLines'])->name('import-lines');
         Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');

@@ -14,6 +14,9 @@
             @can('print', $purchaseOrder)
                 <a href="{{ route('purchase-orders.print', $purchaseOrder) }}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer"></i> Cetak PO</a>
             @endcan
+            @if (in_array($purchaseOrder->status, \App\Support\PurchaseOrderStatus::RECEIVABLE, true) && auth()->user()->hasPermissionToInBranch('receipt.create', $purchaseOrder->branch_id))
+                <a href="{{ route('goods-receipts.create', ['purchase_order_id' => $purchaseOrder->id]) }}" class="btn btn-primary btn-sm"><i class="bi bi-truck"></i> Terima Barang</a>
+            @endif
             @can('cancel', $purchaseOrder)
                 <form method="POST" action="{{ route('purchase-orders.cancel', $purchaseOrder) }}" class="d-inline" onsubmit="return confirm('Batalkan pembelian ini? Tindakan ini tidak dapat dibatalkan.');">
                     @csrf

@@ -7,13 +7,13 @@
             <div>
                 <p class="eyebrow mb-1">Persediaan</p>
                 <h1 class="h3 mb-1">Penerimaan Barang</h1>
-                <p class="text-muted mb-0">Kelola penerimaan barang dari supplier.</p>
+                <p class="text-muted mb-0">Penerimaan barang berdasarkan pembelian ke supplier.</p>
             </div>
         </div>
     </div>
 
     @include('partials.list-filter-bar', [
-        'searchPlaceholder' => 'Cari nomor penerimaan...',
+        'searchPlaceholder' => 'Cari nomor penerimaan / pembelian...',
         'searchValue' => $search,
         'branchFilterBranches' => $branches,
         'branchFilterSelected' => $selectedBranchIds,
@@ -31,7 +31,10 @@
                         <th>Nomor</th>
                         <th>Cabang</th>
                         <th>Tanggal</th>
-                        <th>No. Referensi</th>
+                        <th>Supplier</th>
+                        <th>No. Pembelian</th>
+                        <th>No. Surat Jalan</th>
+                        <th class="text-end">Nilai (Rp)</th>
                         <th>Status</th>
                         <th class="text-end">Aksi</th>
                     </tr>
@@ -42,7 +45,16 @@
                             <td><code>{{ $goodsReceipt->number }}</code></td>
                             <td>{{ $goodsReceipt->branch->name }}</td>
                             <td>{{ $goodsReceipt->receipt_date->format('d/m/Y') }}</td>
+                            <td>{{ $goodsReceipt->purchaseOrder ? $goodsReceipt->purchaseOrder->supplier->name : '-' }}</td>
+                            <td>
+                                @if ($goodsReceipt->purchaseOrder)
+                                    <code>{{ $goodsReceipt->purchaseOrder->number }}</code>
+                                @else
+                                    - <span class="tag s">data lama</span>
+                                @endif
+                            </td>
                             <td>{{ $goodsReceipt->reference_number ?? '-' }}</td>
+                            <td class="text-end">{{ number_format((float) $goodsReceipt->lines_value, 0, ',', '.') }}</td>
                             <td>
                                 @if ($goodsReceipt->status === \App\Support\GoodsReceiptStatus::DRAFT)
                                     <span class="status-dot status-active">Draft</span>
@@ -60,7 +72,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="p-0">
+                            <td colspan="9" class="p-0">
                                 @include('partials.empty-state', [
                                     'icon' => 'bi-truck',
                                     'title' => 'Belum ada penerimaan barang',

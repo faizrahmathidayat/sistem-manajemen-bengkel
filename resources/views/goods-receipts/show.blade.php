@@ -37,7 +37,25 @@
             <div class="row g-3">
                 <div class="col-md-3"><strong>Cabang</strong><div>{{ $goodsReceipt->branch->name }}</div></div>
                 <div class="col-md-3"><strong>Tanggal</strong><div>{{ $goodsReceipt->receipt_date->format('d/m/Y') }}</div></div>
-                <div class="col-md-3"><strong>No. Referensi</strong><div>{{ $goodsReceipt->reference_number ?? '-' }}</div></div>
+                <div class="col-md-3"><strong>No. Surat Jalan / Referensi</strong><div>{{ $goodsReceipt->reference_number ?? '-' }}</div></div>
+                <div class="col-md-3">
+                    <strong>Supplier</strong>
+                    <div>{{ $goodsReceipt->purchaseOrder ? $goodsReceipt->purchaseOrder->supplier->name : '-' }}</div>
+                </div>
+                <div class="col-md-3">
+                    <strong>No. Pembelian</strong>
+                    <div>
+                        @if ($goodsReceipt->purchaseOrder)
+                            @can('view', $goodsReceipt->purchaseOrder)
+                                <a href="{{ route('purchase-orders.show', $goodsReceipt->purchaseOrder) }}"><code>{{ $goodsReceipt->purchaseOrder->number }}</code></a>
+                            @else
+                                <code>{{ $goodsReceipt->purchaseOrder->number }}</code>
+                            @endcan
+                        @else
+                            - <span class="text-muted small">(data lama)</span>
+                        @endif
+                    </div>
+                </div>
                 <div class="col-md-3">
                     <strong>Status</strong>
                     <div>
@@ -60,18 +78,24 @@
             <h2 class="h6">Baris Sparepart</h2>
             <div class="table-responsive">
             <table class="table table-sm">
-                <thead><tr><th>Kode</th><th>Nama</th><th>Qty</th><th>Harga Beli</th><th>Total</th></tr></thead>
+                <thead><tr><th>Kode</th><th>Nama</th>@if ($goodsReceipt->purchaseOrder)<th>Dipesan</th>@endif<th>Qty</th>@if ($goodsReceipt->purchaseOrder)<th>Sisa Pembelian</th>@endif<th>Harga Beli</th><th>Total</th></tr></thead>
                 <tbody>
                     @forelse ($goodsReceipt->lines as $line)
                         <tr>
                             <td><code>{{ $line->sparepartBranch->sparepart->code }}</code></td>
                             <td>{{ $line->sparepartBranch->sparepart->name }}</td>
+                            @if ($goodsReceipt->purchaseOrder)
+                                <td>{{ $line->purchaseOrderLine ? number_format($line->purchaseOrderLine->qty_ordered, 0, ',', '.') : '-' }}</td>
+                            @endif
                             <td>{{ number_format($line->qty, 0, ',', '.') }}</td>
+                            @if ($goodsReceipt->purchaseOrder)
+                                <td>{{ $line->purchaseOrderLine ? number_format($line->purchaseOrderLine->remainingQty(), 0, ',', '.') : '-' }}</td>
+                            @endif
                             <td>{{ number_format($line->purchase_price, 0, ',', '.') }}</td>
                             <td>{{ number_format($line->line_total, 0, ',', '.') }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-muted">Tidak ada baris sparepart.</td></tr>
+                        <tr><td colspan="7" class="text-muted">Tidak ada baris sparepart.</td></tr>
                     @endforelse
                 </tbody>
             </table>

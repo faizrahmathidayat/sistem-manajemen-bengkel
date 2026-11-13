@@ -11,11 +11,14 @@ use App\Models\Branch;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptLine;
 use App\Models\InventoryMovement;
+use App\Models\PurchaseOrder;
 use App\Models\SparepartBranchStock;
 use App\Services\DocumentNumberGenerator;
 use App\Services\InventoryCostService;
 use App\Support\GoodsReceiptStatus;
 use App\Support\InventoryMovementType;
+use App\Support\PurchaseOrderStatus;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -38,12 +41,19 @@ class GoodsReceiptController extends Controller
         $search = is_string(request('q')) ? trim(request('q')) : null;
         $status = request('status') ?: null;
 
-        $goodsReceipts = GoodsReceipt::with('branch')
+        $goodsReceipts = GoodsReceipt::with(['branch', 'purchaseOrder.supplier'])
+            ->withSum('lines as lines_value', 'line_total')
             ->whereIn('branch_id', $permittedBranches->pluck('id'))
             ->when($branchIds, fn ($query) => $query->whereIn('branch_id', $branchIds))
             ->when($status, fn ($query, $s) => $query->where('status', $s))
             ->when($search, function ($query, $q) {
-                $query->where('number', 'like', '%' . addcslashes($q, '%_\\') . '%');
+                $like = '%' . addcslashes($q, '%_\\') . '%';
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('number', 'like', $like)
+                        ->orWhereHas('purchaseOrder', function ($order) use ($like) {
+                            $order->where('number', 'like', $like);
+                        });
+                });
             })
             ->orderByDesc('receipt_date')
             ->orderByDesc('id')
@@ -65,7 +75,76 @@ class GoodsReceiptController extends Controller
             return view('goods-receipts.no-access');
         }
 
-        return view('goods-receipts.create', compact('branches'));
+        // Preselect a purchase order from ?purchase_order_id= (the "Terima Barang" button) or
+        // from old input after a validation error; only orders this user may actually receive.
+        $orderId = (int) old('purchase_order_id', request('purchase_order_id'));
+        $preselectedOrder = null;
+        if ($orderId > 0) {
+            $preselectedOrder = PurchaseOrder::with(['supplier', 'branch'])
+                ->whereIn('branch_id', $branches->pluck('id'))
+                ->whereIn('status', PurchaseOrderStatus::RECEIVABLE)
+                ->find($orderId);
+        }
+
+        return view('goods-receipts.create', compact('branches', 'preselectedOrder'));
+    }
+
+    /**
+     * Receivable purchase orders (issued / partially received) in the branches where the user
+     * may create receipts. Select2 source for the receipt form.
+     */
+    public function lookupPurchaseOrders(Request $request)
+    {
+        $branchIds = auth()->user()->branchesWithPermission('receipt.create')->pluck('id');
+        abort_if($branchIds->isEmpty(), 403);
+
+        $query = PurchaseOrder::with(['supplier', 'branch'])->whereIn('branch_id', $branchIds);
+        $ids = array_map('intval', (array) $request->query('ids', []));
+
+        if (! empty($ids)) {
+            $query->whereIn('id', $ids);
+        } else {
+            $term = $request->query('q');
+            $term = is_string($term) ? trim($term) : '';
+            if (mb_strlen($term) < 3) {
+                return response()->json([]);
+            }
+            $query->whereIn('status', PurchaseOrderStatus::RECEIVABLE)
+                ->where('number', 'like', '%' . addcslashes($term, '%_\\') . '%');
+        }
+
+        return response()->json(
+            $query->orderByDesc('id')->limit(20)->get()->map(function (PurchaseOrder $order) {
+                return [
+                    'id' => $order->id,
+                    'text' => $order->number . ' — ' . $order->supplier->name,
+                    'supplier' => $order->supplier->name,
+                    'branch' => $order->branch->name,
+                ];
+            })->values()
+        );
+    }
+
+    /** Lines of a purchase order with what is already received / still open, for the receipt form. */
+    public function poLines(PurchaseOrder $purchaseOrder)
+    {
+        abort_unless(auth()->user()->hasPermissionToInBranch('receipt.create', $purchaseOrder->branch_id), 403);
+
+        $purchaseOrder->load('lines.sparepartBranch.sparepart');
+
+        return response()->json(
+            $purchaseOrder->lines->map(function ($line) {
+                return [
+                    'purchase_order_line_id' => $line->id,
+                    'code' => $line->sparepartBranch->sparepart->code,
+                    'name' => $line->sparepartBranch->sparepart->name,
+                    'ordered' => (float) $line->qty_ordered,
+                    'received' => (float) $line->qty_received,
+                    'remaining' => $line->remainingQty(),
+                    'unit_price' => (float) $line->unit_price,
+                ];
+            })->values()
+        );
     }
 
     public function downloadImportTemplate()
@@ -92,19 +171,20 @@ class GoodsReceiptController extends Controller
     public function store(StoreGoodsReceiptRequest $request)
     {
         $data = $request->validated();
-        $branch = Branch::findOrFail($data['branch_id']);
+        $order = PurchaseOrder::with(['lines', 'branch'])->findOrFail($data['purchase_order_id']);
 
-        $goodsReceipt = DB::transaction(function () use ($data, $branch) {
+        $goodsReceipt = DB::transaction(function () use ($data, $order) {
             $goodsReceipt = GoodsReceipt::create([
-                'number' => (new DocumentNumberGenerator())->next($branch, 'PB'),
-                'branch_id' => $branch->id,
+                'number' => (new DocumentNumberGenerator())->next($order->branch, 'PB'),
+                'branch_id' => $order->branch_id,
+                'purchase_order_id' => $order->id,
                 'receipt_date' => $data['receipt_date'],
                 'reference_number' => $data['reference_number'] ?? null,
                 'status' => GoodsReceiptStatus::DRAFT,
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            $this->syncLines($goodsReceipt, $data['lines']);
+            $this->syncPurchaseOrderLines($goodsReceipt, $order, $data['lines']);
 
             return $goodsReceipt;
         });
@@ -116,7 +196,7 @@ class GoodsReceiptController extends Controller
     {
         $this->authorize('view', $goodsReceipt);
 
-        $goodsReceipt->load(['branch', 'lines.sparepartBranch.sparepart']);
+        $goodsReceipt->load(['branch', 'purchaseOrder.supplier', 'lines.sparepartBranch.sparepart', 'lines.purchaseOrderLine']);
 
         return view('goods-receipts.show', compact('goodsReceipt'));
     }
@@ -124,6 +204,26 @@ class GoodsReceiptController extends Controller
     public function edit(GoodsReceipt $goodsReceipt)
     {
         $this->authorize('update', $goodsReceipt);
+
+        if ($goodsReceipt->purchase_order_id) {
+            $goodsReceipt->load(['branch', 'purchaseOrder.supplier', 'purchaseOrder.lines.sparepartBranch.sparepart', 'lines']);
+            $currentQty = $goodsReceipt->lines->pluck('qty', 'purchase_order_line_id');
+
+            $orderLines = $goodsReceipt->purchaseOrder->lines->map(function ($line) use ($currentQty) {
+                return [
+                    'purchase_order_line_id' => $line->id,
+                    'code' => $line->sparepartBranch->sparepart->code,
+                    'name' => $line->sparepartBranch->sparepart->name,
+                    'ordered' => (float) $line->qty_ordered,
+                    'received' => (float) $line->qty_received,
+                    'remaining' => $line->remainingQty(),
+                    'unit_price' => (float) $line->unit_price,
+                    'qty' => (int) ($currentQty[$line->id] ?? 0),
+                ];
+            })->values();
+
+            return view('goods-receipts.edit-po', compact('goodsReceipt', 'orderLines'));
+        }
 
         $goodsReceipt->load('lines');
 
@@ -154,7 +254,11 @@ class GoodsReceiptController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            $this->syncLines($fresh, $data['lines']);
+            if ($fresh->purchase_order_id) {
+                $this->syncPurchaseOrderLines($fresh, PurchaseOrder::with('lines')->findOrFail($fresh->purchase_order_id), $data['lines']);
+            } else {
+                $this->syncLines($fresh, $data['lines']);
+            }
         });
 
         return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil diperbarui.');
@@ -220,6 +324,34 @@ class GoodsReceiptController extends Controller
         });
 
         return redirect()->route('goods-receipts.show', $goodsReceipt)->with('status', 'Penerimaan barang berhasil dibatalkan.');
+    }
+
+    /**
+     * Lines of a receipt that comes from a purchase order: only lines with a positive qty are
+     * kept; sparepart and unit price are taken from the order line, never from the request.
+     */
+    protected function syncPurchaseOrderLines(GoodsReceipt $goodsReceipt, PurchaseOrder $order, array $lines): void
+    {
+        $goodsReceipt->lines()->delete();
+        $orderLines = $order->lines->keyBy('id');
+        $sortOrder = 0;
+
+        foreach ($lines as $line) {
+            $qty = (float) $line['qty'];
+            if ($qty <= 0) {
+                continue;
+            }
+            $orderLine = $orderLines[(int) $line['purchase_order_line_id']];
+            GoodsReceiptLine::create([
+                'goods_receipt_id' => $goodsReceipt->id,
+                'sparepart_branch_id' => $orderLine->sparepart_branch_id,
+                'purchase_order_line_id' => $orderLine->id,
+                'qty' => $qty,
+                'purchase_price' => $orderLine->unit_price,
+                'line_total' => round($qty * (float) $orderLine->unit_price, 2),
+                'sort_order' => $sortOrder++,
+            ]);
+        }
     }
 
     protected function syncLines(GoodsReceipt $goodsReceipt, array $lines): void

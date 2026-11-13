@@ -36,6 +36,32 @@ class GoodsReceiptManagementTest extends TestCase
         return SparepartBranch::create(['sparepart_id' => $sparepart->id, 'branch_id' => $branch->id, 'selling_price' => 60000]);
     }
 
+    protected $legacySeq = 0;
+
+    /**
+     * A pre-existing style receipt (no purchase order). New receipts can no longer be created
+     * this way through the UI, but posting/editing/cancelling legacy drafts must keep working.
+     */
+    protected function makeLegacyReceipt(Branch $branch, SparepartBranch $sparepartBranch, int $qty = 10, float $price = 40000): GoodsReceipt
+    {
+        $this->legacySeq++;
+        $receipt = GoodsReceipt::create([
+            'number' => 'PB/' . $branch->code . '/202608/' . str_pad((string) $this->legacySeq, 5, '0', STR_PAD_LEFT),
+            'branch_id' => $branch->id,
+            'receipt_date' => now()->format('Y-m-d'),
+            'reference_number' => 'NOTA-001',
+        ]);
+        $receipt->lines()->create([
+            'sparepart_branch_id' => $sparepartBranch->id,
+            'qty' => $qty,
+            'purchase_price' => $price,
+            'line_total' => round($qty * $price, 2),
+            'sort_order' => 0,
+        ]);
+
+        return $receipt;
+    }
+
     protected function baseStorePayload(Branch $branch, SparepartBranch $sparepartBranch): array
     {
         return [
@@ -48,92 +74,11 @@ class GoodsReceiptManagementTest extends TestCase
         ];
     }
 
-    public function test_store_creates_goods_receipt_with_lines(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $sparepartBranch = $this->makeSparepartBranch($branch);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
 
-        $response = $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
 
-        $goodsReceipt = GoodsReceipt::first();
-        $response->assertRedirect(route('goods-receipts.show', $goodsReceipt));
-        $this->assertSame(GoodsReceiptStatus::DRAFT, $goodsReceipt->status);
-        $this->assertStringStartsWith('PB/JKT/', $goodsReceipt->number);
-        $this->assertCount(1, $goodsReceipt->lines);
-        $this->assertSame(400000.0, (float) $goodsReceipt->lines->first()->line_total);
 
-        $stock = \DB::table('sparepart_branch_stocks')->where('sparepart_branch_id', $sparepartBranch->id)->first();
-        $this->assertSame(0.0, (float) $stock->on_hand_qty, 'Creating a DRAFT receipt must not touch stock.');
-    }
 
-    public function test_store_rejects_decimal_qty(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $sparepartBranch = $this->makeSparepartBranch($branch);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $payload = $this->baseStorePayload($branch, $sparepartBranch);
-        $payload['lines'][0]['qty'] = 2.5;
 
-        $response = $this->actingAs(User::find($user->id))->post('/goods-receipts', $payload);
-
-        $response->assertSessionHasErrors(['lines.0.qty']);
-        $this->assertSame(0, GoodsReceipt::count());
-    }
-
-    public function test_store_recomputes_line_total_server_side(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $sparepartBranch = $this->makeSparepartBranch($branch);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $payload = $this->baseStorePayload($branch, $sparepartBranch);
-        $payload['lines'][0]['line_total'] = 999999;
-
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $payload);
-
-        $goodsReceipt = GoodsReceipt::first();
-        $this->assertSame(400000.0, (float) $goodsReceipt->lines->first()->line_total);
-    }
-
-    public function test_store_is_forbidden_without_receipt_create_permission(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $sparepartBranch = $this->makeSparepartBranch($branch);
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
-
-        $response->assertForbidden();
-    }
-
-    public function test_store_rejects_a_receipt_with_no_lines(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-
-        $response = $this->actingAs(User::find($user->id))->post('/goods-receipts', [
-            'branch_id' => $branch->id, 'receipt_date' => now()->format('Y-m-d'), 'lines' => [],
-        ]);
-
-        $response->assertSessionHasErrors(['lines']);
-    }
-
-    public function test_store_rejects_sparepart_from_a_different_branch(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $otherBranch = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
-        $otherSparepartBranch = $this->makeSparepartBranch($otherBranch, '-other');
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-
-        $response = $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $otherSparepartBranch));
-
-        $response->assertSessionHasErrors(['lines.0.sparepart_branch_id']);
-    }
 
     public function test_post_increases_stock_and_writes_ledger_entry(): void
     {
@@ -142,7 +87,7 @@ class GoodsReceiptManagementTest extends TestCase
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $response = $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
@@ -168,14 +113,8 @@ class GoodsReceiptManagementTest extends TestCase
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', [
-            'branch_id' => $branch->id,
-            'receipt_date' => now()->format('Y-m-d'),
-            'lines' => [
-                ['sparepart_branch_id' => $sparepartBranchB->id, 'qty' => 5, 'purchase_price' => 20000],
-                ['sparepart_branch_id' => $sparepartBranchA->id, 'qty' => 8, 'purchase_price' => 15000],
-            ],
-        ]);
+        $twoLineReceipt = $this->makeLegacyReceipt($branch, $sparepartBranchB, 5, 20000);
+        $twoLineReceipt->lines()->create(['sparepart_branch_id' => $sparepartBranchA->id, 'qty' => 8, 'purchase_price' => 15000, 'line_total' => 120000, 'sort_order' => 1]);
         $goodsReceipt = GoodsReceipt::first();
 
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
@@ -194,7 +133,7 @@ class GoodsReceiptManagementTest extends TestCase
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
@@ -212,18 +151,12 @@ class GoodsReceiptManagementTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'receipt.post');
 
         // Receipt 1: 10 @ 40000
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $firstReceipt = GoodsReceipt::first();
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$firstReceipt->id}/post");
 
         // Receipt 2: 5 @ 55000 -> expected avg (10*40000 + 5*55000) / 15 = 45000
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', [
-            'branch_id' => $branch->id,
-            'receipt_date' => now()->format('Y-m-d'),
-            'lines' => [
-                ['sparepart_branch_id' => $sparepartBranch->id, 'qty' => 5, 'purchase_price' => 55000],
-            ],
-        ]);
+        $this->makeLegacyReceipt($branch, $sparepartBranch, 5, 55000);
         $secondReceipt = GoodsReceipt::latest('id')->first();
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$secondReceipt->id}/post");
 
@@ -238,7 +171,7 @@ class GoodsReceiptManagementTest extends TestCase
         $sparepartBranch = $this->makeSparepartBranch($branch);
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $response = $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
@@ -253,7 +186,7 @@ class GoodsReceiptManagementTest extends TestCase
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
 
@@ -269,7 +202,7 @@ class GoodsReceiptManagementTest extends TestCase
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
         $this->grantBranchPermission($user, $branch, 'receipt.cancel');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $response = $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/cancel");
@@ -290,7 +223,7 @@ class GoodsReceiptManagementTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'receipt.create');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
         $this->grantBranchPermission($user, $branch, 'receipt.cancel');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
 
@@ -306,7 +239,7 @@ class GoodsReceiptManagementTest extends TestCase
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
 
@@ -318,67 +251,9 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_create_form_renders_for_a_user_with_receipt_create_in_some_branch(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
 
-        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
 
-        $response->assertOk();
-    }
 
-    public function test_create_form_auto_selects_branch_when_user_has_only_one(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-
-        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
-
-        $response->assertOk();
-        $response->assertSee('<option value="' . $branch->id . '" selected', false);
-    }
-
-    public function test_create_form_does_not_auto_select_branch_when_user_has_multiple(): void
-    {
-        $branchA = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $branchB = Branch::create(['code' => 'BDG', 'name' => 'Cabang Bandung']);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branchA, 'receipt.create');
-        $this->grantBranchPermission($user, $branchB, 'receipt.create');
-
-        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
-
-        $response->assertOk();
-        $response->assertDontSee('<option value="' . $branchA->id . '" selected', false);
-        $response->assertDontSee('<option value="' . $branchB->id . '" selected', false);
-    }
-
-    public function test_create_form_shows_line_column_headers_and_marks_qty_and_price_required(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-
-        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
-
-        $response->assertOk();
-        $content = $response->getContent();
-
-        $response->assertSee('<div class="col-md-5">Sparepart</div>', false);
-        $response->assertSee('<div class="col-md-3">Qty</div>', false);
-        $response->assertSee('<div class="col-md-3">Harga HPP</div>', false);
-
-        preg_match('/<input[^>]*goods-receipt-qty[^>]*>/', $content, $qtyMatch);
-        $this->assertNotEmpty($qtyMatch, 'Input qty baris sparepart tidak ditemukan.');
-        $this->assertStringContainsString('required', $qtyMatch[0]);
-
-        preg_match('/<input[^>]*goods-receipt-purchase-price[^>]*>/', $content, $priceMatch);
-        $this->assertNotEmpty($priceMatch, 'Input harga satuan baris sparepart tidak ditemukan.');
-        $this->assertStringContainsString('required', $priceMatch[0]);
-    }
 
     public function test_edit_form_shows_line_column_headers_and_marks_qty_and_price_required(): void
     {
@@ -413,35 +288,6 @@ class GoodsReceiptManagementTest extends TestCase
         $this->assertStringContainsString('required', $priceMatch[0]);
     }
 
-    public function test_create_form_replays_old_lines_after_a_validation_error(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $sparepartBranch = $this->makeSparepartBranch($branch);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $payload = [
-            'branch_id' => $branch->id,
-            // receipt_date deliberately omitted so validation fails, while
-            // 'lines' remains present and valid so old('lines') is non-empty
-            // on the redirected-back create form.
-            'reference_number' => 'NOTA-001',
-            'lines' => [
-                ['sparepart_branch_id' => $sparepartBranch->id, 'qty' => 7, 'purchase_price' => 40000],
-            ],
-        ];
-
-        $this->actingAs(User::find($user->id))
-            ->from(route('goods-receipts.create'))
-            ->post('/goods-receipts', $payload)
-            ->assertSessionHasErrors(['receipt_date']);
-
-        $response = $this->actingAs(User::find($user->id))->get(route('goods-receipts.create'));
-
-        $response->assertOk();
-        $response->assertSee('oldLines', false);
-        $response->assertSee((string) $sparepartBranch->id, false);
-        $response->assertSee('"qty":7', false);
-    }
 
     public function test_edit_form_renders_for_a_user_with_receipt_create_on_a_draft_receipt(): void
     {
@@ -449,7 +295,7 @@ class GoodsReceiptManagementTest extends TestCase
         $sparepartBranch = $this->makeSparepartBranch($branch);
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $response = $this->actingAs(User::find($user->id))->get("/goods-receipts/{$goodsReceipt->id}/edit");
@@ -464,7 +310,7 @@ class GoodsReceiptManagementTest extends TestCase
         $updatedSparepartBranch = $this->makeSparepartBranch($branch, '-updated');
         $user = User::find(User::factory()->create()->id);
         $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $this->actingAs($user)->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $response = $this->actingAs($user)->put("/goods-receipts/{$goodsReceipt->id}", [
@@ -493,7 +339,7 @@ class GoodsReceiptManagementTest extends TestCase
         $sparepartBranch = $this->makeSparepartBranch($branch);
         $user = User::find(User::factory()->create()->id);
         $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $this->actingAs($user)->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $this->actingAs($user)->put("/goods-receipts/{$goodsReceipt->id}", [
@@ -519,9 +365,9 @@ class GoodsReceiptManagementTest extends TestCase
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branchA, 'receipt.view');
         $this->grantBranchPermission($user, $branchA, 'receipt.create');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branchA, $sparepartBranchA));
+        $this->makeLegacyReceipt($branchA, $sparepartBranchA);
         $this->grantBranchPermission($user, $branchB, 'receipt.create');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branchB, $sparepartBranchB));
+        $this->makeLegacyReceipt($branchB, $sparepartBranchB);
 
         $response = $this->actingAs(User::find($user->id))->get('/goods-receipts');
 
@@ -584,7 +430,7 @@ class GoodsReceiptManagementTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'receipt.view');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
         $this->grantBranchPermission($user, $branch, 'receipt.cancel');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $response = $this->actingAs(User::find($user->id))->get("/goods-receipts/{$goodsReceipt->id}");
@@ -603,7 +449,7 @@ class GoodsReceiptManagementTest extends TestCase
         $this->grantBranchPermission($user, $branch, 'receipt.view');
         $this->grantBranchPermission($user, $branch, 'receipt.post');
         $this->grantBranchPermission($user, $branch, 'receipt.cancel');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
         $this->actingAs(User::find($user->id))->patch("/goods-receipts/{$goodsReceipt->id}/post");
 
@@ -615,17 +461,6 @@ class GoodsReceiptManagementTest extends TestCase
         $response->assertDontSee(route('goods-receipts.cancel', $goodsReceipt), false);
     }
 
-    public function test_create_page_loads_select2_for_sparepart_picker(): void
-    {
-        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
-        $user = User::factory()->create();
-        $this->grantBranchPermission($user, $branch, 'receipt.create');
-
-        $response = $this->actingAs(User::find($user->id))->get('/goods-receipts/create');
-
-        $response->assertOk();
-        $response->assertSee('select2-ajax-picker.js', false);
-    }
 
     public function test_edit_page_loads_select2_for_sparepart_picker(): void
     {
@@ -633,7 +468,7 @@ class GoodsReceiptManagementTest extends TestCase
         $sparepartBranch = $this->makeSparepartBranch($branch);
         $user = User::factory()->create();
         $this->grantBranchPermission($user, $branch, 'receipt.create');
-        $this->actingAs(User::find($user->id))->post('/goods-receipts', $this->baseStorePayload($branch, $sparepartBranch));
+        $this->makeLegacyReceipt($branch, $sparepartBranch);
         $goodsReceipt = GoodsReceipt::first();
 
         $response = $this->actingAs(User::find($user->id))->get("/goods-receipts/{$goodsReceipt->id}/edit");

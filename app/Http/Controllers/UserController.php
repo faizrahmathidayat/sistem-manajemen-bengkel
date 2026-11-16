@@ -58,6 +58,7 @@ class UserController extends Controller
             'username' => $data['username'],
             'password' => Hash::make($data['password']),
             'is_active' => $request->boolean('is_active'),
+            'phone_number' => \App\Support\PhoneNumber::normalize($data['phone_number'] ?? null),
         ]);
 
         return redirect()->route('users.index')->with('status', 'User berhasil ditambahkan.');
@@ -103,6 +104,7 @@ class UserController extends Controller
 
         $user->name = $data['name'];
         $user->username = $data['username'];
+        $user->phone_number = \App\Support\PhoneNumber::normalize($data['phone_number'] ?? null);
 
         if (! empty($data['password'])) {
             $user->password = Hash::make($data['password']);

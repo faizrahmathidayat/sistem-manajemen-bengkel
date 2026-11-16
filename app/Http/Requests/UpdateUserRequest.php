@@ -18,6 +18,11 @@ class UpdateUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'username' => ['required', 'string', 'max:100', Rule::unique('users', 'username')->ignore($this->route('user'))],
             'password' => ['nullable', 'string', 'min:6'],
+            'phone_number' => ['nullable', 'string', 'max:30', function ($attribute, $value, $fail) {
+                if ($value !== null && trim($value) !== '' && \App\Support\PhoneNumber::normalize($value) === null) {
+                    $fail('Nomor HP tidak valid. Gunakan format 0812… atau 62812….');
+                }
+            }],
         ];
     }
 }

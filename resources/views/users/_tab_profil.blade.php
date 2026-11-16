@@ -17,6 +17,13 @@
             </div>
 
             <div class="mb-3">
+                <label for="phone_number" class="form-label">Nomor HP</label>
+                <input type="text" name="phone_number" id="phone_number" value="{{ old('phone_number', $user->phone_number) }}" class="form-control @error('phone_number') is-invalid @enderror" maxlength="30" placeholder="Contoh: 0812 3456 7890">
+                @error('phone_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="form-text">Format 08xx otomatis disimpan sebagai 628xx.</div>
+            </div>
+
+            <div class="mb-3">
                 <label for="password" class="form-label">Password Baru</label>
                 <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" placeholder="Kosongkan jika tidak ingin mengubah">
                 @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror

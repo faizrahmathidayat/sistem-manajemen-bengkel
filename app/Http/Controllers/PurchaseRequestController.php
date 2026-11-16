@@ -13,6 +13,7 @@ use App\Models\Branch;
 use App\Models\PurchaseRequest;
 use App\Models\SparepartBranch;
 use App\Models\SparepartBranchStock;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Services\ApprovalChainResolver;
 use App\Services\AuditLogger;
@@ -84,12 +85,15 @@ class PurchaseRequestController extends Controller
         $data = $request->validated();
         $branch = Branch::findOrFail($data['branch_id']);
 
-        $purchaseRequest = DB::transaction(function () use ($data, $branch) {
+        $isUrgent = $request->boolean('is_urgent');
+
+        $purchaseRequest = DB::transaction(function () use ($data, $branch, $isUrgent) {
             $purchaseRequest = PurchaseRequest::create([
                 'number' => (new DocumentNumberGenerator())->next($branch, 'RQ'),
                 'branch_id' => $branch->id,
                 'request_date' => $data['request_date'],
                 'notes' => $data['notes'] ?? null,
+                'is_urgent' => $isUrgent,
                 'status' => PurchaseRequestStatus::WAITING_SUPPLIER,
             ]);
 
@@ -152,12 +156,15 @@ class PurchaseRequestController extends Controller
     {
         $data = $request->validated();
 
-        DB::transaction(function () use ($data, $purchaseRequest) {
+        $isUrgent = $request->boolean('is_urgent');
+
+        DB::transaction(function () use ($data, $purchaseRequest, $isUrgent) {
             $fresh = $this->lockEditable($purchaseRequest);
 
             $fresh->update([
                 'request_date' => $data['request_date'],
                 'notes' => $data['notes'] ?? null,
+                'is_urgent' => $isUrgent,
             ]);
 
             $this->assertStockStillLow($data['lines']);
@@ -263,6 +270,13 @@ class PurchaseRequestController extends Controller
                 if (isset($input['qty']) && $input['qty'] !== '') {
                     $line->qty = (int) $input['qty'];
                 }
+                $account = isset($input['supplier_account_number']) ? trim((string) $input['supplier_account_number']) : '';
+                if ($supplierId === null) {
+                    $account = '';
+                } elseif ($account === '') {
+                    $account = (string) optional(Supplier::find($supplierId))->account_number;
+                }
+                $line->supplier_account_number = $account !== '' ? $account : null;
                 $line->supplier_id = $supplierId;
                 $line->unit_price = $price;
                 $line->line_total = $price === null ? null : round((float) $line->qty * $price, 2);

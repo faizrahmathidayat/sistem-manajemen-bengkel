@@ -41,7 +41,7 @@
                 <tbody>
                     @forelse ($purchaseRequests as $purchaseRequest)
                         <tr>
-                            <td><code>{{ $purchaseRequest->number }}</code></td>
+                            <td><code>{{ $purchaseRequest->number }}</code> @include('purchase-requests._urgent_badge', ['purchaseRequest' => $purchaseRequest])</td>
                             <td>{{ $purchaseRequest->branch->name }}</td>
                             <td>{{ $purchaseRequest->request_date->format('d/m/Y') }}</td>
                             <td>{{ optional($purchaseRequest->creator)->name ?? '-' }}</td>

@@ -10,7 +10,7 @@
     <table class="print-table">
         @if ($mode === 'detail')
             <thead>
-                <tr><th>No. Permintaan</th><th>Tanggal</th><th>Cabang</th><th>Status</th><th>Kode</th><th>Sparepart</th><th>Qty</th><th>Supplier</th><th>Harga</th><th>Subtotal</th><th>Dipilih</th></tr>
+                <tr><th>No. Permintaan</th><th>Tanggal</th><th>Cabang</th><th>Status</th><th>Kode</th><th>Sparepart</th><th>Qty</th><th>Supplier</th><th>Harga</th><th>Subtotal</th><th>Dipilih</th><th>Urgent</th></tr>
             </thead>
             <tbody>
                 @foreach ($rows as $line)
@@ -24,12 +24,13 @@
                         <td>{{ $line->unit_price !== null ? number_format((float) $line->unit_price, 0, ',', '.') : '-' }}</td>
                         <td>{{ $line->line_total !== null ? number_format((float) $line->line_total, 0, ',', '.') : '-' }}</td>
                         <td>{{ $line->is_selected ? 'Ya' : 'Tidak' }}</td>
+                        <td>{{ $request->is_urgent ? 'Ya' : '-' }}</td>
                     </tr>
                 @endforeach
             </tbody>
         @else
             <thead>
-                <tr><th>No. Permintaan</th><th>Tanggal</th><th>Cabang</th><th>Pemohon</th><th>Item</th><th>Total</th><th>Status</th><th>Posisi / Keputusan</th><th>Lama Proses</th></tr>
+                <tr><th>No. Permintaan</th><th>Tanggal</th><th>Cabang</th><th>Pemohon</th><th>Item</th><th>Total</th><th>Status</th><th>Posisi / Keputusan</th><th>Lama Proses</th><th>Urgent</th></tr>
             </thead>
             <tbody>
                 @foreach ($rows as $request)
@@ -40,7 +41,7 @@
                         <td>{{ optional($request->creator)->name ?? '-' }}</td><td>{{ number_format($request->lines_count, 0, ',', '.') }}</td>
                         <td>{{ $total > 0 ? number_format($total, 0, ',', '.') : '-' }}</td>
                         <td>{{ \App\Support\PurchaseRequestStatus::LABELS[$request->status] ?? $request->status }}</td>
-                        <td>{{ $request->positionLabel() }}</td><td>{{ $days === null ? '-' : $days . ' hari' }}</td>
+                        <td>{{ $request->positionLabel() }}</td><td>{{ $days === null ? '-' : $days . ' hari' }}</td><td>{{ $request->is_urgent ? 'Ya' : '-' }}</td>
                     </tr>
                 @endforeach
             </tbody>

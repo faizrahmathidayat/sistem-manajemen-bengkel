@@ -32,6 +32,7 @@
                         <th>Nama</th>
                         <th>Kontak</th>
                         <th>Telepon</th>
+                        <th>No. Rekening</th>
                         <th>Status</th>
                         <th class="text-end">Aksi</th>
                     </tr>
@@ -43,6 +44,7 @@
                             <td>{{ $supplier->name }}</td>
                             <td>{{ $supplier->contact_person ?? '-' }}</td>
                             <td>{{ $supplier->phone ?? '-' }}</td>
+                            <td>{{ $supplier->account_number ?? '-' }}</td>
                             <td>
                                 @if ($supplier->is_active)
                                     <span class="status-dot status-active">Aktif</span>

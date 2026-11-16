@@ -38,8 +38,8 @@ class PurchaseRequestReportExport implements FromQuery, WithHeadings, WithMappin
     public function headings(): array
     {
         return $this->mode === 'detail'
-            ? ['No. Permintaan', 'Tanggal', 'Cabang', 'Status', 'Kode', 'Nama Sparepart', 'Qty', 'Supplier', 'Harga Beli', 'Subtotal', 'Dipilih']
-            : ['No. Permintaan', 'Tanggal', 'Cabang', 'Pemohon', 'Jumlah Item', 'Total', 'Status', 'Posisi / Keputusan', 'Lama Proses (hari)'];
+            ? ['No. Permintaan', 'Tanggal', 'Cabang', 'Status', 'Kode', 'Nama Sparepart', 'Qty', 'Supplier', 'Harga Beli', 'Subtotal', 'Dipilih', 'Urgent']
+            : ['No. Permintaan', 'Tanggal', 'Cabang', 'Pemohon', 'Jumlah Item', 'Total', 'Status', 'Posisi / Keputusan', 'Lama Proses (hari)', 'Urgent'];
     }
 
     public function map($row): array
@@ -59,6 +59,7 @@ class PurchaseRequestReportExport implements FromQuery, WithHeadings, WithMappin
                 $row->unit_price !== null ? (float) $row->unit_price : '-',
                 $row->line_total !== null ? (float) $row->line_total : '-',
                 $row->is_selected ? 'Ya' : 'Tidak',
+                $request->is_urgent ? 'Ya' : '-',
             ];
         }
 
@@ -74,6 +75,7 @@ class PurchaseRequestReportExport implements FromQuery, WithHeadings, WithMappin
             PurchaseRequestStatus::LABELS[$row->status] ?? $row->status,
             $row->positionLabel(),
             $row->processDays() ?? '-',
+            $row->is_urgent ? 'Ya' : '-',
         ];
     }
 

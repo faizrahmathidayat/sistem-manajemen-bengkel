@@ -6,7 +6,7 @@
             <span class="page-icon"><i class="bi bi-clipboard-plus"></i></span>
             <div>
                 <p class="eyebrow mb-1">Permintaan Barang</p>
-                <h1 class="h3 mb-1">{{ $purchaseRequest->number }}</h1>
+                <h1 class="h3 mb-1">{{ $purchaseRequest->number }} @include('purchase-requests._urgent_badge', ['purchaseRequest' => $purchaseRequest])</h1>
             </div>
         </div>
         <div class="heading-actions">
@@ -132,6 +132,7 @@
                         <th>Sparepart</th>
                         <th class="text-end">Qty</th>
                         <th>Supplier</th>
+                        <th>No. Rekening</th>
                         <th class="text-end">Harga Beli</th>
                         <th class="text-end">Subtotal</th>
                     </tr>
@@ -156,6 +157,7 @@
                             </td>
                             <td class="text-end">{{ number_format($line->qty, 0, ',', '.') }}</td>
                             <td>{{ optional($line->supplier)->name ?? '-' }}</td>
+                            <td>{{ $line->supplier_account_number ?? '-' }}</td>
                             <td class="text-end">{{ $line->unit_price !== null ? number_format($line->unit_price, 0, ',', '.') : '-' }}</td>
                             <td class="text-end">{{ $line->line_total !== null ? number_format($line->line_total, 0, ',', '.') : '-' }}</td>
                         </tr>
@@ -166,12 +168,12 @@
                     <tfoot>
                         @if ($purchaseRequest->submitted_total !== null && round((float) $purchaseRequest->submitted_total, 2) !== round($pricedTotal, 2))
                             <tr>
-                                <td colspan="{{ $canSelectItems ? 6 : 5 }}" class="text-end text-muted">Total diajukan</td>
+                                <td colspan="{{ $canSelectItems ? 7 : 6 }}" class="text-end text-muted">Total diajukan</td>
                                 <td class="text-end text-muted">{{ number_format($purchaseRequest->submitted_total, 0, ',', '.') }}</td>
                             </tr>
                         @endif
                         <tr>
-                            <td colspan="{{ $canSelectItems ? 6 : 5 }}" class="text-end fw-bold">Total{{ $purchaseRequest->approvals->isNotEmpty() ? ' disetujui' : '' }}</td>
+                            <td colspan="{{ $canSelectItems ? 7 : 6 }}" class="text-end fw-bold">Total{{ $purchaseRequest->approvals->isNotEmpty() ? ' disetujui' : '' }}</td>
                             <td class="text-end fw-bold" id="approvalLinesTotal">{{ number_format($pricedTotal, 0, ',', '.') }}</td>
                         </tr>
                     </tfoot>

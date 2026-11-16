@@ -44,6 +44,9 @@ class PurchaseOrderGenerator
                     'number' => (new DocumentNumberGenerator())->next($purchaseRequest->branch, 'PO'),
                     'purchase_request_id' => $purchaseRequest->id,
                     'supplier_id' => $supplierId,
+                    'supplier_account_number' => optional($lines->first(function ($line) {
+                        return $line->supplier_account_number !== null && $line->supplier_account_number !== '';
+                    }))->supplier_account_number,
                     'branch_id' => $purchaseRequest->branch_id,
                     'order_date' => $orderDate,
                     'status' => PurchaseOrderStatus::DRAFT,

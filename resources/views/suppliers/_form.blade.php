@@ -29,6 +29,11 @@
         <textarea name="address" id="address" rows="2" class="form-control @error('address') is-invalid @enderror" maxlength="1000">{{ old('address', $supplier->address) }}</textarea>
         @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
+    <div class="col-md-6">
+        <label for="account_number" class="form-label">No. Rekening</label>
+        <input type="text" name="account_number" id="account_number" value="{{ old('account_number', $supplier->account_number) }}" class="form-control @error('account_number') is-invalid @enderror" maxlength="60" placeholder="Contoh: BCA 123-456-7890 a.n. PT Sumber">
+        @error('account_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
     <div class="col-12">
         <div class="form-check form-switch">
             <input type="checkbox" name="is_active" id="is_active" value="1" class="form-check-input" {{ old('is_active', $supplier->exists ? $supplier->is_active : true) ? 'checked' : '' }}>

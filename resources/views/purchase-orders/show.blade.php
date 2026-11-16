@@ -39,7 +39,7 @@
             <div class="card mb-3">
                 <div class="card-body">
                     <div class="row g-3 small">
-                        <div class="col-md-3"><strong>Supplier</strong><div>{{ $purchaseOrder->supplier->name }}</div></div>
+                        <div class="col-md-3"><strong>Supplier</strong><div>{{ $purchaseOrder->supplier->name }}</div><div class="text-muted">No. Rekening: {{ $purchaseOrder->supplier_account_number ?? '-' }}</div></div>
                         <div class="col-md-3"><strong>Cabang Tujuan</strong><div>{{ $purchaseOrder->branch->name }}</div></div>
                         <div class="col-md-3"><strong>Tanggal PO</strong><div>{{ $purchaseOrder->order_date->format('d/m/Y') }}</div></div>
                         <div class="col-md-3"><strong>Status</strong><div>@include('purchase-orders._status_badge', ['status' => $purchaseOrder->status])</div></div>

@@ -20,6 +20,7 @@ class UpdateSupplierRequest extends FormRequest
             'contact_person' => ['nullable', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string', 'max:1000'],
+            'account_number' => ['nullable', 'string', 'max:60'],
         ];
     }
 }

@@ -27,6 +27,7 @@
                         <th>Sparepart</th>
                         <th class="text-end">Qty</th>
                         <th style="min-width: 240px;">Supplier</th>
+                        <th style="min-width: 180px;">No. Rekening</th>
                         <th style="width: 150px;" class="text-end">Harga Beli (Rp)</th>
                         <th class="text-end">Subtotal (Rp)</th>
                     </tr>
@@ -50,6 +51,10 @@
                                 @error("lines.{$line->id}.supplier_id")<div class="text-danger small">{{ $message }}</div>@enderror
                             </td>
                             <td>
+                                <input type="text" name="lines[{{ $line->id }}][supplier_account_number]" value="{{ old("lines.{$line->id}.supplier_account_number", $line->supplier_account_number) }}" class="form-control form-control-sm assign-account" maxlength="60" placeholder="No. rekening supplier">
+                                @error("lines.{$line->id}.supplier_account_number")<div class="text-danger small">{{ $message }}</div>@enderror
+                            </td>
+                            <td>
                                 <input type="number" data-integer step="1" min="0" name="lines[{{ $line->id }}][unit_price]" value="{{ old("lines.{$line->id}.unit_price", $line->unit_price !== null ? (int) $line->unit_price : '') }}" class="form-control form-control-sm text-end assign-price" placeholder="0">
                                 @error("lines.{$line->id}.unit_price")<div class="text-danger small">{{ $message }}</div>@enderror
                             </td>
@@ -59,7 +64,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="5" class="text-end fw-bold">Total saat ini</td>
+                        <td colspan="6" class="text-end fw-bold">Total saat ini</td>
                         <td class="text-end fw-bold" id="assignTotal">{{ number_format((float) $purchaseRequest->lines->sum('line_total'), 0, ',', '.') }}</td>
                     </tr>
                 </tfoot>
@@ -121,7 +126,16 @@
     }
 
     document.querySelectorAll('.assign-supplier-select').forEach(function (select) {
-        initAjaxSelect(select, { endpoint: supplierEndpoint, placeholder: 'Pilih supplier…' });
+        const row = select.closest('tr');
+        initAjaxSelect(select, {
+            endpoint: supplierEndpoint,
+            placeholder: 'Pilih supplier…',
+            onSelect: function (data) {
+                const account = row.querySelector('.assign-account');
+                // Prefill from the supplier master; the user may still overwrite it.
+                if (account && data && data.account_number) { account.value = data.account_number; }
+            },
+        });
     });
     document.querySelectorAll('.assign-price, .assign-qty').forEach(function (input) {
         input.addEventListener('input', recalc);

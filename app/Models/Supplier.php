@@ -11,7 +11,7 @@ class Supplier extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'code', 'name', 'contact_person', 'phone', 'address', 'is_active', 'created_by', 'updated_by',
+        'code', 'name', 'contact_person', 'phone', 'address', 'account_number', 'is_active', 'created_by', 'updated_by',
     ];
 
     protected $casts = [

@@ -43,7 +43,7 @@
                     <tbody>
                         @forelse ($decisions as $decision)
                             <tr>
-                                <td><code>{{ $decision->purchaseRequest->number }}</code></td>
+                                <td><code>{{ $decision->purchaseRequest->number }}</code> @include('purchase-requests._urgent_badge', ['purchaseRequest' => $decision->purchaseRequest])</td>
                                 <td>{{ $decision->purchaseRequest->branch->name }}</td>
                                 <td class="text-end">{{ number_format($decision->purchaseRequest->total_amount, 0, ',', '.') }}</td>
                                 <td>{{ $decision->level_name }}</td>
@@ -84,7 +84,7 @@
                     <tbody>
                         @forelse ($waiting as $purchaseRequest)
                             <tr>
-                                <td><code>{{ $purchaseRequest->number }}</code></td>
+                                <td><code>{{ $purchaseRequest->number }}</code> @include('purchase-requests._urgent_badge', ['purchaseRequest' => $purchaseRequest])</td>
                                 <td>{{ $purchaseRequest->branch->name }}</td>
                                 <td>{{ optional($purchaseRequest->creator)->name ?? '-' }}</td>
                                 <td class="text-end">{{ number_format($purchaseRequest->total_amount, 0, ',', '.') }}</td>

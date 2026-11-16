@@ -24,6 +24,7 @@ class UpdatePurchaseRequestRequest extends FormRequest
         return array_merge([
             'request_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'is_urgent' => ['nullable', 'boolean'],
         ], $this->lineRules());
     }
 

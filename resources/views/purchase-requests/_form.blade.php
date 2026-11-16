@@ -38,6 +38,13 @@
             <input type="text" name="notes" value="{{ old('notes', $isEdit ? $purchaseRequest->notes : '') }}" class="form-control @error('notes') is-invalid @enderror" maxlength="1000">
             @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
+        <div class="col-12">
+            <div class="form-check form-switch">
+                <input type="hidden" name="is_urgent" value="0">
+                <input type="checkbox" name="is_urgent" id="is_urgent" value="1" class="form-check-input" {{ old('is_urgent', $isEdit ? $purchaseRequest->is_urgent : false) ? 'checked' : '' }}>
+                <label for="is_urgent" class="form-check-label"><span class="badge text-bg-danger">URGENT</span> Tandai permintaan ini mendesak</label>
+            </div>
+        </div>
     </div>
 </div>
 

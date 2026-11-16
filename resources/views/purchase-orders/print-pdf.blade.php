@@ -49,6 +49,7 @@
                 <div><span class="label">Kontak:</span> {{ $purchaseOrder->supplier->contact_person ?? '-' }}</div>
                 <div><span class="label">Telepon:</span> {{ $purchaseOrder->supplier->phone ?? '-' }}</div>
                 <div><span class="label">Alamat:</span> {{ $purchaseOrder->supplier->address ?? '-' }}</div>
+                <div><span class="label">No. Rekening:</span> {{ $purchaseOrder->supplier_account_number ?? '-' }}</div>
             </td>
             <td>
                 <h3>Info Pembelian</h3>

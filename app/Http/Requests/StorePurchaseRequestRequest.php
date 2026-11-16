@@ -27,6 +27,7 @@ class StorePurchaseRequestRequest extends FormRequest
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
             'request_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'is_urgent' => ['nullable', 'boolean'],
         ], $this->lineRules());
     }
 

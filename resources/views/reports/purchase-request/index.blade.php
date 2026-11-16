@@ -122,7 +122,7 @@
                     @forelse ($rows as $line)
                         @php($request = $line->purchaseRequest)
                         <tr>
-                            <td><code>{{ $request->number }}</code></td>
+                            <td><code>{{ $request->number }}</code> @include('purchase-requests._urgent_badge', ['purchaseRequest' => $request])</td>
                             <td>{{ $request->request_date->format('d/m/Y') }}</td>
                             <td>{{ $request->branch->name }}</td>
                             <td>@include('purchase-requests._status_badge', ['status' => $request->status])</td>
@@ -159,7 +159,7 @@
                         @php($total = $request->total_amount !== null ? (float) $request->total_amount : (float) $request->lines_amount)
                         @php($days = $request->processDays())
                         <tr>
-                            <td><code>{{ $request->number }}</code></td>
+                            <td><code>{{ $request->number }}</code> @include('purchase-requests._urgent_badge', ['purchaseRequest' => $request])</td>
                             <td>{{ $request->request_date->format('d/m/Y') }}</td>
                             <td>{{ $request->branch->name }}</td>
                             <td>{{ optional($request->creator)->name ?? '-' }}</td>

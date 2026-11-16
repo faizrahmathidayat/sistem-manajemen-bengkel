@@ -12,7 +12,7 @@ class PurchaseOrder extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'number', 'purchase_request_id', 'supplier_id', 'branch_id', 'order_date', 'status',
+        'number', 'purchase_request_id', 'supplier_id', 'supplier_account_number', 'branch_id', 'order_date', 'status',
         'total_amount', 'notes', 'issued_at', 'issued_by',
     ];
 

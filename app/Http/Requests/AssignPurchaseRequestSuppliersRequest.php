@@ -25,6 +25,7 @@ class AssignPurchaseRequestSuppliersRequest extends FormRequest
             'lines.*' => ['array'],
             'lines.*.qty' => ['sometimes', 'integer', 'min:1'],
             'lines.*.supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+            'lines.*.supplier_account_number' => ['nullable', 'string', 'max:60'],
             'lines.*.unit_price' => ['nullable', 'integer', 'min:0'],
         ];
     }

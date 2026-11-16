@@ -246,7 +246,7 @@ class LookupController extends Controller
 
         return response()->json(
             $query->orderBy('name')->limit(20)->get()
-                ->map(fn (Supplier $supplier) => ['id' => $supplier->id, 'text' => $supplier->label])
+                ->map(fn (Supplier $supplier) => ['id' => $supplier->id, 'text' => $supplier->label, 'account_number' => $supplier->account_number])
                 ->values()
         );
     }

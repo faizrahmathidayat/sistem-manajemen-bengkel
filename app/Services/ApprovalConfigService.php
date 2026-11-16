@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 class ApprovalConfigService
 {
     /**
-     * @param array $items each: ['id' => ?int, 'name' => string, 'is_active' => bool,
+     * @param array $items each: ['id' => ?int, 'name' => string, 'is_active' => bool, 'can_select_items' => bool,
      *                     'user_ids' => int[], 'delete' => ?bool]; array order = sort_order.
      */
     public function saveLevels(array $items): void
@@ -41,6 +41,7 @@ class ApprovalConfigService
                 $level->name = $item['name'];
                 $level->sort_order = $order++;
                 $level->is_active = $item['is_active'];
+                $level->can_select_items = $item['can_select_items'];
                 $level->save();
                 $level->users()->sync($item['user_ids']);
             }
@@ -89,6 +90,7 @@ class ApprovalConfigService
                 'id' => isset($item['id']) && $item['id'] !== '' ? (int) $item['id'] : null,
                 'name' => trim((string) (isset($item['name']) ? $item['name'] : '')),
                 'is_active' => filter_var(isset($item['is_active']) ? $item['is_active'] : false, FILTER_VALIDATE_BOOLEAN),
+                'can_select_items' => filter_var(isset($item['can_select_items']) ? $item['can_select_items'] : false, FILTER_VALIDATE_BOOLEAN),
                 'delete' => filter_var(isset($item['delete']) ? $item['delete'] : false, FILTER_VALIDATE_BOOLEAN),
                 'user_ids' => array_values(array_unique(array_map('intval', (array) (isset($item['user_ids']) ? $item['user_ids'] : [])))),
             ];
@@ -231,6 +233,7 @@ class ApprovalConfigService
                 'name' => $level->name,
                 'sort_order' => $level->sort_order,
                 'is_active' => $level->is_active,
+                'can_select_items' => $level->can_select_items,
                 'user_ids' => $level->users->pluck('id')->all(),
             ];
         })->all();

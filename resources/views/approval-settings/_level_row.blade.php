@@ -27,6 +27,11 @@
                 belum dipakai
             @endif
         </span>
+        <div class="form-check mb-0" style="width: 150px;" title="Bila dicentang, approver level ini boleh membatalkan centang barang saat menyetujui; pembelian hanya dibuat untuk barang yang tetap dicentang.">
+            <input type="hidden" name="levels[{{ $index }}][can_select_items]" value="0">
+            <input type="checkbox" class="form-check-input" id="levelSelect{{ $index }}" name="levels[{{ $index }}][can_select_items]" value="1" {{ $level && $level->can_select_items ? 'checked' : '' }}>
+            <label class="form-check-label small" for="levelSelect{{ $index }}">Boleh pilih item</label>
+        </div>
         <div class="form-check form-switch mb-0">
             <input type="hidden" name="levels[{{ $index }}][is_active]" value="0">
             <input type="checkbox" class="form-check-input" name="levels[{{ $index }}][is_active]" value="1" {{ ! $level || $level->is_active ? 'checked' : '' }}>

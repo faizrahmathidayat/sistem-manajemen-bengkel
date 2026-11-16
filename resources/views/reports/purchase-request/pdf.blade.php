@@ -10,7 +10,7 @@
     <table class="print-table">
         @if ($mode === 'detail')
             <thead>
-                <tr><th>No. Permintaan</th><th>Tanggal</th><th>Cabang</th><th>Status</th><th>Kode</th><th>Sparepart</th><th>Qty</th><th>Supplier</th><th>Harga</th><th>Subtotal</th></tr>
+                <tr><th>No. Permintaan</th><th>Tanggal</th><th>Cabang</th><th>Status</th><th>Kode</th><th>Sparepart</th><th>Qty</th><th>Supplier</th><th>Harga</th><th>Subtotal</th><th>Dipilih</th></tr>
             </thead>
             <tbody>
                 @foreach ($rows as $line)
@@ -23,6 +23,7 @@
                         <td>{{ $line->supplier ? $line->supplier->name : '-' }}</td>
                         <td>{{ $line->unit_price !== null ? number_format((float) $line->unit_price, 0, ',', '.') : '-' }}</td>
                         <td>{{ $line->line_total !== null ? number_format((float) $line->line_total, 0, ',', '.') : '-' }}</td>
+                        <td>{{ $line->is_selected ? 'Ya' : 'Tidak' }}</td>
                     </tr>
                 @endforeach
             </tbody>

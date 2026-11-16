@@ -114,12 +114,20 @@
     @can('assignSupplier', $purchaseRequest)
         @include('purchase-requests._assign_form')
     @else
+    @php($pendingStep = $purchaseRequest->approvals->firstWhere('status', 'pending'))
+    @php($canSelectItems = $pendingStep && $pendingStep->can_select_items && auth()->user()->can('approve', $purchaseRequest))
     <div class="panel">
         <h2 class="section-title mb-2"><i class="bi bi-list-check"></i><span>Rincian Barang</span></h2>
+        @if ($canSelectItems)
+            <div class="small mb-2 px-2 py-1 rounded" style="background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;">
+                <i class="bi bi-ui-checks"></i> Level <b>{{ $pendingStep->level_name }}</b> boleh memilih item. Hilangkan centang pada barang yang tidak disetujui; pembelian hanya dibuat untuk barang yang dicentang. Perubahan tersimpan saat Anda menekan <b>Setuju</b>.
+            </div>
+        @endif
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
                 <thead>
                     <tr>
+                        @if ($canSelectItems)<th style="width: 40px;"></th>@endif
                         <th>Kode</th>
                         <th>Sparepart</th>
                         <th class="text-end">Qty</th>
@@ -130,9 +138,22 @@
                 </thead>
                 <tbody>
                     @foreach ($purchaseRequest->lines as $line)
-                        <tr>
+                        <tr class="{{ $line->is_selected ? '' : 'text-muted' }}" data-line-total="{{ $line->line_total !== null ? (float) $line->line_total : 0 }}">
+                            @if ($canSelectItems)
+                                <td>
+                                    @if ($line->is_selected)
+                                        <input type="checkbox" class="form-check-input approval-line-check" name="selected_lines[]" value="{{ $line->id }}" form="approveForm" checked aria-label="Pilih {{ $line->sparepartBranch->sparepart->name }}">
+                                    @endif
+                                </td>
+                            @endif
                             <td><code>{{ $line->sparepartBranch->sparepart->code }}</code></td>
-                            <td>{{ $line->sparepartBranch->sparepart->name }}</td>
+                            <td @if (! $line->is_selected) style="text-decoration: line-through;" @endif>
+                                {{ $line->sparepartBranch->sparepart->name }}
+                                @if (! $line->is_selected)
+                                    @php($deselectedBy = optional($purchaseRequest->approvals->firstWhere('step_no', $line->deselected_step_no))->level_name)
+                                    <span class="badge text-bg-secondary" style="text-decoration: none;">Tidak disetujui{{ $deselectedBy ? ' oleh ' . $deselectedBy : '' }}</span>
+                                @endif
+                            </td>
                             <td class="text-end">{{ number_format($line->qty, 0, ',', '.') }}</td>
                             <td>{{ optional($line->supplier)->name ?? '-' }}</td>
                             <td class="text-end">{{ $line->unit_price !== null ? number_format($line->unit_price, 0, ',', '.') : '-' }}</td>
@@ -140,12 +161,18 @@
                         </tr>
                     @endforeach
                 </tbody>
-                @php($pricedTotal = (float) $purchaseRequest->lines->sum('line_total'))
+                @php($pricedTotal = (float) $purchaseRequest->lines->where('is_selected', true)->sum('line_total'))
                 @if ($pricedTotal > 0)
                     <tfoot>
+                        @if ($purchaseRequest->submitted_total !== null && round((float) $purchaseRequest->submitted_total, 2) !== round($pricedTotal, 2))
+                            <tr>
+                                <td colspan="{{ $canSelectItems ? 6 : 5 }}" class="text-end text-muted">Total diajukan</td>
+                                <td class="text-end text-muted">{{ number_format($purchaseRequest->submitted_total, 0, ',', '.') }}</td>
+                            </tr>
+                        @endif
                         <tr>
-                            <td colspan="5" class="text-end fw-bold">Total</td>
-                            <td class="text-end fw-bold">{{ number_format($pricedTotal, 0, ',', '.') }}</td>
+                            <td colspan="{{ $canSelectItems ? 6 : 5 }}" class="text-end fw-bold">Total{{ $purchaseRequest->approvals->isNotEmpty() ? ' disetujui' : '' }}</td>
+                            <td class="text-end fw-bold" id="approvalLinesTotal">{{ number_format($pricedTotal, 0, ',', '.') }}</td>
                         </tr>
                     </tfoot>
                 @endif
@@ -185,20 +212,53 @@
         </div>
     @endcan
 
+    @if (! empty($canSelectItems))
+        @push('scripts')
+        <script>
+        (function () {
+            const checks = Array.from(document.querySelectorAll('.approval-line-check'));
+            const summary = document.getElementById('approveModalSelection');
+            const modalTotal = document.getElementById('approveModalTotal');
+            const tableTotal = document.getElementById('approvalLinesTotal');
+            const submit = document.querySelector('#approveForm [type=submit]');
+            function refresh() {
+                let total = 0, count = 0;
+                checks.forEach(function (box) {
+                    if (box.checked) { count++; total += Number(box.closest('tr').dataset.lineTotal || 0); }
+                });
+                const text = total.toLocaleString('id-ID');
+                if (modalTotal) modalTotal.textContent = text;
+                if (tableTotal) tableTotal.textContent = text;
+                if (summary) summary.textContent = count + ' dari ' + checks.length + ' item dipilih.' + (count === 0 ? ' Minimal satu item harus dipilih; gunakan Tolak bila seluruh permintaan tidak disetujui.' : '');
+                if (submit) submit.disabled = count === 0;
+            }
+            checks.forEach(function (box) { box.addEventListener('change', refresh); });
+            refresh();
+        })();
+        </script>
+        @endpush
+    @endif
+
     @php($currentStepNo = optional($purchaseRequest->approvals->firstWhere('status', 'pending'))->step_no)
     @can('approve', $purchaseRequest)
         <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
-                <form method="POST" action="{{ route('purchase-requests.approve', $purchaseRequest) }}" class="modal-content" onsubmit="this.querySelector('[type=submit]').disabled = true;">
+                <form method="POST" id="approveForm" action="{{ route('purchase-requests.approve', $purchaseRequest) }}" class="modal-content" onsubmit="this.querySelector('[type=submit]').disabled = true;">
                     @csrf
                     @method('PATCH')
                     <input type="hidden" name="step_no" value="{{ $currentStepNo }}">
+                    @if (! empty($canSelectItems))
+                        <input type="hidden" name="selection_submitted" value="1">
+                    @endif
                     <div class="modal-header">
                         <h5 class="modal-title"><i class="bi bi-check-circle text-success"></i> Setujui Permintaan</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="small mb-2">Anda menyetujui <b>{{ $purchaseRequest->number }}</b> (Rp {{ number_format($purchaseRequest->total_amount, 0, ',', '.') }}).</p>
+                        <p class="small mb-2">Anda menyetujui <b>{{ $purchaseRequest->number }}</b> (Rp <span id="approveModalTotal">{{ number_format($purchaseRequest->total_amount, 0, ',', '.') }}</span>).</p>
+                        @if (! empty($canSelectItems))
+                            <p class="small text-muted mb-2" id="approveModalSelection"></p>
+                        @endif
                         <label class="form-label" for="approveNote">Catatan (opsional)</label>
                         <textarea name="note" id="approveNote" class="form-control" rows="2" maxlength="500"></textarea>
                     </div>

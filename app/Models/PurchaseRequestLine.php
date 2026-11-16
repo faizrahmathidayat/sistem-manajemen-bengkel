@@ -11,13 +11,14 @@ class PurchaseRequestLine extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'purchase_request_id', 'sparepart_branch_id', 'qty', 'supplier_id', 'unit_price', 'line_total', 'sort_order',
+        'purchase_request_id', 'sparepart_branch_id', 'qty', 'supplier_id', 'unit_price', 'line_total', 'is_selected', 'deselected_step_no', 'sort_order',
     ];
 
     protected $casts = [
         'qty' => 'decimal:3',
         'unit_price' => 'decimal:2',
         'line_total' => 'decimal:2',
+        'is_selected' => 'boolean',
     ];
 
     public function purchaseRequest()

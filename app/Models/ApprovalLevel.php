@@ -10,10 +10,11 @@ class ApprovalLevel extends Model
 {
     use HasFactory, HasAudit;
 
-    protected $fillable = ['name', 'sort_order', 'is_active'];
+    protected $fillable = ['name', 'sort_order', 'is_active', 'can_select_items'];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'can_select_items' => 'boolean',
         'sort_order' => 'integer',
     ];
 

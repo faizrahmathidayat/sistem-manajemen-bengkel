@@ -178,6 +178,7 @@ class PurchaseRequestReportController extends Controller
             'menunggu_approval' => $requests()->where('purchase_requests.status', PurchaseRequestStatus::WAITING_APPROVAL)->count(),
             'ditolak' => $requests()->where('purchase_requests.status', PurchaseRequestStatus::REJECTED)->count(),
             'total_nilai' => (float) PurchaseRequestLine::whereIn('purchase_request_id', $valueIds)
+                ->where('is_selected', true)
                 ->when($filters['supplierId'], fn ($q, $id) => $q->where('supplier_id', $id))
                 ->sum('line_total'),
         ];

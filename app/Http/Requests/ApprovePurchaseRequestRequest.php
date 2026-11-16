@@ -16,6 +16,9 @@ class ApprovePurchaseRequestRequest extends FormRequest
         return [
             'note' => ['nullable', 'string', 'max:500'],
             'step_no' => ['nullable', 'integer', 'min:1'],
+            'selection_submitted' => ['nullable', 'boolean'],
+            'selected_lines' => ['nullable', 'array'],
+            'selected_lines.*' => ['integer'],
         ];
     }
 }

@@ -64,6 +64,7 @@ class ApprovalChainResolver
                 'level_id' => (int) $level->id,
                 'level_name' => $level->name,
                 'user_ids' => $userIds,
+                'can_select_items' => (bool) $level->can_select_items,
             ];
         }
 

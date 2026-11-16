@@ -401,7 +401,7 @@ class PurchaseRequestApprovalFlowTest extends TestCase
         $request = $this->submitted(5000000);
         $this->app->bind(PurchaseRequestService::class, function () {
             return new class extends PurchaseRequestService {
-                public function approve(PurchaseRequest $purchaseRequest, User $actor, ?string $note = null, ?int $expectedStep = null): void
+                public function approve(PurchaseRequest $purchaseRequest, User $actor, ?string $note = null, ?int $expectedStep = null, ?array $selectedLineIds = null): void
                 {
                     throw new \Illuminate\Auth\Access\AuthorizationException('lost the race');
                 }

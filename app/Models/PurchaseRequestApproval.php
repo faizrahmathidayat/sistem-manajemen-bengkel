@@ -8,12 +8,13 @@ class PurchaseRequestApproval extends Model
 {
     protected $fillable = [
         'purchase_request_id', 'step_no', 'approval_level_id', 'level_name',
-        'status', 'acted_by', 'acted_at', 'notes',
+        'status', 'can_select_items', 'acted_by', 'acted_at', 'notes',
     ];
 
     protected $casts = [
         'acted_at' => 'datetime',
         'step_no' => 'integer',
+        'can_select_items' => 'boolean',
     ];
 
     public function purchaseRequest()

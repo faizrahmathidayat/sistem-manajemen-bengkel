@@ -115,6 +115,7 @@
                         <th>Supplier</th>
                         <th class="text-end">Harga</th>
                         <th class="text-end">Subtotal</th>
+                        <th>Dipilih</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -131,9 +132,10 @@
                             <td>{{ $line->supplier ? $line->supplier->name : '-' }}</td>
                             <td class="text-end">{{ $line->unit_price !== null ? number_format((float) $line->unit_price, 0, ',', '.') : '-' }}</td>
                             <td class="text-end">{{ $line->line_total !== null ? number_format((float) $line->line_total, 0, ',', '.') : '-' }}</td>
+                            <td>{{ $line->is_selected ? 'Ya' : 'Tidak' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="p-0">@include('reports.purchase-request._empty')</td></tr>
+                        <tr><td colspan="11" class="p-0">@include('reports.purchase-request._empty')</td></tr>
                     @endforelse
                 </tbody>
             </table>

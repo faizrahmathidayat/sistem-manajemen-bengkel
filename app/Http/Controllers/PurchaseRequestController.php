@@ -200,7 +200,8 @@ class PurchaseRequestController extends Controller
     public function approve(ApprovePurchaseRequestRequest $request, PurchaseRequest $purchaseRequest, PurchaseRequestService $service)
     {
         try {
-            $service->approve($purchaseRequest, $request->user(), $request->input('note'), $this->expectedStep($request));
+            $selection = $request->boolean('selection_submitted') ? array_map('intval', (array) $request->input('selected_lines', [])) : null;
+            $service->approve($purchaseRequest, $request->user(), $request->input('note'), $this->expectedStep($request), $selection);
         } catch (\DomainException $e) {
             return redirect()->route('purchase-requests.show', $purchaseRequest)->with('error', $e->getMessage());
         } catch (AuthorizationException $e) {

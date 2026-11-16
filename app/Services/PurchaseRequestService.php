@@ -51,6 +51,7 @@ class PurchaseRequestService
                     'approval_level_id' => $step['level_id'],
                     'level_name' => $step['level_name'],
                     'status' => PurchaseRequestApprovalStatus::PENDING,
+                    'can_select_items' => ! empty($step['can_select_items']),
                 ]);
                 $approval->users()->sync($step['user_ids']);
             }
@@ -58,6 +59,7 @@ class PurchaseRequestService
             $fresh->update([
                 'status' => PurchaseRequestStatus::WAITING_APPROVAL,
                 'total_amount' => $total,
+                'submitted_total' => $total,
                 'submitted_at' => now(),
                 'submitted_by' => $actor->id,
             ]);
@@ -74,10 +76,12 @@ class PurchaseRequestService
      * @throws AuthorizationException the actor may not decide the current step
      * @throws \DomainException       the request is not waiting for approval
      */
-    public function approve(PurchaseRequest $purchaseRequest, User $actor, ?string $note = null, ?int $expectedStep = null): void
+    public function approve(PurchaseRequest $purchaseRequest, User $actor, ?string $note = null, ?int $expectedStep = null, ?array $selectedLineIds = null): void
     {
-        DB::transaction(function () use ($purchaseRequest, $actor, $note, $expectedStep) {
+        DB::transaction(function () use ($purchaseRequest, $actor, $note, $expectedStep, $selectedLineIds) {
             [$fresh, $step] = $this->lockCurrentStep($purchaseRequest, $actor, $expectedStep);
+
+            $deselected = $selectedLineIds === null ? [] : $this->applySelection($fresh, $step, $selectedLineIds);
 
             $step->update([
                 'status' => PurchaseRequestApprovalStatus::APPROVED,
@@ -95,9 +99,63 @@ class PurchaseRequestService
             (new AuditLogger())->log(
                 AuditEvent::PURCHASE_REQUEST_APPROVED, $fresh->branch_id, $fresh,
                 ['status' => PurchaseRequestStatus::WAITING_APPROVAL],
-                ['step' => $step->step_no, 'level' => $step->level_name, 'final' => $isFinal]
+                ['step' => $step->step_no, 'level' => $step->level_name, 'final' => $isFinal, 'deselected_lines' => $deselected, 'total_amount' => (float) $fresh->total_amount]
             );
         });
+    }
+
+    /**
+     * Apply the approver's item selection on the locked request. Only a step whose level may
+     * select items can change it, lines unchecked earlier stay unchecked (locked), and at least
+     * one line must remain — rejecting everything is what "Tolak" is for. The request total
+     * follows the checked lines; the approval chain stays as snapshotted at submit.
+     *
+     * @param int[] $selectedLineIds lines that stay checked
+     * @return int[] ids unchecked by this call
+     *
+     * @throws \DomainException
+     */
+    protected function applySelection(PurchaseRequest $fresh, PurchaseRequestApproval $step, array $selectedLineIds): array
+    {
+        $lines = $fresh->lines()->lockForUpdate()->get();
+        $selectedLineIds = array_values(array_unique(array_map('intval', $selectedLineIds)));
+        $current = $lines->filter(fn ($line) => (bool) $line->is_selected)->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        if (array_diff($selectedLineIds, $lines->pluck('id')->map(fn ($id) => (int) $id)->all())) {
+            throw new \DomainException('Pilihan item tidak valid.');
+        }
+
+        $deselected = array_values(array_diff($current, $selectedLineIds));
+        $reselected = array_values(array_diff($selectedLineIds, $current));
+
+        if (! $step->can_select_items) {
+            // A level without the right may only confirm what it sees; ignore a selection identical to the current one.
+            if ($deselected || $reselected) {
+                throw new \DomainException('Level approval ini tidak berwenang mengubah pilihan item.');
+            }
+
+            return [];
+        }
+
+        if ($reselected) {
+            throw new \DomainException('Item yang sudah tidak dipilih pada level sebelumnya tidak dapat dipilih kembali.');
+        }
+
+        if (empty($selectedLineIds)) {
+            throw new \DomainException('Minimal satu item harus tetap dipilih. Gunakan Tolak bila seluruh permintaan tidak disetujui.');
+        }
+
+        if (empty($deselected)) {
+            return [];
+        }
+
+        $fresh->lines()->whereIn('id', $deselected)->update(['is_selected' => false, 'deselected_step_no' => $step->step_no]);
+        $fresh->load('lines');
+        $fresh->update(['total_amount' => round((float) $fresh->lines->where('is_selected', true)->sum(
+            fn ($line) => round((float) $line->qty * (float) $line->unit_price, 2)
+        ), 2)]);
+
+        return $deselected;
     }
 
     public function reject(PurchaseRequest $purchaseRequest, User $actor, string $reason, ?int $expectedStep = null): void

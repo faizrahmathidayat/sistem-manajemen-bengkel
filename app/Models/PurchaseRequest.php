@@ -12,7 +12,7 @@ class PurchaseRequest extends Model
     use HasFactory, HasAudit;
 
     protected $fillable = [
-        'number', 'branch_id', 'request_date', 'status', 'notes', 'total_amount',
+        'number', 'branch_id', 'request_date', 'status', 'notes', 'total_amount', 'submitted_total',
         'submitted_at', 'submitted_by', 'rejected_reason',
         'cancel_reason', 'cancelled_at', 'cancelled_by',
     ];
@@ -22,6 +22,7 @@ class PurchaseRequest extends Model
         'submitted_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'total_amount' => 'decimal:2',
+        'submitted_total' => 'decimal:2',
     ];
 
     protected $attributes = [

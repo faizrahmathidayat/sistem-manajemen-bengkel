@@ -20,8 +20,15 @@ class PurchaseOrderGenerator
     public function generateFor(PurchaseRequest $purchaseRequest): Collection
     {
         $purchaseRequest->load(['lines', 'branch']);
+        $selectedLines = $purchaseRequest->lines->filter(function ($line) {
+            return (bool) $line->is_selected;
+        })->values();
 
-        if ($purchaseRequest->lines->contains(function ($line) {
+        if ($selectedLines->isEmpty()) {
+            throw new \LogicException('Tidak ada item yang dipilih untuk dibeli.');
+        }
+
+        if ($selectedLines->contains(function ($line) {
             return $line->supplier_id === null || $line->unit_price === null;
         })) {
             throw new \LogicException('Semua baris permintaan harus memiliki supplier dan harga sebelum pembelian dibuat.');
@@ -29,10 +36,10 @@ class PurchaseOrderGenerator
 
         $orderDate = now()->timezone(config('app.business_timezone', 'Asia/Jakarta'))->toDateString();
 
-        return DB::transaction(function () use ($purchaseRequest, $orderDate) {
+        return DB::transaction(function () use ($purchaseRequest, $orderDate, $selectedLines) {
             $orders = new Collection();
 
-            foreach ($purchaseRequest->lines->groupBy('supplier_id')->sortKeys() as $supplierId => $lines) {
+            foreach ($selectedLines->groupBy('supplier_id')->sortKeys() as $supplierId => $lines) {
                 $order = PurchaseOrder::create([
                     'number' => (new DocumentNumberGenerator())->next($purchaseRequest->branch, 'PO'),
                     'purchase_request_id' => $purchaseRequest->id,

@@ -64,6 +64,20 @@ class PurchaseRequestItemSelectionTest extends TestCase
         $this->assertSame('3000000.00', (string) $request->submitted_total);
     }
 
+    public function test_turning_the_level_setting_on_applies_to_requests_already_waiting_at_that_step(): void
+    {
+        [$request, $manager, , $lines] = $this->submittedRequest(false, false);
+        $this->actingAs($manager)->get("/purchase-requests/{$request->id}")
+            ->assertOk()->assertDontSee('name="selected_lines[]"', false);
+
+        \App\Models\ApprovalLevel::where('name', 'Manager')->update(['can_select_items' => true]);
+
+        $this->actingAs($manager)->get("/purchase-requests/{$request->id}")
+            ->assertOk()->assertSee('name="selected_lines[]"', false);
+        $this->svc()->approve($request, $manager, null, 1, [$lines[0]->id]);
+        $this->assertFalse((bool) $request->fresh('lines')->lines[1]->is_selected);
+    }
+
     public function test_approver_may_uncheck_lines_and_total_and_purchase_orders_follow_the_checked_ones(): void
     {
         [$request, $manager, $director, $lines] = $this->submittedRequest();

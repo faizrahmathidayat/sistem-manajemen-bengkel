@@ -128,7 +128,7 @@ class PurchaseRequestService
         $deselected = array_values(array_diff($current, $selectedLineIds));
         $reselected = array_values(array_diff($selectedLineIds, $current));
 
-        if (! $step->can_select_items) {
+        if (! $step->maySelectItems()) {
             // A level without the right may only confirm what it sees; ignore a selection identical to the current one.
             if ($deselected || $reselected) {
                 throw new \DomainException('Level approval ini tidak berwenang mengubah pilihan item.');

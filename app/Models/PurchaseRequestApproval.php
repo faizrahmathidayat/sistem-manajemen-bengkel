@@ -27,6 +27,18 @@ class PurchaseRequestApproval extends Model
         return $this->belongsTo(ApprovalLevel::class);
     }
 
+    /**
+     * Whether this step's approvers may uncheck items. Follows the level's current setting so a
+     * change in Pengaturan Approval also reaches requests already waiting at this step; the value
+     * copied at submit time is only the fallback when the level no longer exists.
+     */
+    public function maySelectItems(): bool
+    {
+        $level = $this->approvalLevel;
+
+        return $level ? (bool) $level->can_select_items : (bool) $this->can_select_items;
+    }
+
     public function actor()
     {
         return $this->belongsTo(User::class, 'acted_by');

@@ -115,7 +115,7 @@
         @include('purchase-requests._assign_form')
     @else
     @php($pendingStep = $purchaseRequest->approvals->firstWhere('status', 'pending'))
-    @php($canSelectItems = $pendingStep && $pendingStep->can_select_items && auth()->user()->can('approve', $purchaseRequest))
+    @php($canSelectItems = $pendingStep && $pendingStep->maySelectItems() && auth()->user()->can('approve', $purchaseRequest))
     <div class="panel">
         <h2 class="section-title mb-2"><i class="bi bi-list-check"></i><span>Rincian Barang</span></h2>
         @if ($canSelectItems)

@@ -36,7 +36,10 @@
                         <tr class="assign-line" data-qty="{{ (int) $line->qty }}">
                             <td><code>{{ $line->sparepartBranch->sparepart->code }}</code></td>
                             <td>{{ $line->sparepartBranch->sparepart->name }}</td>
-                            <td class="text-end">{{ number_format($line->qty, 0, ',', '.') }}</td>
+                            <td style="width: 110px;">
+                                <input type="number" data-integer step="1" min="1" name="lines[{{ $line->id }}][qty]" value="{{ old("lines.{$line->id}.qty", (int) $line->qty) }}" class="form-control form-control-sm text-end assign-qty">
+                                @error("lines.{$line->id}.qty")<div class="text-danger small">{{ $message }}</div>@enderror
+                            </td>
                             <td>
                                 <select name="lines[{{ $line->id }}][supplier_id]" class="form-select form-select-sm assign-supplier-select">
                                     <option value=""></option>
@@ -103,7 +106,7 @@
     function recalc() {
         let total = 0;
         document.querySelectorAll('.assign-line').forEach(function (row) {
-            const qty = Number(row.dataset.qty);
+            const qty = Number(row.querySelector('.assign-qty').value);
             const price = Number(row.querySelector('.assign-price').value);
             const cell = row.querySelector('.assign-subtotal');
             if (price > 0) {
@@ -120,7 +123,7 @@
     document.querySelectorAll('.assign-supplier-select').forEach(function (select) {
         initAjaxSelect(select, { endpoint: supplierEndpoint, placeholder: 'Pilih supplier…' });
     });
-    document.querySelectorAll('.assign-price').forEach(function (input) {
+    document.querySelectorAll('.assign-price, .assign-qty').forEach(function (input) {
         input.addEventListener('input', recalc);
     });
 })();

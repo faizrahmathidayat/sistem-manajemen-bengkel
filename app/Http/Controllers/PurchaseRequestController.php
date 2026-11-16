@@ -259,6 +259,9 @@ class PurchaseRequestController extends Controller
                 $supplierId = isset($input['supplier_id']) && $input['supplier_id'] !== '' ? (int) $input['supplier_id'] : null;
                 $price = isset($input['unit_price']) && $input['unit_price'] !== '' ? (int) $input['unit_price'] : null;
 
+                if (isset($input['qty']) && $input['qty'] !== '') {
+                    $line->qty = (int) $input['qty'];
+                }
                 $line->supplier_id = $supplierId;
                 $line->unit_price = $price;
                 $line->line_total = $price === null ? null : round((float) $line->qty * $price, 2);

@@ -66,6 +66,35 @@ class PurchaseRequestAssignSupplierTest extends TestCase
         $this->assertSame(PurchaseRequestStatus::WAITING_SUPPLIER, $request->fresh()->status);
     }
 
+    public function test_warehouse_head_can_change_qty_before_submission_and_line_total_follows(): void
+    {
+        [, , $request, $lineA, $lineB] = $this->fixture();
+        $supplier = $this->makeSupplier('SUP-001');
+
+        $this->actingAs($this->gudang())->patch("/purchase-requests/{$request->id}/assign-suppliers", [
+            'lines' => [
+                $lineA->id => ['qty' => 100, 'supplier_id' => $supplier->id, 'unit_price' => 85000],
+                $lineB->id => ['qty' => 55, 'supplier_id' => '', 'unit_price' => ''],
+            ],
+        ])->assertRedirect(route('purchase-requests.show', $request));
+
+        $this->assertSame('100.00', number_format((float) $lineA->fresh()->qty, 2, '.', ''));
+        $this->assertSame('8500000.00', (string) $lineA->fresh()->line_total);
+        $this->assertSame('55.00', number_format((float) $lineB->fresh()->qty, 2, '.', ''));
+    }
+
+    public function test_invalid_qty_is_rejected_when_assigning(): void
+    {
+        [, , $request, $lineA] = $this->fixture();
+
+        foreach ([0, -3, 2.5, 'abc'] as $bad) {
+            $this->actingAs($this->gudang())->patch("/purchase-requests/{$request->id}/assign-suppliers", [
+                'lines' => [$lineA->id => ['qty' => $bad, 'supplier_id' => '', 'unit_price' => '']],
+            ])->assertSessionHasErrors("lines.{$lineA->id}.qty");
+        }
+        $this->assertSame(120, (int) $lineA->fresh()->qty);
+    }
+
     public function test_inactive_supplier_is_rejected_unless_already_on_the_line(): void
     {
         [, , $request, $lineA] = $this->fixture();

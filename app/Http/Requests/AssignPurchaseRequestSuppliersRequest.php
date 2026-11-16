@@ -23,6 +23,7 @@ class AssignPurchaseRequestSuppliersRequest extends FormRequest
         return [
             'lines' => ['required', 'array', 'min:1'],
             'lines.*' => ['array'],
+            'lines.*.qty' => ['sometimes', 'integer', 'min:1'],
             'lines.*.supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'lines.*.unit_price' => ['nullable', 'integer', 'min:0'],
         ];

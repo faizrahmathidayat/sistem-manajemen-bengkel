@@ -24,6 +24,8 @@ class User extends Authenticatable
         'email',
         'password',
         'phone_number',
+        'telegram_chat_id',
+        'notify_enabled',
         'is_active',
     ];
 

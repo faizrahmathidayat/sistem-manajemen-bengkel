@@ -59,6 +59,8 @@ class UserController extends Controller
             'password' => Hash::make($data['password']),
             'is_active' => $request->boolean('is_active'),
             'phone_number' => \App\Support\PhoneNumber::normalize($data['phone_number'] ?? null),
+            'telegram_chat_id' => trim((string) ($data['telegram_chat_id'] ?? '')) ?: null,
+            'notify_enabled' => $request->boolean('notify_enabled'),
         ]);
 
         return redirect()->route('users.index')->with('status', 'User berhasil ditambahkan.');
@@ -105,6 +107,8 @@ class UserController extends Controller
         $user->name = $data['name'];
         $user->username = $data['username'];
         $user->phone_number = \App\Support\PhoneNumber::normalize($data['phone_number'] ?? null);
+        $user->telegram_chat_id = trim((string) ($data['telegram_chat_id'] ?? '')) ?: null;
+        $user->notify_enabled = $request->boolean('notify_enabled');
 
         if (! empty($data['password'])) {
             $user->password = Hash::make($data['password']);

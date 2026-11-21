@@ -23,6 +23,11 @@ use Illuminate\Support\Facades\DB;
  */
 class PurchaseRequestService
 {
+    protected function notifier(): ApprovalNotifier
+    {
+        return new ApprovalNotifier();
+    }
+
     /**
      * @throws \DomainException      request is not in a submittable state / not fully assigned
      * @throws ApprovalChainException no chain can be built for the total
@@ -70,6 +75,8 @@ class PurchaseRequestService
                 ['status' => PurchaseRequestStatus::WAITING_APPROVAL, 'total_amount' => $total, 'steps' => array_column($steps, 'level_name')]
             );
         });
+
+        $this->notifier()->notify($purchaseRequest);
     }
 
     /**
@@ -102,6 +109,8 @@ class PurchaseRequestService
                 ['step' => $step->step_no, 'level' => $step->level_name, 'final' => $isFinal, 'deselected_lines' => $deselected, 'total_amount' => (float) $fresh->total_amount]
             );
         });
+
+        $this->notifier()->notify($purchaseRequest);
     }
 
     /**
@@ -185,6 +194,8 @@ class PurchaseRequestService
                 ['status' => PurchaseRequestStatus::REJECTED, 'step' => $step->step_no, 'level' => $step->level_name, 'reason' => $reason]
             );
         });
+
+        $this->notifier()->notify($purchaseRequest);
     }
 
     /**
@@ -232,6 +243,8 @@ class PurchaseRequestService
                 ['status' => PurchaseRequestStatus::CANCELLED, 'reason' => $reason !== '' ? $reason : null]
             );
         });
+
+        $this->notifier()->notify($purchaseRequest);
     }
 
     /**

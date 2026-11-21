@@ -47,6 +47,14 @@
         </div>
     </div>
 
+    {{-- Audit values may be scalars, booleans or arrays (e.g. approval chains); {{ }} cannot print arrays. --}}
+    @php($formatValue = function ($value) {
+        if ($value === null) { return '-'; }
+        if (is_bool($value)) { return $value ? 'ya' : 'tidak'; }
+        if (is_array($value)) { return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); }
+        return (string) $value;
+    })
+
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -75,8 +83,8 @@
                                             @foreach ($keys as $key)
                                                 <tr>
                                                     <td>{{ $key }}</td>
-                                                    <td>{{ $log->old_values[$key] ?? '-' }}</td>
-                                                    <td>{{ $log->new_values[$key] ?? '-' }}</td>
+                                                    <td class="text-break">{{ $formatValue($log->old_values[$key] ?? null) }}</td>
+                                                    <td class="text-break">{{ $formatValue($log->new_values[$key] ?? null) }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>

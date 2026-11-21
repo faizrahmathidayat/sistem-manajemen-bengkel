@@ -131,4 +131,23 @@ class AuditLogControllerTest extends TestCase
         $response->assertOk();
         $response->assertSee('Uji diff');
     }
+
+    public function test_index_renders_array_and_boolean_values_without_error(): void
+    {
+        $branch = Branch::create(['code' => 'JKT', 'name' => 'Cabang Jakarta']);
+        (new AuditLogger())->log(
+            AuditEvent::PURCHASE_REQUEST_SUBMITTED, $branch->id, null,
+            ['status' => 'waiting_supplier', 'levels' => [['id' => 1, 'name' => 'Manager', 'user_ids' => [3, 4]]]],
+            ['steps' => ['Manager', 'Direktur'], 'deselected_lines' => [], 'final' => true, 'reason' => null]
+        );
+        $user = User::factory()->create();
+        $this->grantGlobalPermission($user, 'audit_log.view');
+
+        $response = $this->actingAs($user)->get('/audit-logs');
+
+        $response->assertOk();
+        $response->assertSee('Manager');
+        $response->assertSee('Direktur');
+        $response->assertSee('ya');
+    }
 }

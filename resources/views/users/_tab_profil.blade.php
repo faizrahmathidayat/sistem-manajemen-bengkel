@@ -24,6 +24,19 @@
             </div>
 
             <div class="mb-3">
+                <label for="telegram_chat_id" class="form-label">Chat ID Telegram</label>
+                <input type="text" name="telegram_chat_id" id="telegram_chat_id" value="{{ old('telegram_chat_id', $user->telegram_chat_id) }}" class="form-control @error('telegram_chat_id') is-invalid @enderror" maxlength="20" placeholder="Contoh: 1421232494">
+                @error('telegram_chat_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="form-text">Dipakai untuk notifikasi approval lewat bot Telegram. Orangnya harus menekan Start di bot lebih dulu.</div>
+            </div>
+
+            <div class="form-check form-switch mb-3">
+                <input type="hidden" name="notify_enabled" value="0">
+                <input type="checkbox" name="notify_enabled" id="notify_enabled" value="1" class="form-check-input" {{ old('notify_enabled', $user->notify_enabled) ? 'checked' : '' }}>
+                <label for="notify_enabled" class="form-check-label">Terima notifikasi Telegram</label>
+            </div>
+
+            <div class="mb-3">
                 <label for="password" class="form-label">Password Baru</label>
                 <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" placeholder="Kosongkan jika tidak ingin mengubah">
                 @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror

@@ -29,7 +29,7 @@ class TelegramWebhookCommandTest extends TestCase
             return $request->url() === 'https://api.telegram.org/bottest-token/setWebhook'
                 && $d['url'] === 'https://bengkel.example.com/api/telegram/webhook'
                 && $d['secret_token'] === 'rahasia_123'
-                && $d['allowed_updates'] === ['message'];
+                && $d['allowed_updates'] === ['message', 'callback_query'];
         });
     }
 

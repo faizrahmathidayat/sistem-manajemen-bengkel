@@ -12,7 +12,7 @@ class LogSender implements NotificationSender
         return 'log';
     }
 
-    public function send(string $to, string $message): array
+    public function send(string $to, string $message, array $extra = []): array
     {
         Log::info('Notification (not sent, no provider configured)', ['to' => $to, 'message' => $message]);
 

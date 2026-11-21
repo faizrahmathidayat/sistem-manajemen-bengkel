@@ -39,7 +39,7 @@ class SendNotificationJob implements ShouldQueue
         $log->channel = $sender->channel();
 
         try {
-            $result = $sender->send($log->recipient, $log->message);
+            $result = $sender->send($log->recipient, $log->message, (array) $log->payload);
             $log->status = $result['status'];
             $log->response = $result['response'];
         } catch (\Throwable $e) {

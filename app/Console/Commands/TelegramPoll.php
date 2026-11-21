@@ -81,6 +81,7 @@ class TelegramPoll extends Command
             'offset' => $offset,
             'timeout' => $wait,
             'limit' => 50,
+            'allowed_updates' => json_encode(['message', 'callback_query']),
         ]);
 
         if (! $response->successful() || ! data_get($response->json(), 'ok')) {

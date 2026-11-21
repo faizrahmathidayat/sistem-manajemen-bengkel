@@ -72,7 +72,7 @@ class TelegramWebhook extends Command
         return $this->callTelegram('setWebhook', [
             'url' => $url,
             'secret_token' => $secret,
-            'allowed_updates' => ['message'],
+            'allowed_updates' => ['message', 'callback_query'],
         ], 'Webhook terdaftar. Bot kini menjawab otomatis tanpa telegram:poll.');
     }
 

@@ -30,7 +30,10 @@ class ApprovalNotifier
                 case PurchaseRequestStatus::WAITING_APPROVAL:
                     $step = $request->approvals->where('status', 'pending')->sortBy('step_no')->first();
                     if ($step) {
-                        $this->send($step->users, $request, 'step_ready', $this->stepReadyMessage($request));
+                        foreach ($step->users as $approver) {
+                            $card = TelegramApprovalMessage::build($request, $step, $approver);
+                            $this->send([$approver], $request, 'step_ready', $card['text'], ['reply_markup' => $card['reply_markup']]);
+                        }
                     }
                     break;
                 case PurchaseRequestStatus::APPROVED:
@@ -51,14 +54,6 @@ class ApprovalNotifier
         }
     }
 
-    protected function stepReadyMessage(PurchaseRequest $request): string
-    {
-        $prefix = $request->is_urgent ? '[URGENT] ' : '';
-        $total = number_format((float) $request->total_amount, 0, ',', '.');
-
-        return $prefix . "Approval {$request->number} ({$request->branch->name})\nTotal Rp {$total} menunggu persetujuan Anda.\n" . $this->link($request);
-    }
-
     /** Links use NOTIFY_BASE_URL (e.g. the LAN address) so they open from a phone; falls back to APP_URL. */
     protected function link(PurchaseRequest $request): string
     {
@@ -73,7 +68,7 @@ class ApprovalNotifier
     }
 
     /** @param iterable<User> $users */
-    protected function send($users, PurchaseRequest $request, string $event, string $message): void
+    protected function send($users, PurchaseRequest $request, string $event, string $message, array $payload = []): void
     {
         foreach ($users as $user) {
             if (! $user->is_active || ! $user->notify_enabled || empty($user->telegram_chat_id)) {
@@ -87,6 +82,7 @@ class ApprovalNotifier
                     'event' => $event,
                     'recipient' => $user->telegram_chat_id,
                     'message' => $message,
+                    'payload' => $payload ?: null,
                     'status' => 'pending',
                 ]);
                 SendNotificationJob::dispatch($log->id);

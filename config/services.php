@@ -16,6 +16,8 @@ return [
 
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        // Secret Telegram echoes back on every webhook call; the endpoint refuses everything without it.
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
     ],
 
     // channel: auto = Telegram when TELEGRAM_BOT_TOKEN is set, otherwise log only; telegram; log (never send).

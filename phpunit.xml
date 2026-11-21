@@ -27,6 +27,7 @@
         <server name="QUEUE_CONNECTION" value="sync"/>
         <server name="APPROVAL_NOTIFY_CHANNEL" value="log"/>
         <server name="TELEGRAM_BOT_TOKEN" value=""/>
+        <server name="TELEGRAM_WEBHOOK_SECRET" value=""/>
         <server name="NOTIFY_BASE_URL" value=""/>
         <server name="SESSION_DRIVER" value="array"/>
         <server name="TELESCOPE_ENABLED" value="false"/>

@@ -25,16 +25,22 @@ class TelegramSender implements NotificationSender
 
     public function send(string $to, string $message): array
     {
+        return $this->sendWith($to, $message);
+    }
+
+    /** @param array $extra additional Bot API fields, e.g. reply_markup */
+    public function sendWith(string $to, string $message, array $extra = []): array
+    {
         if (! $this->token) {
             throw new \RuntimeException('TELEGRAM_BOT_TOKEN belum diisi.');
         }
 
         try {
-            $response = Http::timeout(10)->post('https://api.telegram.org/bot' . $this->token . '/sendMessage', [
+            $response = Http::timeout(10)->post('https://api.telegram.org/bot' . $this->token . '/sendMessage', array_merge([
                 'chat_id' => $to,
                 'text' => $message,
                 'disable_web_page_preview' => true,
-            ]);
+            ], $extra));
         } catch (\Throwable $e) {
             throw new \RuntimeException('Tidak dapat menghubungi Telegram: ' . $this->scrub($e->getMessage()));
         }
